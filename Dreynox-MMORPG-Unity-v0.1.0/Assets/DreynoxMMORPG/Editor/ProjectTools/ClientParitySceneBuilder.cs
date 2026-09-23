@@ -1,6 +1,7 @@
 using Dreynox.Mmorpg.Gameplay.CameraSystem;
 using Dreynox.Mmorpg.Gameplay.Client;
 using Dreynox.Mmorpg.Gameplay.Combat;
+using Dreynox.Mmorpg.Parity;
 using Dreynox.Mmorpg.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -21,6 +22,7 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             GameObject runtime = new GameObject("DreynoxRuntime");
             runtime.AddComponent<Dreynox.Mmorpg.App.DreynoxBootstrap>();
+            runtime.AddComponent<ParityScreenshotCapture>();
 
             GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name = "ParityGround";
