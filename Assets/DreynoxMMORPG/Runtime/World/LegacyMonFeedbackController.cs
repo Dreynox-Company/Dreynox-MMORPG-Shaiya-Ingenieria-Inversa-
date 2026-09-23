@@ -1,6 +1,7 @@
 using System;
 using Dreynox.Mmorpg.Gameplay.AnimationSystem;
 using Dreynox.Mmorpg.Gameplay.Combat;
+using Dreynox.Mmorpg.Vfx;
 using UnityEngine;
 
 namespace Dreynox.Mmorpg.World
@@ -18,6 +19,12 @@ namespace Dreynox.Mmorpg.World
         [SerializeField] private AudioClip attack3;
         [SerializeField] private AudioClip death;
 
+        [Header("MON EFT")]
+        [SerializeField] private GameObject attack1Effect;
+        [SerializeField] private GameObject attack2Effect;
+        [SerializeField] private GameObject attack3Effect;
+        [SerializeField] private GameObject deathEffect;
+
         [Header("Runtime")]
         [SerializeField, Min(0f)] private float damageAnimationMinimumInterval = 0.08f;
 
@@ -30,7 +37,11 @@ namespace Dreynox.Mmorpg.World
             AudioClip attackClip1,
             AudioClip attackClip2,
             AudioClip attackClip3,
-            AudioClip deathClip)
+            AudioClip deathClip,
+            GameObject attackEffect1 = null,
+            GameObject attackEffect2 = null,
+            GameObject attackEffect3 = null,
+            GameObject dieEffect = null)
         {
             UnbindTarget();
 
@@ -40,6 +51,10 @@ namespace Dreynox.Mmorpg.World
             attack2 = attackClip2;
             attack3 = attackClip3;
             death = deathClip;
+            attack1Effect = attackEffect1;
+            attack2Effect = attackEffect2;
+            attack3Effect = attackEffect3;
+            deathEffect = dieEffect;
 
             EnsureAudioSource();
             BindTarget();
@@ -83,16 +98,19 @@ namespace Dreynox.Mmorpg.World
                 case 1:
                     PlayAnimation("attack_1");
                     PlayClip(attack1);
+                    PlayEffect(attack1Effect);
                     break;
 
                 case 2:
                     PlayAnimation("attack_2");
                     PlayClip(attack2);
+                    PlayEffect(attack2Effect);
                     break;
 
                 case 3:
                     PlayAnimation("attack_3");
                     PlayClip(attack3);
+                    PlayEffect(attack3Effect);
                     break;
 
                 default:
@@ -134,6 +152,7 @@ namespace Dreynox.Mmorpg.World
             _dead = true;
             PlayAnimation("dead");
             PlayClip(death);
+            PlayEffect(deathEffect);
         }
 
         private void OnReborn(
@@ -156,6 +175,17 @@ namespace Dreynox.Mmorpg.World
 
             EnsureAudioSource();
             audioSource.PlayOneShot(clip);
+        }
+
+        private void PlayEffect(GameObject prefab)
+        {
+            if (prefab == null)
+                return;
+
+            LegacyEffectPool.Play(
+                prefab,
+                transform.position,
+                transform.rotation);
         }
 
         private void EnsureAudioSource()
