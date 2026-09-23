@@ -117,6 +117,38 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             terrain.heightmapPixelError = 3f;
             terrain.basemapDistance = 1200f;
 
+            LegacySmodPrefabImporter.ClearSessionCache();
+
+            GameObject staticRoot =
+                new GameObject("WLD_StaticGeometry");
+
+            int buildingInstances =
+                CreateStaticGroup(
+                    corpus,
+                    staticRoot.transform,
+                    "Buildings",
+                    "building",
+                    wld.Buildings,
+                    alphaClip: false);
+
+            int shapeInstances =
+                CreateStaticGroup(
+                    corpus,
+                    staticRoot.transform,
+                    "Shapes",
+                    "shape",
+                    wld.Shapes,
+                    alphaClip: false);
+
+            int treeInstances =
+                CreateStaticGroup(
+                    corpus,
+                    staticRoot.transform,
+                    "Trees",
+                    "tree",
+                    wld.Trees,
+                    alphaClip: true);
+
             GameObject markerRoot =
                 new GameObject("SVMAP_Metadata");
 
@@ -205,7 +237,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 svmap.Portals.Count + " portals, " +
                 svmap.NpcPositionCount + " NPC positions, " +
                 svmap.MonsterAreas.Count + " monster areas / " +
-                svmap.MonsterInstanceCount + " monster instances.");
+                svmap.MonsterInstanceCount + " monster instances, " +
+                buildingInstances + " buildings, " +
+                shapeInstances + " shapes and " +
+                treeInstances + " trees.");
         }
 
         private static TerrainData BuildTerrainData(
@@ -449,6 +484,148 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             {
                 throw new InvalidDataException(
                     "Map 0 terrain height calibration mismatch.");
+            }
+        }
+
+        private static int CreateStaticGroup(
+            CanonicalClientCorpus corpus,
+            Transform worldRoot,
+            string groupName,
+            string category,
+            LegacyWldNameCoordinateGroup group,
+            bool alphaClip)
+        {
+            if (group == null)
+                throw new ArgumentNullException(nameof(group));
+
+            GameObject container =
+                new GameObject(groupName);
+
+            container.transform.SetParent(
+                worldRoot,
+                false);
+
+            GameObject[] prefabs =
+                new GameObject[group.Names.Count];
+
+            for (int i = 0; i < group.Names.Count; i++)
+            {
+                prefabs[i] =
+                    LegacySmodPrefabImporter.Import(
+                        corpus,
+                        category,
+                        group.Names[i],
+                        alphaClip);
+
+                if (prefabs[i] == null)
+                {
+                    throw new InvalidDataException(
+                        "SMOD import returned null for " +
+                        category + "/" + group.Names[i] + ".");
+                }
+            }
+
+            StaticEditorFlags staticFlags =
+                StaticEditorFlags.BatchingStatic |
+                StaticEditorFlags.OccluderStatic |
+                StaticEditorFlags.OccludeeStatic |
+                StaticEditorFlags.ReflectionProbeStatic;
+
+            for (int i = 0;
+                 i < group.Coordinates.Count;
+                 i++)
+            {
+                LegacyWldCoordinate coordinate =
+                    group.Coordinates[i];
+
+                if (coordinate.Id < 0 ||
+                    coordinate.Id >= prefabs.Length)
+                {
+                    throw new InvalidDataException(
+                        groupName + " coordinate " + i +
+                        " references invalid resource " +
+                        coordinate.Id + ".");
+                }
+
+                GameObject instance =
+                    PrefabUtility.InstantiatePrefab(
+                        prefabs[coordinate.Id])
+                    as GameObject;
+
+                if (instance == null)
+                {
+                    throw new InvalidOperationException(
+                        "Could not instantiate " +
+                        group.Names[coordinate.Id] + ".");
+                }
+
+                instance.name =
+                    Path.GetFileNameWithoutExtension(
+                        group.Names[coordinate.Id]) +
+                    "_" +
+                    i.ToString("D4");
+
+                instance.transform.SetParent(
+                    container.transform,
+                    false);
+
+                instance.transform.position =
+                    coordinate.Position;
+
+                Vector3 forward =
+                    coordinate.Forward.normalized;
+
+                Vector3 up =
+                    coordinate.Up.normalized;
+
+                if (forward.sqrMagnitude < 0.999f ||
+                    up.sqrMagnitude < 0.999f ||
+                    Mathf.Abs(Vector3.Dot(forward, up)) > 0.01f)
+                {
+                    Vector3 right =
+                        Vector3.Cross(up, forward).normalized;
+
+                    if (right.sqrMagnitude < 0.999f)
+                    {
+                        throw new InvalidDataException(
+                            groupName +
+                            " coordinate " + i +
+                            " has an unusable orientation basis.");
+                    }
+
+                    up =
+                        Vector3.Cross(forward, right).normalized;
+                }
+
+                instance.transform.rotation =
+                    Quaternion.LookRotation(
+                        forward,
+                        up);
+
+                ApplyStaticFlagsRecursively(
+                    instance,
+                    staticFlags);
+            }
+
+            return group.Coordinates.Count;
+        }
+
+        private static void ApplyStaticFlagsRecursively(
+            GameObject root,
+            StaticEditorFlags flags)
+        {
+            if (root == null)
+                return;
+
+            Transform[] transforms =
+                root.GetComponentsInChildren<Transform>(
+                    true);
+
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                GameObjectUtility.SetStaticEditorFlags(
+                    transforms[i].gameObject,
+                    flags);
             }
         }
 
