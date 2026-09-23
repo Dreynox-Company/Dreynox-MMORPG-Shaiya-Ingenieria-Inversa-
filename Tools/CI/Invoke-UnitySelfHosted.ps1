@@ -65,11 +65,28 @@ function Invoke-Checked {
     )
 
     Write-Host "::group::$Description"
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $Executable
+    $startInfo.UseShellExecute = $false
+
+    foreach ($argument in $Arguments) {
+        [void]$startInfo.ArgumentList.Add($argument)
+    }
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+
     try {
-        & $Executable @Arguments
-        $exitCode = $LASTEXITCODE
+        if (-not $process.Start()) {
+            throw "No se pudo iniciar $Executable."
+        }
+
+        $process.WaitForExit()
+        $exitCode = $process.ExitCode
     }
     finally {
+        $process.Dispose()
         Write-Host "::endgroup::"
     }
 
