@@ -250,5 +250,58 @@ namespace Dreynox.Mmorpg.Tests
             Assert.AreEqual(1, level);
             Assert.AreEqual(900, gold);
         }
+        [Test]
+        public void CameraYawNinetyForwardResolvesNegativeWorldX()
+        {
+            ClientCoordinateCore.ResolveCameraRelative(0, 1, 90, out double worldX, out double worldZ);
+            Assert.AreEqual(-1.0, worldX, 0.000001);
+            Assert.AreEqual(0.0, worldZ, 0.000001);
+        }
+
+        [Test]
+        public void FlightCombatDescentAndResumeMatchRecoveredContract()
+        {
+            var flight = new FlightTransitionCore();
+            flight.SetWingsEquipped(true);
+            Assert.AreEqual(ClientFlightPhase.Grounded, flight.Phase);
+            Assert.IsFalse(flight.ManualRequested, "Equipping wings must not activate flight.");
+
+            Assert.IsTrue(flight.ToggleManualFlight());
+            Assert.AreEqual(ClientFlightPhase.TakingOff, flight.Phase);
+            flight.Tick(FlightTransitionCore.DefaultTakeoffSeconds);
+            Assert.AreEqual(ClientFlightPhase.Hover, flight.Phase);
+
+            flight.SetMoving(true);
+            Assert.AreEqual(ClientFlightPhase.Flight, flight.Phase);
+
+            flight.SetCombatGuard(true);
+            Assert.IsTrue(flight.BeginCombatDescent());
+            Assert.AreEqual(ClientFlightPhase.CombatDescending, flight.Phase);
+            flight.Tick(FlightTransitionCore.DefaultCombatDescentSeconds);
+            Assert.AreEqual(ClientFlightPhase.Grounded, flight.Phase);
+            Assert.IsTrue(flight.ManualRequested, "Combat landing preserves the user's flight intent.");
+
+            flight.SetCombatGuard(false);
+            Assert.AreEqual(ClientFlightPhase.TakingOff, flight.Phase);
+            flight.Tick(FlightTransitionCore.DefaultTakeoffSeconds);
+            Assert.AreEqual(ClientFlightPhase.Flight, flight.Phase);
+        }
+
+        [Test]
+        public void RemovingWingsCancelsFlightIntentAndReturnsGrounded()
+        {
+            var flight = new FlightTransitionCore();
+            flight.SetWingsEquipped(true);
+            flight.ToggleManualFlight();
+            flight.Tick(FlightTransitionCore.DefaultTakeoffSeconds);
+            Assert.IsTrue(flight.Airborne);
+
+            flight.SetWingsEquipped(false);
+            Assert.IsFalse(flight.ManualRequested);
+            Assert.AreEqual(ClientFlightPhase.Landing, flight.Phase);
+            flight.Tick(FlightTransitionCore.DefaultLandingSeconds);
+            Assert.AreEqual(ClientFlightPhase.Grounded, flight.Phase);
+        }
+
     }
 }
