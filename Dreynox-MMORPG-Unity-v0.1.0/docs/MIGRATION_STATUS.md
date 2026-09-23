@@ -27,13 +27,14 @@
 
 ## Activo ahora
 
-1. Reproducir en Unity todos los checks funcionales que ya estaban verdes en el cliente Flutter.
-2. Conectar assets reales extraídos: rigs, 3DC/3DO, ANI, mapas, cielo y materiales.
-3. Portar inventario, stats, skills, buffs, quests, shops, warehouse, NPC y gatekeepers.
-4. Portar Friends/Party/Trade/Duel/Guild/Raid a protocolo real y UI.
-5. Completar combate PvE/PvP, muerte/rebirth, loot y blacksmith.
-6. Cerrar audio, físicas, agua, EFT y efectos.
-7. Comparación visual automatizada y métricas de frame time PC/móvil.
+1. Conectar los `ParityCore` ya portados a adapters Unity reales sin duplicar lógica.
+2. Conectar assets reales extraídos: rigs, personajes, armas, alas, ANI, mapas, cielo y materiales.
+3. Migrar el pipeline de animación/equipamiento validado en Flutter a Animator/PlayableGraph y sockets Unity.
+4. Conectar inventario, stats, skills, buffs, quests, shops, warehouse, NPC, gatekeepers y social al protocolo real.
+5. Completar combate PvE/PvP con timings, hit events, muerte/rebirth y loot observables frente a `game.exe`.
+6. Cerrar audio, físicas, agua, EFT/VFX y UI real.
+7. Automatizar capturas y comparación lado a lado `game.exe` ↔ Unity, además de frame-time PC/móvil.
+8. Generar Client Release únicamente cuando Boot/Login/World reales estén presentes; el Parity Lab permanece separado.
 
 ## Fuera de alcance de este repo
 
