@@ -44,23 +44,69 @@ jobs:
         with:
           lfs: true # Crucial para descargar assets pesados si usas Git LFS
 
-      - name: Detect Unity activation
+      - name: Prepare Unity activation
         id: unity-license
         shell: bash
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          RAW_UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          RAW_UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          RAW_UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          RAW_UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          # Se activa si hay licencia personal O si están los datos completos de una licencia Pro
-          if [ -n "$UNITY_LICENSE" ] || { [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; }; then
+          set -euo pipefail
+
+          write_env_multiline() {
+            local name="$1"
+            local value="$2"
+            local delimiter="__DREYNOX_${name}_EOF__"
+            {
+              echo "${name}<<${delimiter}"
+              printf '%s\n' "$value"
+              echo "${delimiter}"
+            } >> "$GITHUB_ENV"
+          }
+
+          if [ -n "$RAW_UNITY_SERIAL" ] && [ -n "$RAW_UNITY_EMAIL" ] && [ -n "$RAW_UNITY_PASSWORD" ]; then
+            write_env_multiline UNITY_SERIAL "$RAW_UNITY_SERIAL"
+            write_env_multiline UNITY_EMAIL "$RAW_UNITY_EMAIL"
+            write_env_multiline UNITY_PASSWORD "$RAW_UNITY_PASSWORD"
             echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Unity activation configuration detected. Proceeding with Unity workflows."
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Unity activation not configured; deterministic C# parity gate still ran."
+            echo "mode=serial" >> "$GITHUB_OUTPUT"
+            echo "Unity activation mode: serial credentials."
+            exit 0
           fi
+
+          if [ -z "$RAW_UNITY_LICENSE" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "mode=missing" >> "$GITHUB_OUTPUT"
+            echo "Unity activation not configured; deterministic C# parity gate still ran."
+            exit 0
+          fi
+
+          normalized="$RAW_UNITY_LICENSE"
+          mode="ulf-raw"
+
+          # GitHub secrets are often stored as base64 to preserve multiline ULF XML.
+          # Decode automatically when the raw value is not XML-like.
+          if [[ "$normalized" != <* ]]; then
+            decoded="$(printf '%s' "$normalized" | base64 --decode 2>/dev/null || true)"
+            if [[ "$decoded" == <* ]]; then
+              normalized="$decoded"
+              mode="ulf-base64"
+            fi
+          fi
+
+          if [[ "$normalized" != <* ]]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "mode=invalid" >> "$GITHUB_OUTPUT"
+            echo "UNITY_LICENSE exists but is neither raw ULF XML nor base64-encoded ULF XML."
+            exit 0
+          fi
+
+          write_env_multiline UNITY_LICENSE "$normalized"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "Unity activation mode: $mode."
 
       - name: Cache Unity Library
         if: steps.unity-license.outputs.ready == 'true'
@@ -74,11 +120,6 @@ jobs:
       - name: Unity EditMode tests
         if: steps.unity-license.outputs.ready == 'true'
         uses: game-ci/unity-test-runner@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           testMode: EditMode
@@ -88,11 +129,6 @@ jobs:
       - name: Build StandaloneWindows64
         if: steps.unity-license.outputs.ready == 'true'
         uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: auto
