@@ -204,6 +204,9 @@ namespace Dreynox.Mmorpg.Tests.Editor
             var uniqueMobIds =
                 new HashSet<uint>();
 
+            int zeroPlaceholderRows = 0;
+            long zeroPlaceholderInstances = 0;
+
             for (int areaIndex = 0;
                  areaIndex < map.MonsterAreas.Count;
                  areaIndex++)
@@ -215,12 +218,25 @@ namespace Dreynox.Mmorpg.Tests.Editor
                      spawnIndex < area.Monsters.Count;
                      spawnIndex++)
                 {
-                    uniqueMobIds.Add(
-                        area.Monsters[spawnIndex].MobId);
+                    LegacySvmapMonsterSpawn spawn =
+                        area.Monsters[spawnIndex];
+
+                    if (spawn.MobId == 0)
+                    {
+                        zeroPlaceholderRows++;
+                        zeroPlaceholderInstances += spawn.Count;
+                        continue;
+                    }
+
+                    if (spawn.Count > 0)
+                        uniqueMobIds.Add(spawn.MobId);
                 }
             }
 
-            Assert.AreEqual(65, uniqueMobIds.Count);
+            Assert.AreEqual(5, zeroPlaceholderRows);
+            Assert.AreEqual(0, zeroPlaceholderInstances);
+            Assert.AreEqual(64, uniqueMobIds.Count);
+            Assert.IsFalse(uniqueMobIds.Contains(0));
             Assert.IsTrue(uniqueMobIds.Contains(4984));
 
             foreach (uint mobId in uniqueMobIds)
