@@ -95,6 +95,12 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     LegacySmodMesh sourceMesh =
                         smod.Meshes[i];
 
+                    if (string.IsNullOrWhiteSpace(
+                            sourceMesh.TextureName))
+                    {
+                        continue;
+                    }
+
                     Mesh mesh =
                         BuildRenderMesh(
                             safe + "_Render_" + i.ToString("D2"),
