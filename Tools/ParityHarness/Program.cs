@@ -208,6 +208,36 @@ namespace Dreynox.Mmorpg.ParityHarness
             npc.Register(90, NpcServiceKind.Shop | NpcServiceKind.Blacksmith);
             Check(npc.Open(90) && npc.Supports(NpcServiceKind.Shop) && !npc.Supports(NpcServiceKind.Warehouse), "NPC exposes only registered services");
 
+            Check(NpcServiceResolverCore.Resolve(1, false) == NpcServiceKind.Shop,
+                "NpcQuest Merchant group maps to shop service");
+            Check(NpcServiceResolverCore.Resolve(2, false) == NpcServiceKind.Gatekeeper,
+                "NpcQuest GateKeeper group maps to gatekeeper service");
+            Check(NpcServiceResolverCore.Resolve(3, true) ==
+                  (NpcServiceKind.Blacksmith | NpcServiceKind.Quest),
+                "blacksmith keeps quest service when quest links exist");
+            Check(NpcServiceResolverCore.Resolve(6, true) ==
+                  (NpcServiceKind.Warehouse | NpcServiceKind.Quest),
+                "warehouse keeps quest service when quest links exist");
+
+            var lightPortal = new PortalTravelCore(
+                0, 1, 20, 30, 18, 100, 10, 200);
+            Check(lightPortal.IsOpenByDefault &&
+                  lightPortal.CanEnter(20, 1, false) &&
+                  lightPortal.CanEnter(30, 1, false) &&
+                  !lightPortal.CanEnter(19, 1, false) &&
+                  !lightPortal.CanEnter(31, 1, false) &&
+                  !lightPortal.CanEnter(25, 2, false),
+                "light portal enforces inclusive level and faction rules");
+
+            var bossPortal = new PortalTravelCore(
+                0, 7, 1, 80, 42, 500, 20, 500);
+            Check(bossPortal.IsBossActivatedPortal &&
+                  !bossPortal.IsOpenByDefault &&
+                  !bossPortal.CanEnter(50, 1, false) &&
+                  bossPortal.CanEnter(50, 1, true) &&
+                  bossPortal.CanEnter(50, 2, true),
+                "boss portal stays closed until activated and then permits both factions");
+
             var weather = new WeatherCore();
             weather.TransitionTo(WeatherKindCore.Rain, 2.0);
             weather.Tick(1.0);
