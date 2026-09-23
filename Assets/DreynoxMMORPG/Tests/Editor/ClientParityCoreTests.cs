@@ -455,5 +455,99 @@ namespace Dreynox.Mmorpg.Tests
             Assert.AreEqual(868, map2.Mobs);
         }
 
+        [Test]
+        public void CharacterFlowSupportsCreateDeleteAndAppearance()
+        {
+            var flow = new ClientFlowCore();
+
+            Assert.IsTrue(flow.ReadyForLogin());
+            Assert.IsTrue(flow.BeginConnect());
+            Assert.IsTrue(flow.LoginAccepted());
+            Assert.IsTrue(flow.SelectServer(1));
+
+            Assert.IsTrue(flow.SetCharacterList(
+                new[]
+                {
+                    new CharacterSummaryCore(
+                        100,
+                        "Existing",
+                        33,
+                        0,
+                        0,
+                        2,
+                        1,
+                        3,
+                        4,
+                        0,
+                        CharacterDifficultyMode.Basic)
+                }));
+
+            Assert.IsTrue(flow.BeginCharacterCreate(1));
+            Assert.AreEqual(ClientFlowState.CharacterCreate, flow.State);
+            Assert.AreEqual(1, flow.CharacterCreateSlot.Value);
+
+            var request = new CharacterCreationRequestCore(
+                "NewHero",
+                1,
+                3,
+                5,
+                0,
+                2,
+                1,
+                CharacterDifficultyMode.Ultimate);
+
+            Assert.AreEqual("NewHero", request.Name);
+            Assert.AreEqual(3, request.Family);
+            Assert.AreEqual(5, request.Job);
+            Assert.AreEqual(0, request.Sex);
+            Assert.AreEqual(2, request.Face);
+            Assert.AreEqual(1, request.Hair);
+            Assert.AreEqual(CharacterDifficultyMode.Ultimate, request.Mode);
+
+            var created = new CharacterSummaryCore(
+                101,
+                request.Name,
+                1,
+                request.Slot,
+                request.Family,
+                request.Job,
+                request.Sex,
+                request.Face,
+                request.Hair,
+                0,
+                request.Mode);
+
+            Assert.IsTrue(flow.CharacterCreated(created));
+            Assert.AreEqual(ClientFlowState.CharacterSelect, flow.State);
+            Assert.AreEqual(2, flow.Characters.Count);
+            Assert.AreEqual(101, flow.Characters[1].CharacterId);
+
+            Assert.IsTrue(flow.CharacterDeleted(100));
+            Assert.AreEqual(1, flow.Characters.Count);
+            Assert.AreEqual(101, flow.Characters[0].CharacterId);
+        }
+
+        [Test]
+        public void CharacterCreateRejectsOccupiedAndOutOfRangeSlots()
+        {
+            var flow = new ClientFlowCore();
+            flow.ReadyForLogin();
+            flow.BeginConnect();
+            flow.LoginAccepted();
+            flow.SelectServer(1);
+            flow.SetCharacterList(
+                new[]
+                {
+                    new CharacterSummaryCore(1, "Hero", 1, 0)
+                });
+
+            Assert.IsFalse(flow.BeginCharacterCreate(0));
+            Assert.IsFalse(flow.BeginCharacterCreate(-1));
+            Assert.IsFalse(flow.BeginCharacterCreate(5));
+            Assert.IsTrue(flow.BeginCharacterCreate(1));
+            Assert.IsTrue(flow.CancelCharacterCreate());
+            Assert.AreEqual(ClientFlowState.CharacterSelect, flow.State);
+        }
+
     }
 }
