@@ -29,6 +29,46 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 Array.Empty<Sprite>();
         }
 
+        public static string ResolveCanonicalPath(
+            CanonicalClientCorpus corpus,
+            string effectFileName)
+        {
+            if (corpus == null)
+                throw new ArgumentNullException(nameof(corpus));
+
+            string normalized =
+                NormalizeEffectName(effectFileName);
+
+            if (string.IsNullOrWhiteSpace(normalized))
+                return null;
+
+            string effectRoot =
+                LegacyUiAssetImporter.ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    CanonicalEffectRoot);
+
+            if (!Directory.Exists(effectRoot))
+                return null;
+
+            return ResolveEffectLibrary(
+                effectRoot,
+                normalized);
+        }
+
+        public static LegacyEftFile ParseCanonical(
+            CanonicalClientCorpus corpus,
+            string effectFileName)
+        {
+            string path =
+                ResolveCanonicalPath(
+                    corpus,
+                    effectFileName);
+
+            return path == null
+                ? null
+                : LegacyEftParser.Parse(path);
+        }
+
         public static GameObject Import(
             CanonicalClientCorpus corpus,
             string effectFileName,
