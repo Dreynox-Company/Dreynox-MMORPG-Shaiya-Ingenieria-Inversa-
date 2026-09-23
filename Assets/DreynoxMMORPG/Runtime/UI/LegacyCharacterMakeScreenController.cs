@@ -13,13 +13,13 @@ namespace Dreynox.Mmorpg.UI
         [SerializeField] private Button createButton;
         [SerializeField] private Button cancelButton;
 
-        private int _slot;
-        private int _family;
-        private int _job;
-        private int _sex;
-        private int _face;
-        private int _hair;
-        private CharacterDifficultyMode _mode =
+        [SerializeField] private int _slot;
+        [SerializeField] private int _family;
+        [SerializeField] private int _job;
+        [SerializeField] private int _sex;
+        [SerializeField] private int _face;
+        [SerializeField] private int _hair;
+        [SerializeField] private CharacterDifficultyMode _mode =
             CharacterDifficultyMode.Basic;
 
         public int Slot => _slot;
