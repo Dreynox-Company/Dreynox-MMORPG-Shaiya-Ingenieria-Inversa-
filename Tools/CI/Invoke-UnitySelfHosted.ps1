@@ -133,10 +133,9 @@ Después abre una nueva terminal y verifica:
             "-nographics",
             "-projectPath", $RepoRoot,
             "-runTests",
-            "-testPlatform", "EditMode",
+            "-testPlatform", "editmode",
             "-testResults", $TestResult,
-            "-logFile", $TestLog,
-            "-quit"
+            "-logFile", $TestLog
         ) -Description "Unity EditMode tests"
 
         if (-not (Test-Path $TestResult)) {
