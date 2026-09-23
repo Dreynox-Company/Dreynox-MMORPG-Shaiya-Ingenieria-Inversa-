@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Dreynox.Mmorpg.Editor.Corpus;
 using Dreynox.Mmorpg.Vfx;
+using Dreynox.Mmorpg.World;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
