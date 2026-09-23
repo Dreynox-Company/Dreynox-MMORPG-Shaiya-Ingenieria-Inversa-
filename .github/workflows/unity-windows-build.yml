@@ -1,4 +1,4 @@
-name: Unity Windows baseline
+name: Unity Client Parity
 on:
   workflow_dispatch:
   push:
@@ -7,27 +7,28 @@ on:
   pull_request:
     branches:
       - main
-
 permissions:
   contents: read
   checks: write
-
 env:
   UNITY_PROJECT_PATH: Dreynox-MMORPG-Unity-v0.1.0
-
 jobs:
-  source-validation:
+  parity-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validate repository structure
+      - name: Validate Unity project sources
         run: python "$UNITY_PROJECT_PATH/Tools/validate_project.py"
-
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Compile and run deterministic client parity harness
+        run: dotnet run --project "$UNITY_PROJECT_PATH/Tools/ParityHarness/ParityHarness.csproj" --configuration Release
   unity-windows:
-    needs: source-validation
+    needs: parity-core
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +45,7 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Unity activation is not configured. Set UNITY_EMAIL + UNITY_PASSWORD and either UNITY_LICENSE (Personal) or UNITY_SERIAL (Pro)."
+            echo "Unity activation not configured; deterministic C# parity gate still ran."
           fi
       - name: Cache Unity Library
         if: steps.unity-license.outputs.ready == 'true'

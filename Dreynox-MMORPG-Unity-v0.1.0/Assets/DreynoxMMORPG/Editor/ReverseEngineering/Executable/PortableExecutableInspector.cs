@@ -65,8 +65,8 @@ namespace Dreynox.Mmorpg.Editor.ReverseEngineering.Executable
             },
             new LegacyGameExeIdentity
             {
-                id = "spk-v4-selected-client-2026-09-20",
-                evidence = "Cliente seleccionado en inspección estática SPK V4; mantener separado del baseline ps0032.",
+                id = "alternate-client-2026-09-20",
+                evidence = "Cliente alternativo observado en una inspección estática posterior; mantener separado del baseline ps0032.",
                 fileBytes = 8_297_632,
                 sha256 = "4768f225250838787db5496ecf304753fb44a6c161b5290f06e836b83e0dd1e8"
             }

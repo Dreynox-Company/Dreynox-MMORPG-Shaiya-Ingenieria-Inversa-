@@ -28,7 +28,7 @@ namespace Dreynox.Mmorpg.Editor.Build
         public static void Build(string outputPath)
         {
             if (string.IsNullOrWhiteSpace(outputPath)) throw new ArgumentException("Ruta de build vacía.", nameof(outputPath));
-            DreynoxProjectTools.CreateBootstrapScene();
+            ClientParitySceneBuilder.CreateSandbox();
             PlayerSettings.companyName = "Dreynox";
             PlayerSettings.productName = "Dreynox Mmorpg";
             PlayerSettings.colorSpace = ColorSpace.Linear;
@@ -38,7 +38,7 @@ namespace Dreynox.Mmorpg.Editor.Build
             Directory.CreateDirectory(Path.GetDirectoryName(full));
             BuildPlayerOptions options = new BuildPlayerOptions
             {
-                scenes = new[] { "Assets/DreynoxMMORPG/Scenes/Bootstrap.unity" },
+                scenes = new[] { ClientParitySceneBuilder.ScenePath },
                 locationPathName = full,
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.CompressWithLz4HC

@@ -20,7 +20,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
             };
 
             Assert.That(LegacyGameExeBaseline.Match(ps0032)?.id, Is.EqualTo("ps0032-x86-3.3.2.10"));
-            Assert.That(LegacyGameExeBaseline.Match(later)?.id, Is.EqualTo("spk-v4-selected-client-2026-09-20"));
+            Assert.That(LegacyGameExeBaseline.Match(later)?.id, Is.EqualTo("alternate-client-2026-09-20"));
         }
 
         [Test]

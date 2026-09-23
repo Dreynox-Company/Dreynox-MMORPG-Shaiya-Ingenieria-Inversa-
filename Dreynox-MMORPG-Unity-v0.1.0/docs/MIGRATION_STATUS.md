@@ -1,23 +1,35 @@
-# Estado de migración
+# Estado de migración a Unity
 
-## Migrado conceptualmente y reimplementado en C#
+## Ya reimplementado
 
-- Archive/index inspection.
-- Asset classification.
-- Attachments/equipment sockets.
-- Flight state/transitions.
-- Locomotion and camera collision.
-- Semantic animation catalog.
-- World chunk streaming.
-- TCP/UDP worker queues.
-- Adaptive graphics tiering.
+- Locomoción básica y movimiento relativo a cámara.
+- Jump y grounding base.
+- Montura: idle/walk/run y calibración de asiento.
+- Wings: equipamiento, hover, flight y retorno a suelo.
+- Reglas main-hand/off-hand.
+- Selección semántica de animación por estado y familia de arma.
+- Combate determinista: selección, target lock, hit, recovery y guard timeout.
+- Múltiples targets con HP independiente.
+- Party, Trade, Duel y Raid: core de estado listo para protocolo/UI.
+- Streaming espacial de sectores.
+- Cámara orbital con collision SphereCast.
+- Networking worker TCP/UDP existente.
+- Inspector de `game.exe` y catálogo de variantes conocidas.
+- Sandbox jugable para iteraciones lado a lado.
 
-## Fase 1 activa
+## Activo ahora
 
-- SPK v3 header: implementado.
-- AES-GCM index decryption: implementado con perfil local.
-- Index post-processing/record parser: siguiente iteración, depende de confirmar compresión y estructura decodificada.
-- `.svmap/.3DC/.3DO`: importador binario profile-driven implementado; layouts específicos todavía deben certificarse contra muestras.
-- `.ANI`: catálogo semántico listo; parser binario específico pendiente de layout confirmado.
+1. Reproducir en Unity todos los checks funcionales que ya estaban verdes en el cliente Flutter.
+2. Conectar assets reales extraídos: rigs, 3DC/3DO, ANI, mapas, cielo y materiales.
+3. Portar inventario, stats, skills, buffs, quests, shops, warehouse, NPC y gatekeepers.
+4. Portar Friends/Party/Trade/Duel/Guild/Raid a protocolo real y UI.
+5. Completar combate PvE/PvP, muerte/rebirth, loot y blacksmith.
+6. Cerrar audio, físicas, agua, EFT y efectos.
+7. Comparación visual automatizada y métricas de frame time PC/móvil.
 
-No se ha copiado código Flutter/Dart al runtime Unity.
+## Fuera de alcance de este repo
+
+- Descifrado/montaje SPK.
+- Herramientas de edición de Shaiya Studio.
+
+Esas responsabilidades permanecen en el proyecto de Studio y solo entregan DATA/assets ya extraídos a Unity.
