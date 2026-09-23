@@ -42,21 +42,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true # Crucial para descargar assets pesados si usas Git LFS
+          lfs: true # Crucial para descargar assets pesados de tu MMORPG si usas Git LFS
 
       - name: Detect Unity activation
         id: unity-license
         shell: bash
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          # Se activa si hay licencia personal O si están los datos completos de una licencia Pro
-          if [ -n "$UNITY_LICENSE" ] || { [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; }; then
+          # Ahora valida únicamente que existan tus credenciales de inicio de sesión online
+          if [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Unity activation configuration detected. Proceeding with Unity workflows."
+            echo "Unity activation credentials detected. Proceeding with Unity workflows."
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "Unity activation not configured; deterministic C# parity gate still ran."
@@ -75,7 +74,6 @@ jobs:
         if: steps.unity-license.outputs.ready == 'true'
         uses: game-ci/unity-test-runner@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
@@ -89,7 +87,6 @@ jobs:
         if: steps.unity-license.outputs.ready == 'true'
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
