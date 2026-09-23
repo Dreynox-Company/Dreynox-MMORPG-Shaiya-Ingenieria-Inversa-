@@ -64,28 +64,42 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             LegacySvmapFile svmap =
                 LegacySvmapParser.Parse(svmapPath);
 
-            string monsterSDataPath =
+            string dbMonsterDataPath =
                 ResolveCaseInsensitive(
                     corpus.RootPath,
-                    "DATA_Español/monster/monster.sdata");
+                    "DATA_Español/binarysdata/dbmonsterdata.sdata");
+
+            string dbMonsterTextPath =
+                ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/binarysdata/dbmonstertext_spn.sdata");
 
             string monsterMonPath =
                 ResolveCaseInsensitive(
                     corpus.RootPath,
                     "DATA_Español/monster/monster.mon");
 
-            LegacyMonsterSDataFile monsterData =
-                LegacyMonsterSDataParser.ParseEncrypted(
-                    monsterSDataPath,
-                    validateChecksum: true);
+            LegacyDbMonsterDataFile monsterData =
+                LegacyDbMonsterDataParser.ParseData(
+                    dbMonsterDataPath);
+
+            LegacyDbMonsterTextFile monsterText =
+                LegacyDbMonsterDataParser.ParseText(
+                    dbMonsterTextPath);
 
             LegacyMonFile monsterModels =
                 LegacyMonParser.Parse(monsterMonPath);
 
-            LegacyMonsterModelIndexMode monsterModelMode =
-                LegacyMonsterModelResolver.Detect(
-                    monsterData.Records,
-                    monsterModels.Records.Count);
+            if (monsterData.Records.Count != 5008 ||
+                monsterText.Count != 5008 ||
+                monsterModels.Records.Count != 863)
+            {
+                throw new InvalidDataException(
+                    "Canonical monster catalogs changed. " +
+                    "DBData=" + monsterData.Records.Count +
+                    ", DBText=" + monsterText.Count +
+                    ", MON=" + monsterModels.Records.Count + ".");
+            }
 
             ValidateMapZeroBaseline(wld, svmap);
 
@@ -216,8 +230,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     svmap,
                     terrain,
                     monsterData,
+                    monsterText,
                     monsterModels,
-                    monsterModelMode,
                     out uniqueMonsterModels);
 
             GameObject monsterRuntime =
@@ -870,9 +884,9 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 CanonicalClientCorpus corpus,
                 LegacySvmapFile svmap,
                 Terrain terrain,
-                LegacyMonsterSDataFile monsterData,
+                LegacyDbMonsterDataFile monsterData,
+                LegacyDbMonsterTextFile monsterText,
                 LegacyMonFile monsterModels,
-                LegacyMonsterModelIndexMode modelMode,
                 out int uniqueModelCount)
         {
             if (corpus == null)
@@ -883,6 +897,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 throw new ArgumentNullException(nameof(terrain));
             if (monsterData == null)
                 throw new ArgumentNullException(nameof(monsterData));
+            if (monsterText == null)
+                throw new ArgumentNullException(nameof(monsterText));
             if (monsterModels == null)
                 throw new ArgumentNullException(nameof(monsterModels));
 
@@ -931,22 +947,41 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     LegacySvmapMonsterSpawn spawn =
                         area.Monsters[spawnTypeIndex];
 
-                    LegacyMonsterRecord monster;
+                    LegacyDbMonsterDataRecord monster;
                     if (!monsterData.TryGet(
                             spawn.MobId,
                             out monster))
                     {
                         throw new InvalidDataException(
                             "Map 0 area " + areaIndex +
-                            " references missing MobId " +
+                            " references missing DBMonsterData id " +
                             spawn.MobId + ".");
                     }
 
                     int modelIndex =
-                        LegacyMonsterModelResolver.Resolve(
-                            monster,
-                            modelMode,
-                            monsterModels.Records.Count);
+                        CheckedInt32(
+                            monster.Image,
+                            "image",
+                            monster.Id);
+
+                    if (modelIndex < 0 ||
+                        modelIndex >= monsterModels.Records.Count)
+                    {
+                        throw new InvalidDataException(
+                            "MobId " + spawn.MobId +
+                            " resolves image/model " + modelIndex +
+                            " outside monster.mon.");
+                    }
+
+                    string monsterName;
+                    if (!monsterText.TryGetName(
+                            monster.Id,
+                            out monsterName) ||
+                        string.IsNullOrWhiteSpace(monsterName))
+                    {
+                        monsterName =
+                            "Mob_" + monster.Id;
+                    }
 
                     GameObject prefab;
                     if (!prefabs.TryGetValue(
@@ -1026,22 +1061,38 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                                 targetId =
                                     1_000_000 + ordinal,
                                 mobName =
-                                    monster.MobName,
+                                    monsterName,
                                 level =
-                                    monster.Level,
+                                    CheckedInt32(
+                                        monster.Level,
+                                        "level",
+                                        monster.Id),
                                 maxHealth =
                                     Math.Max(
                                         1,
-                                        monster.Hp),
+                                        CheckedInt32(
+                                            monster.Hp,
+                                            "hp",
+                                            monster.Id)),
                                 ai =
-                                    monster.Ai,
+                                    CheckedByte(
+                                        monster.Ai,
+                                        "ai",
+                                        monster.Id),
                                 element =
-                                    monster.Element,
+                                    CheckedByte(
+                                        monster.Element,
+                                        "attrib",
+                                        monster.Id),
                                 rawSize =
-                                    monster.Size,
-                                scale =
-                                    ResolveMonsterScale(
-                                        monster.Size),
+                                    CheckedByte(
+                                        monster.Size,
+                                        "size",
+                                        monster.Id),
+                                // DBMonsterData.Size is categorical in this
+                                // ps0032 corpus (commonly 1/2), not a percent.
+                                // monster.mon geometry supplies the native size.
+                                scale = 1f,
                                 position =
                                     position,
                                 yawDegrees =
@@ -1067,18 +1118,38 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             return definitions;
         }
 
-        private static float ResolveMonsterScale(byte rawSize)
+        private static int CheckedInt32(
+            long value,
+            string field,
+            long mobId)
         {
-            // Shaiya's monster Size field uses 100 as the normal-size baseline
-            // in the classic data table. Keep the raw byte on the spawn for
-            // parity audits and clamp only pathological values.
-            if (rawSize == 0)
-                return 1f;
+            if (value < int.MinValue ||
+                value > int.MaxValue)
+            {
+                throw new InvalidDataException(
+                    "DBMonsterData id " + mobId +
+                    " field " + field +
+                    " is outside Int32: " + value + ".");
+            }
 
-            return Mathf.Clamp(
-                rawSize / 100f,
-                0.1f,
-                4f);
+            return (int)value;
+        }
+
+        private static byte CheckedByte(
+            long value,
+            string field,
+            long mobId)
+        {
+            if (value < byte.MinValue ||
+                value > byte.MaxValue)
+            {
+                throw new InvalidDataException(
+                    "DBMonsterData id " + mobId +
+                    " field " + field +
+                    " is outside byte range: " + value + ".");
+            }
+
+            return (byte)value;
         }
 
         private static double Halton(
