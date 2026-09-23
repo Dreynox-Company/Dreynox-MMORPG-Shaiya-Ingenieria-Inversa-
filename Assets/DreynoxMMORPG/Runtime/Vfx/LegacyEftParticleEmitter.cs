@@ -114,6 +114,16 @@ namespace Dreynox.Mmorpg.Vfx
             }
         }
 
+        public float EstimatedOneShotDuration =>
+            Mathf.Max(
+                0.05f,
+                Mathf.Max(
+                    emitterDuration,
+                    0f) +
+                Mathf.Max(
+                    0f,
+                    lifeMax));
+
         public void Configure(
             bool loop,
             bool randomX,
