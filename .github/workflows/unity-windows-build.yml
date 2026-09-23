@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - work/unity-reverse-engineering-v0.2.0
+      - chore/unity-personal-self-hosted-ci
   pull_request:
     branches:
       - main
