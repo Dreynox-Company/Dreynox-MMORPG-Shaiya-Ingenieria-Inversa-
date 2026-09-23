@@ -291,6 +291,31 @@ namespace Dreynox.Mmorpg.ParityHarness
                   deferredTargetCombat.LastHitTargetId == 20,
                 "deferred attack keeps original target even after selection changes");
 
+            foreach (int fps in new[] { 30, 60, 144 })
+            {
+                var timedFlight = new FlightTransitionCore();
+                timedFlight.SetWingsEquipped(true);
+                timedFlight.ToggleManualFlight();
+                timedFlight.Tick(FlightTransitionCore.DefaultTakeoffSeconds);
+                timedFlight.SetMoving(true);
+                timedFlight.SetCombatGuard(true);
+                timedFlight.BeginCombatDescent();
+
+                double frame = 1.0 / fps;
+                double elapsed = 0.0;
+                while (timedFlight.Phase == ClientFlightPhase.CombatDescending &&
+                       elapsed < 1.0)
+                {
+                    timedFlight.Tick(frame);
+                    elapsed += frame;
+                }
+
+                Check(timedFlight.Phase == ClientFlightPhase.Grounded &&
+                      elapsed + 0.0000001 >= FlightTransitionCore.DefaultCombatDescentSeconds &&
+                      elapsed <= FlightTransitionCore.DefaultCombatDescentSeconds + frame + 0.0000001,
+                    "combat descent timing remains bounded at " + fps + " Hz");
+            }
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
