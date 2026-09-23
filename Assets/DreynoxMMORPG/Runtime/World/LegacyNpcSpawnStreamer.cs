@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Dreynox.Mmorpg.Gameplay.AnimationSystem;
+using Dreynox.Mmorpg.ParityCore;
 using UnityEngine;
 
 namespace Dreynox.Mmorpg.World
@@ -17,6 +18,13 @@ namespace Dreynox.Mmorpg.World
         public int merchantType = -1;
         public string displayName = string.Empty;
         public string welcomeMessage = string.Empty;
+        public NpcServiceKind services;
+        public LegacyNpcSaleItemRuntime[] saleItems =
+            Array.Empty<LegacyNpcSaleItemRuntime>();
+        public int[] inQuestIds =
+            Array.Empty<int>();
+        public int[] outQuestIds =
+            Array.Empty<int>();
         public Vector3 position;
         public float yawDegrees;
         public LegacyNpcGateTargetRuntime[] gateTargets =
@@ -226,6 +234,10 @@ namespace Dreynox.Mmorpg.World
                 definition.merchantType,
                 definition.displayName,
                 definition.welcomeMessage,
+                definition.services,
+                definition.saleItems,
+                definition.inQuestIds,
+                definition.outQuestIds,
                 definition.gateTargets);
 
             SemanticAnimationPlayer animation =
