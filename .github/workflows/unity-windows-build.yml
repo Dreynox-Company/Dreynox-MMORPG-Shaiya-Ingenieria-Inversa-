@@ -14,7 +14,7 @@ permissions:
   checks: write
 
 env:
-  UNITY_PROJECT_PATH: Dreynox-MMORPG-Unity-v0.1.0
+  UNITY_PROJECT_PATH: "." # Modificado: Tu proyecto está en la raíz directamente
 
 jobs:
   parity-core:
@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true # Crucial para descargar assets pesados de tu MMORPG si usas Git LFS
+          lfs: true
 
       - name: Detect Unity activation
         id: unity-license
@@ -52,7 +52,6 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          # Ahora valida únicamente que existan tus credenciales de inicio de sesión online
           if [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
             echo "Unity activation credentials detected. Proceeding with Unity workflows."
@@ -66,7 +65,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.UNITY_PROJECT_PATH }}/Library
-          key: Library-${{ runner.os }}-${{ hashFiles('Dreynox-MMORPG-Unity-v0.1.0/Assets/**', 'Dreynox-MMORPG-Unity-v0.1.0/Packages/**', 'Dreynox-MMORPG-Unity-v0.1.0/ProjectSettings/**') }}
+          key: Library-${{ runner.os }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-${{ runner.os }}-
 
