@@ -524,6 +524,24 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         " names exist.");
                 }
 
+                Vector3 position =
+                    LegacyFormatPrimitives
+                        .ReadVector3(reader);
+
+                Vector3 forward =
+                    LegacyFormatPrimitives
+                        .ReadVector3(reader);
+
+                Vector3 up =
+                    LegacyFormatPrimitives
+                        .ReadVector3(reader);
+
+                ValidateBasis(
+                    forward,
+                    up,
+                    "WLD MAni",
+                    i);
+
                 result.MAniCoordinates.Add(
                     new LegacyWldManiCoordinate
                     {
@@ -532,17 +550,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         Id =
                             id,
                         Position =
-                            LegacyFormatPrimitives
-                                .ReadVector3(
-                                    reader),
+                            position,
                         Forward =
-                            LegacyFormatPrimitives
-                                .ReadVector3(
-                                    reader),
+                            forward,
                         Up =
-                            LegacyFormatPrimitives
-                                .ReadVector3(
-                                    reader)
+                            up
                     });
             }
 
@@ -565,21 +577,33 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                  i < effectCount;
                  i++)
             {
+                Vector3 position =
+                    LegacyFormatPrimitives
+                        .ReadVector3(reader);
+
+                Vector3 forward =
+                    LegacyFormatPrimitives
+                        .ReadVector3(reader);
+
+                Vector3 up =
+                    LegacyFormatPrimitives
+                        .ReadVector3(reader);
+
+                ValidateBasis(
+                    forward,
+                    up,
+                    "WLD effect placement",
+                    i);
+
                 LegacyWldEffectPlacement effect =
                     new LegacyWldEffectPlacement
                     {
                         Position =
-                            LegacyFormatPrimitives
-                                .ReadVector3(
-                                    reader),
+                            position,
                         Forward =
-                            LegacyFormatPrimitives
-                                .ReadVector3(
-                                    reader),
+                            forward,
                         Up =
-                            LegacyFormatPrimitives
-                                .ReadVector3(
-                                    reader),
+                            up,
                         EffectId =
                             reader.ReadInt32()
                     };
@@ -596,6 +620,14 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
                 result.Effects.Add(
                     effect);
+            }
+
+            if (result.Effects.Count > 0 &&
+                string.IsNullOrWhiteSpace(
+                    result.EffectName))
+            {
+                throw new InvalidDataException(
+                    "WLD contains effect placements but has no EffectName library.");
             }
 
             LegacyFormatPrimitives.EnsureRemaining(
@@ -637,19 +669,40 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                  i < musicZoneCount;
                  i++)
             {
+                LegacyBounds bounds =
+                    ReadBounds(reader);
+
+                float radius =
+                    LegacyFormatPrimitives
+                        .ReadFiniteSingle(reader);
+
+                int id =
+                    reader.ReadInt32();
+
+                int unknown =
+                    reader.ReadInt32();
+
+                if (id < 0 ||
+                    id >=
+                    result.MusicNames.Count)
+                {
+                    throw new InvalidDataException(
+                        "WLD music zone " +
+                        i +
+                        " references music id " +
+                        id +
+                        " but only " +
+                        result.MusicNames.Count +
+                        " names exist.");
+                }
+
                 result.MusicZones.Add(
                     new LegacyWldMusicZone
                     {
-                        Bounds =
-                            ReadBounds(reader),
-                        Radius =
-                            LegacyFormatPrimitives
-                                .ReadFiniteSingle(
-                                    reader),
-                        Id =
-                            reader.ReadInt32(),
-                        Unknown =
-                            reader.ReadInt32()
+                        Bounds = bounds,
+                        Radius = radius,
+                        Id = id,
+                        Unknown = unknown
                     });
             }
 
