@@ -1,7 +1,9 @@
 {
   "name": "Dreynox.Mmorpg.Runtime",
   "rootNamespace": "Dreynox.Mmorpg",
-  "references": [],
+  "references": [
+    "Unity.ugui"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
