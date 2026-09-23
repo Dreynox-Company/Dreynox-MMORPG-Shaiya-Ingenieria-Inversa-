@@ -302,5 +302,87 @@ namespace Dreynox.Mmorpg.Tests.Editor
             writer.Write(attackPlus3);
             writer.Write(questItemId);
         }
+        [Test]
+        public void MonsterModelResolverDetectsDirectIndexing()
+        {
+            var records =
+                new List<LegacyMonsterRecord>
+                {
+                    new LegacyMonsterRecord
+                    {
+                        MobId = 0,
+                        MobName = "A",
+                        ModelId = 0,
+                        Level = 1,
+                        Hp = 10
+                    },
+                    new LegacyMonsterRecord
+                    {
+                        MobId = 1,
+                        MobName = "B",
+                        ModelId = 2,
+                        Level = 2,
+                        Hp = 20
+                    }
+                };
+
+            LegacyMonsterModelIndexMode mode =
+                LegacyMonsterModelResolver.Detect(
+                    records,
+                    monRecordCount: 3);
+
+            Assert.AreEqual(
+                LegacyMonsterModelIndexMode.Direct,
+                mode);
+
+            Assert.AreEqual(
+                2,
+                LegacyMonsterModelResolver.Resolve(
+                    records[1],
+                    mode,
+                    3));
+        }
+
+        [Test]
+        public void MonsterModelResolverDetectsOneBasedIndexing()
+        {
+            var records =
+                new List<LegacyMonsterRecord>
+                {
+                    new LegacyMonsterRecord
+                    {
+                        MobId = 1,
+                        MobName = "A",
+                        ModelId = 1,
+                        Level = 1,
+                        Hp = 10
+                    },
+                    new LegacyMonsterRecord
+                    {
+                        MobId = 2,
+                        MobName = "B",
+                        ModelId = 3,
+                        Level = 2,
+                        Hp = 20
+                    }
+                };
+
+            LegacyMonsterModelIndexMode mode =
+                LegacyMonsterModelResolver.Detect(
+                    records,
+                    monRecordCount: 3);
+
+            Assert.AreEqual(
+                LegacyMonsterModelIndexMode.OneBased,
+                mode);
+
+            Assert.AreEqual(
+                2,
+                LegacyMonsterModelResolver.Resolve(
+                    records[1],
+                    mode,
+                    3));
+        }
+
     }
 }
