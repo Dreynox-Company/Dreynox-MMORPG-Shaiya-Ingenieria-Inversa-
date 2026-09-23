@@ -107,6 +107,16 @@ namespace Dreynox.Mmorpg.ParityCore
             return true;
         }
 
+        public bool SetFlightActive(bool active)
+        {
+            if (active && (_dead || _mounted || !_wingsEquipped || _jumpRemaining > 0))
+                return false;
+            if (_flightRequested == active) return true;
+            _flightRequested = active;
+            Evaluate();
+            return true;
+        }
+
         public bool BeginJump(double durationSeconds = DefaultJumpSeconds)
         {
             if (_dead || _mounted || IsAirborne || _jumpRemaining > 0) return false;
