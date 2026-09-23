@@ -13,6 +13,23 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         public string WalkSound;
     }
 
+    public struct LegacyWldCoordinate
+    {
+        public int Id;
+        public UnityEngine.Vector3 Position;
+        public UnityEngine.Vector3 Forward;
+        public UnityEngine.Vector3 Up;
+    }
+
+    public sealed class LegacyWldNameCoordinateGroup
+    {
+        public List<string> Names { get; } =
+            new List<string>();
+
+        public List<LegacyWldCoordinate> Coordinates { get; } =
+            new List<LegacyWldCoordinate>();
+    }
+
     public sealed class LegacyWldTerrainFile
     {
         public string Signature;
@@ -23,6 +40,27 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         public List<LegacyWldTexture> Textures { get; } =
             new List<LegacyWldTexture>();
         public string InnerLayout;
+
+        public LegacyWldNameCoordinateGroup Buildings { get; } =
+            new LegacyWldNameCoordinateGroup();
+
+        public LegacyWldNameCoordinateGroup Shapes { get; } =
+            new LegacyWldNameCoordinateGroup();
+
+        public LegacyWldNameCoordinateGroup Trees { get; } =
+            new LegacyWldNameCoordinateGroup();
+
+        public LegacyWldNameCoordinateGroup Grass { get; } =
+            new LegacyWldNameCoordinateGroup();
+
+        public LegacyWldNameCoordinateGroup VAni1 { get; } =
+            new LegacyWldNameCoordinateGroup();
+
+        public LegacyWldNameCoordinateGroup VAni2 { get; } =
+            new LegacyWldNameCoordinateGroup();
+
+        public LegacyWldNameCoordinateGroup Dungeons { get; } =
+            new LegacyWldNameCoordinateGroup();
 
         public ushort RawHeightAt(int x, int z)
         {
@@ -49,6 +87,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
     public static class LegacyWldTerrainParser
     {
         private const int MaxTextures = 256;
+        private const int MaxResourceNames = 100000;
+        private const int MaxCoordinates = 2000000;
         private const int FixedStringBytes = 256;
 
         public static LegacyWldTerrainFile Parse(string path)
@@ -170,8 +210,112 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
             result.InnerLayout = ReadFixedAscii(reader);
 
+            ReadNameCoordinateGroup(
+                reader,
+                result.Buildings,
+                "WLD building");
+
+            ReadNameCoordinateGroup(
+                reader,
+                result.Shapes,
+                "WLD shape");
+
+            ReadNameCoordinateGroup(
+                reader,
+                result.Trees,
+                "WLD tree");
+
+            ReadNameCoordinateGroup(
+                reader,
+                result.Grass,
+                "WLD grass");
+
+            ReadNameCoordinateGroup(
+                reader,
+                result.VAni1,
+                "WLD VAni group 1");
+
+            ReadNameCoordinateGroup(
+                reader,
+                result.VAni2,
+                "WLD VAni group 2");
+
+            ReadNameCoordinateGroup(
+                reader,
+                result.Dungeons,
+                "WLD dungeon");
+
             ValidateTextureIndices(result);
             return result;
+        }
+
+        private static void ReadNameCoordinateGroup(
+            BinaryReader reader,
+            LegacyWldNameCoordinateGroup group,
+            string label)
+        {
+            int nameCount =
+                LegacyFormatPrimitives.ReadCount(
+                    reader,
+                    label + " name",
+                    MaxResourceNames);
+
+            LegacyFormatPrimitives.EnsureRemaining(
+                reader,
+                (long)nameCount * FixedStringBytes + 4L);
+
+            for (int i = 0; i < nameCount; i++)
+                group.Names.Add(ReadFixedAscii(reader));
+
+            int coordinateCount =
+                LegacyFormatPrimitives.ReadCount(
+                    reader,
+                    label + " coordinate",
+                    MaxCoordinates);
+
+            LegacyFormatPrimitives.EnsureRemaining(
+                reader,
+                (long)coordinateCount * 40L);
+
+            for (int i = 0; i < coordinateCount; i++)
+            {
+                int id = reader.ReadInt32();
+
+                if (id < 0 || id >= group.Names.Count)
+                {
+                    throw new InvalidDataException(
+                        label + " coordinate " + i +
+                        " references resource id " + id +
+                        " but the name table contains " +
+                        group.Names.Count + " entries.");
+                }
+
+                Vector3 position =
+                    LegacyFormatPrimitives.ReadVector3(reader);
+
+                Vector3 forward =
+                    LegacyFormatPrimitives.ReadVector3(reader);
+
+                Vector3 up =
+                    LegacyFormatPrimitives.ReadVector3(reader);
+
+                if (forward.sqrMagnitude < 0.000001f ||
+                    up.sqrMagnitude < 0.000001f)
+                {
+                    throw new InvalidDataException(
+                        label + " coordinate " + i +
+                        " has a degenerate orientation basis.");
+                }
+
+                group.Coordinates.Add(
+                    new LegacyWldCoordinate
+                    {
+                        Id = id,
+                        Position = position,
+                        Forward = forward,
+                        Up = up
+                    });
+            }
         }
 
         private static void ValidateTextureIndices(
