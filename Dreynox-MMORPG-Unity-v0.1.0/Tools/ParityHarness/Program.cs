@@ -271,6 +271,26 @@ namespace Dreynox.Mmorpg.ParityHarness
                   changedMetrics.Ssim < 1.0,
                 "visual metrics detect changed frames");
 
+            var deferredTargetCombat = new CombatCore();
+            deferredTargetCombat.RegisterTarget(20, 1000);
+            deferredTargetCombat.RegisterTarget(21, 1000);
+            deferredTargetCombat.SelectTarget(20);
+            int capturedDeferredTarget = deferredTargetCombat.SelectedTargetId.Value;
+            deferredTargetCombat.SelectTarget(21);
+            Check(deferredTargetCombat.RequestAttackAt(
+                    capturedDeferredTarget,
+                    125,
+                    0.01,
+                    0.02,
+                    0.01),
+                "deferred attack starts against captured target");
+            deferredTargetCombat.Tick(0.03);
+            Check(deferredTargetCombat.Targets[20].Health == 875 &&
+                  deferredTargetCombat.Targets[21].Health == 1000 &&
+                  deferredTargetCombat.SelectedTargetId == 21 &&
+                  deferredTargetCombat.LastHitTargetId == 20,
+                "deferred attack keeps original target even after selection changes");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
