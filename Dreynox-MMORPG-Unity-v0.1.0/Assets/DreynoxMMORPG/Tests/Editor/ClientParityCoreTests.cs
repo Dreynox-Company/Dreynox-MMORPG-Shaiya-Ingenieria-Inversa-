@@ -303,5 +303,36 @@ namespace Dreynox.Mmorpg.Tests
             Assert.AreEqual(ClientFlightPhase.Grounded, flight.Phase);
         }
 
+        [Test]
+        public void VisualMetricsAreExactForIdenticalFrames()
+        {
+            byte[] frame =
+            {
+                0, 0, 0,
+                255, 255, 255,
+                64, 128, 192,
+                12, 34, 56
+            };
+
+            VisualMetricResult result = VisualMetricCore.CompareRgb24(frame, frame);
+            Assert.AreEqual(4, result.PixelCount);
+            Assert.AreEqual(0.0, result.Mae, 0.0000001);
+            Assert.AreEqual(0.0, result.Rmse, 0.0000001);
+            Assert.IsTrue(double.IsPositiveInfinity(result.Psnr));
+            Assert.AreEqual(1.0, result.Ssim, 0.0000001);
+        }
+
+        [Test]
+        public void VisualMetricsDetectAChangedFrame()
+        {
+            byte[] reference = { 0, 0, 0, 255, 255, 255 };
+            byte[] candidate = { 255, 255, 255, 255, 255, 255 };
+
+            VisualMetricResult result = VisualMetricCore.CompareRgb24(reference, candidate);
+            Assert.Greater(result.Mae, 0.0);
+            Assert.Greater(result.Rmse, 0.0);
+            Assert.Less(result.Ssim, 1.0);
+        }
+
     }
 }
