@@ -6,6 +6,7 @@ using Dreynox.Mmorpg.Editor.Corpus;
 using Dreynox.Mmorpg.Gameplay.AnimationSystem;
 using Dreynox.Mmorpg.Gameplay.Combat;
 using Dreynox.Mmorpg.World;
+using Dreynox.Mmorpg.Vfx;
 using UnityEditor;
 using UnityEngine;
 
@@ -27,6 +28,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             public string FileName;
             public bool Loop;
         }
+
+        private static readonly Dictionary<string, LegacyMonAttachEffectCatalogAnalysis>
+            AttachEffectAnalysisCache =
+                new Dictionary<string, LegacyMonAttachEffectCatalogAnalysis>(
+                    StringComparer.OrdinalIgnoreCase);
 
         private static readonly Dictionary<LegacyMonCatalogKind, CatalogSpec> Catalogs =
             new Dictionary<LegacyMonCatalogKind, CatalogSpec>
@@ -94,6 +100,12 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
             LegacyMonFile mon =
                 LegacyMonParser.Parse(monPath);
+
+            LegacyMonAttachEffectCatalogAnalysis attachAnalysis =
+                ResolveAttachEffectAnalysis(
+                    corpus,
+                    catalog,
+                    mon);
 
             if (recordIndex < 0 ||
                 recordIndex >= mon.Records.Count)
@@ -241,6 +253,13 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                                     effectId = effect.EffectId
                                 })
                         .ToArray());
+
+                ConfigureAttachedEffects(
+                    corpus,
+                    record,
+                    bones,
+                    entity,
+                    attachAnalysis);
 
                 CapsuleCollider collider =
                     entity.AddComponent<CapsuleCollider>();
@@ -552,6 +571,136 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 FileName = file,
                 Loop = loop
             };
+        }
+
+        private static LegacyMonAttachEffectCatalogAnalysis
+            ResolveAttachEffectAnalysis(
+                CanonicalClientCorpus corpus,
+                CatalogSpec catalog,
+                LegacyMonFile mon)
+        {
+            string key =
+                corpus.RootPath + "|" +
+                catalog.Kind;
+
+            LegacyMonAttachEffectCatalogAnalysis cached;
+            if (AttachEffectAnalysisCache.TryGetValue(
+                    key,
+                    out cached))
+            {
+                return cached;
+            }
+
+            LegacyMonAttachEffectCatalogAnalysis analysis =
+                LegacyMonAttachEffectResolver.Analyze(
+                    corpus,
+                    mon);
+
+            AttachEffectAnalysisCache.Add(
+                key,
+                analysis);
+
+            return analysis;
+        }
+
+        private static void ConfigureAttachedEffects(
+            CanonicalClientCorpus corpus,
+            LegacyMonRecord record,
+            IReadOnlyList<Transform> bones,
+            GameObject entity,
+            LegacyMonAttachEffectCatalogAnalysis analysis)
+        {
+            if (record == null ||
+                record.Effects.Count == 0)
+                return;
+
+            if (analysis == null ||
+                analysis.Mode ==
+                LegacyMonAttachEffectIndexMode.Ambiguous)
+            {
+                throw new InvalidDataException(
+                    "MON attach-effect mode remains ambiguous for '" +
+                    record.Name + "'.");
+            }
+
+            LegacyEftFile library =
+                LegacyEftPrefabImporter.ParseCanonical(
+                    corpus,
+                    record.AttachEffect);
+
+            if (library == null)
+            {
+                throw new FileNotFoundException(
+                    "Attached EFT library not found for MON record '" +
+                    record.Name + "': " +
+                    record.AttachEffect);
+            }
+
+            LegacyEftInvocationKind invocationKind =
+                LegacyMonAttachEffectResolver.ResolveInvocationKind(
+                    record,
+                    library,
+                    analysis.Mode);
+
+            GameObject effectPrefab =
+                LegacyEftPrefabImporter.Import(
+                    corpus,
+                    record.AttachEffect);
+
+            if (effectPrefab == null)
+            {
+                throw new InvalidDataException(
+                    "Attached EFT importer returned null for MON record '" +
+                    record.Name + "'.");
+            }
+
+            var bindings =
+                new LegacyAttachedEffectBinding[
+                    record.Effects.Count];
+
+            for (int i = 0;
+                 i < record.Effects.Count;
+                 i++)
+            {
+                LegacyMonEffect effect =
+                    record.Effects[i];
+
+                if (effect.BoneId < 0 ||
+                    effect.BoneId >= bones.Count ||
+                    bones[effect.BoneId] == null)
+                {
+                    throw new InvalidDataException(
+                        "MON record '" +
+                        record.Name +
+                        "' attaches effect " +
+                        effect.EffectId +
+                        " to invalid bone " +
+                        effect.BoneId +
+                        " / " +
+                        bones.Count + ".");
+                }
+
+                bindings[i] =
+                    new LegacyAttachedEffectBinding
+                    {
+                        bone =
+                            bones[
+                                effect.BoneId],
+                        effectPrefab =
+                            effectPrefab,
+                        effectIndex =
+                            effect.EffectId,
+                        invocationKind =
+                            invocationKind
+                    };
+            }
+
+            LegacyAttachedEffectController controller =
+                entity.AddComponent<
+                    LegacyAttachedEffectController>();
+
+            controller.Configure(
+                bindings);
         }
 
         private static AudioClip ImportAudioClipOptional(
