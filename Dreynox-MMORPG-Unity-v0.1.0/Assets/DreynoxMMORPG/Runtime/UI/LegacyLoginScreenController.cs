@@ -53,6 +53,11 @@ namespace Dreynox.Mmorpg.UI
             Button exit,
             Text status)
         {
+            if (loginButton != null)
+                loginButton.onClick.RemoveListener(SubmitLogin);
+            if (exitButton != null)
+                exitButton.onClick.RemoveListener(RequestExit);
+
             accountInput = account;
             passwordInput = password;
             saveIdToggle = saveId;
@@ -62,6 +67,11 @@ namespace Dreynox.Mmorpg.UI
 
             if (passwordInput != null)
                 passwordInput.contentType = InputField.ContentType.Password;
+
+            if (loginButton != null)
+                loginButton.onClick.AddListener(SubmitLogin);
+            if (exitButton != null)
+                exitButton.onClick.AddListener(RequestExit);
         }
 
         public void SetStatus(string message)
