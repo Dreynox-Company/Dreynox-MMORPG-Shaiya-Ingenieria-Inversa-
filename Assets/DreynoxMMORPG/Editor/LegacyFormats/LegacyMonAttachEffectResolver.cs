@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Dreynox.Mmorpg.Editor.Corpus;
 using Dreynox.Mmorpg.Vfx;
@@ -38,6 +39,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             var result =
                 new LegacyMonAttachEffectCatalogAnalysis();
 
+            var libraries =
+                new Dictionary<string, LegacyEftFile>(
+                    StringComparer.OrdinalIgnoreCase);
+
             for (int recordIndex = 0;
                  recordIndex < mon.Records.Count;
                  recordIndex++)
@@ -67,11 +72,24 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         " attached effects but has no AttachEffect library.");
                 }
 
-                LegacyEftFile library =
-                    LegacyEftPrefabImporter
-                        .ParseCanonical(
-                            corpus,
-                            libraryName);
+                LegacyEftFile library;
+                if (!libraries.TryGetValue(
+                        libraryName,
+                        out library))
+                {
+                    library =
+                        LegacyEftPrefabImporter
+                            .ParseCanonical(
+                                corpus,
+                                libraryName);
+
+                    if (library != null)
+                    {
+                        libraries.Add(
+                            libraryName,
+                            library);
+                    }
+                }
 
                 if (library == null)
                 {
