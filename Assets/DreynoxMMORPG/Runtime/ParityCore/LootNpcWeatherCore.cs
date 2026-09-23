@@ -133,10 +133,38 @@ namespace Dreynox.Mmorpg.ParityCore
             TargetZ = targetZ;
         }
 
+        public bool IsBossActivatedPortal =>
+            PortalId > 2;
+
+        public bool IsOpenByDefault =>
+            !IsBossActivatedPortal;
+
+        public bool IsFactionAllowed(int faction)
+        {
+            if (PortalId == 0 ||
+                PortalId > 2)
+                return true;
+
+            return faction == PortalId;
+        }
+
         public bool CanEnter(int level)
         {
             return level >= MinimumLevel &&
                    level <= MaximumLevel;
+        }
+
+        public bool CanEnter(
+            int level,
+            int faction,
+            bool bossPortalOpen)
+        {
+            if (!CanEnter(level) ||
+                !IsFactionAllowed(faction))
+                return false;
+
+            return IsOpenByDefault ||
+                   bossPortalOpen;
         }
     }
 
