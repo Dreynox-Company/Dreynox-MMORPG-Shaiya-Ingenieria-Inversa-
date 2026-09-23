@@ -12,8 +12,13 @@ namespace Dreynox.Mmorpg.World
         public uint mobId;
         public int modelIndex;
         public int targetId;
+        public string mobName = string.Empty;
         public int level;
         public int maxHealth = 1;
+        public byte ai;
+        public byte element;
+        public byte rawSize;
+        public float scale = 1f;
         public Vector3 position;
         public float yawDegrees;
         public GameObject prefab;
@@ -193,11 +198,22 @@ namespace Dreynox.Mmorpg.World
                     definition.yawDegrees,
                     0f);
 
+            float resolvedScale =
+                Mathf.Max(0.05f, definition.scale);
+
+            instance.transform.localScale =
+                definition.prefab.transform.localScale *
+                resolvedScale;
+
             instance.name =
                 "Mob_" +
                 definition.mobId +
+                "_" +
+                SanitizeName(definition.mobName) +
                 "_Model_" +
                 definition.modelIndex +
+                "_Lv_" +
+                definition.level +
                 "_Target_" +
                 definition.targetId;
 
@@ -279,6 +295,18 @@ namespace Dreynox.Mmorpg.World
                     Despawn(spawn);
                 }
             }
+        }
+
+        private static string SanitizeName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "Unnamed";
+
+            return value
+                .Trim()
+                .Replace(' ', '_')
+                .Replace('/', '_')
+                .Replace('\\', '_');
         }
 
         private struct SpawnCandidate
