@@ -1163,6 +1163,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     LegacySvmapMonsterSpawn spawn =
                         area.Monsters[spawnTypeIndex];
 
+                    // Canonical Map 0 contains five MobId=0 placeholder rows,
+                    // all with Count=0. They are list padding, not entities.
+                    if (spawn.Count == 0)
+                        continue;
+
                     LegacyDbMonsterDataRecord monster;
                     if (!monsterData.TryGet(
                             spawn.MobId,
