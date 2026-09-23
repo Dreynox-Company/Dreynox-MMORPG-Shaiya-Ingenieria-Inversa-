@@ -120,7 +120,7 @@ namespace Dreynox.Mmorpg.Editor.Corpus
 
             string normalized = relativePath
                 .Replace('/', Path.DirectorySeparatorChar)
-                .Replace('\', Path.DirectorySeparatorChar);
+                .Replace('\\', Path.DirectorySeparatorChar);
 
             string full = Path.GetFullPath(
                 Path.Combine(RootPath, normalized));
