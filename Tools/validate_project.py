@@ -76,7 +76,7 @@ for source in ROOT.rglob('*.cs'):
     # A previous folder migration accidentally committed literal "\\n"
     # tokens between C# statements. They are not line breaks and make the
     # compilation fail. Catch that specific outside-string shape early.
-    if re.search(r'[;)}]\\\\n\\s+[A-Za-z_]', text):
+    if re.search(r'[;)}]\\n\s+[A-Za-z_]', text):
         errors.append(
             'literal escaped newline between C# statements: ' +
             str(source.relative_to(ROOT))
