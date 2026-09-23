@@ -215,6 +215,37 @@ namespace Dreynox.Mmorpg.ParityHarness
             weather.Tick(1.0);
             Check(weather.Current == WeatherKindCore.Rain && weather.Blend == 1.0, "weather transition completes at target");
 
+            ClientCoordinateCore.ResolveCameraRelative(0, 1, 90, out double cameraWorldX, out double cameraWorldZ);
+            Check(Math.Abs(cameraWorldX + 1.0) < 0.000001 && Math.Abs(cameraWorldZ) < 0.000001,
+                "camera-relative forward at +90 degrees moves toward negative X");
+
+            var flightTransition = new FlightTransitionCore();
+            flightTransition.SetWingsEquipped(true);
+            Check(!flightTransition.ManualRequested && flightTransition.Phase == ClientFlightPhase.Grounded,
+                "equipping wings does not auto-start flight transition");
+            Check(flightTransition.ToggleManualFlight() && flightTransition.Phase == ClientFlightPhase.TakingOff,
+                "manual flight request enters takeoff");
+            flightTransition.Tick(FlightTransitionCore.DefaultTakeoffSeconds);
+            Check(flightTransition.Phase == ClientFlightPhase.Hover,
+                "takeoff settles into hover without movement");
+            flightTransition.SetMoving(true);
+            Check(flightTransition.Phase == ClientFlightPhase.Flight,
+                "movement changes hover to flight");
+            flightTransition.SetCombatGuard(true);
+            Check(flightTransition.BeginCombatDescent() &&
+                  flightTransition.Phase == ClientFlightPhase.CombatDescending,
+                "air attack requests combat descent");
+            flightTransition.Tick(FlightTransitionCore.DefaultCombatDescentSeconds);
+            Check(flightTransition.Phase == ClientFlightPhase.Grounded &&
+                  flightTransition.ManualRequested,
+                "combat descent reaches ground in recovered short window and preserves flight intent");
+            flightTransition.SetCombatGuard(false);
+            Check(flightTransition.Phase == ClientFlightPhase.TakingOff,
+                "flight resumes only after combat guard clears");
+            flightTransition.Tick(FlightTransitionCore.DefaultTakeoffSeconds);
+            Check(flightTransition.Phase == ClientFlightPhase.Flight,
+                "resumed flight returns to moving flight state");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
