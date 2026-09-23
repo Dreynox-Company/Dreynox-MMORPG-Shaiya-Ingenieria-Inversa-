@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 env:
   UNITY_PROJECT_PATH: Dreynox-MMORPG-Unity-v0.1.0
@@ -30,17 +31,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Detect Unity license secret
+      - name: Detect Unity activation
         id: unity-license
         shell: bash
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          if [ -n "$UNITY_LICENSE" ]; then
+          if [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ] && { [ -n "$UNITY_LICENSE" ] || [ -n "$UNITY_SERIAL" ]; }; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "UNITY_LICENSE is not configured; source validation remains active and the player build is skipped."
+            echo "Unity activation is not configured. Set UNITY_EMAIL + UNITY_PASSWORD and either UNITY_LICENSE (Personal) or UNITY_SERIAL (Pro)."
           fi
       - name: Cache Unity Library
         if: steps.unity-license.outputs.ready == 'true'
@@ -50,11 +54,25 @@ jobs:
           key: Library-${{ runner.os }}-${{ hashFiles('Dreynox-MMORPG-Unity-v0.1.0/Assets/**', 'Dreynox-MMORPG-Unity-v0.1.0/Packages/**', 'Dreynox-MMORPG-Unity-v0.1.0/ProjectSettings/**') }}
           restore-keys: |
             Library-${{ runner.os }}-
+      - name: Unity EditMode tests
+        if: steps.unity-license.outputs.ready == 'true'
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          testMode: EditMode
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          artifactsPath: ${{ env.UNITY_PROJECT_PATH }}/TestResults
       - name: Build StandaloneWindows64
         if: steps.unity-license.outputs.ready == 'true'
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
@@ -70,4 +88,12 @@ jobs:
           name: Dreynox-Mmorpg-Windows-x64
           path: ${{ env.UNITY_PROJECT_PATH }}/Builds/Windows/
           if-no-files-found: error
+          retention-days: 14
+      - name: Upload Unity test evidence
+        if: always() && steps.unity-license.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dreynox-Mmorpg-Unity-TestResults
+          path: ${{ env.UNITY_PROJECT_PATH }}/TestResults/
+          if-no-files-found: warn
           retention-days: 14
