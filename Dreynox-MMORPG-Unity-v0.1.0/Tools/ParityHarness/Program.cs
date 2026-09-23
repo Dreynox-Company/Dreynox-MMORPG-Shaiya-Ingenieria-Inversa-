@@ -107,6 +107,114 @@ namespace Dreynox.Mmorpg.ParityHarness
             raid.AddGroup(party);
             Check(raid.ContainsMember(2), "party member represented in raid");
 
+            var duel = new DuelCore();
+            duel.Request(1, 2);
+            Check(duel.Accept(3.0), "duel request accepted");
+            duel.Tick(3.0);
+            Check(duel.Phase == DuelPhase.Active, "duel countdown reaches active");
+            Check(duel.Finish(2) && duel.WinnerId == 2, "duel records valid winner");
+
+            var inventory = new InventoryCore(3);
+            Check(inventory.Add(1001, 150, 99) == 0 && inventory.CountItem(1001) == 150, "inventory stacks across slots");
+            Check(inventory.Remove(1001, 51) && inventory.CountItem(1001) == 99, "inventory removes exact quantity");
+            var warehouse = new WarehouseCore(20);
+            Check(warehouse.DepositGold(1000) && warehouse.WithdrawGold(250) && warehouse.Gold == 750, "warehouse gold is conserved");
+
+            var stats = new StatsCore();
+            stats.SetBase(StatKind.Strength, 10);
+            stats.SetModifier("equipment", new System.Collections.Generic.Dictionary<StatKind, int> { [StatKind.Strength] = 7 });
+            Check(stats.Get(StatKind.Strength) == 17, "stats combine base and modifiers");
+            stats.RemoveModifier("equipment");
+            Check(stats.Get(StatKind.Strength) == 10, "stat modifier removal restores base");
+
+            var buffs = new BuffCore();
+            buffs.Apply(50, 1, 10.0, 5.0);
+            buffs.Tick(14.9);
+            Check(buffs.Active.ContainsKey(50), "buff remains before expiration");
+            buffs.Tick(15.0);
+            Check(!buffs.Active.ContainsKey(50), "buff expires deterministically");
+
+            var life = new LifeCore(1000);
+            Check(life.Damage(1000) == 1000 && life.Dead, "death occurs at zero health");
+            life.Rebirth(0.5);
+            Check(!life.Dead && life.Health == 500, "rebirth restores configured health fraction");
+
+            var quest = new QuestCore(77);
+            quest.AddObjective(1, 2);
+            quest.AddObjective(2, 1);
+            Check(quest.Accept(), "quest accepted from available state");
+            quest.Progress(1, 2);
+            Check(quest.State == QuestState.Active, "quest waits for every objective");
+            quest.Progress(2, 1);
+            Check(quest.State == QuestState.Completed && quest.Reward(), "quest completes and rewards once objectives finish");
+
+            var shopInventory = new InventoryCore(5);
+            var shop = new ShopCore();
+            shop.SetPrice(200, 100, 50);
+            long shopGold = 1000;
+            Check(shop.TryBuy(shopInventory, 200, 3, 99, ref shopGold) && shopGold == 700, "shop buys accepted quantity at configured price");
+            Check(shop.TrySell(shopInventory, 200, 1, ref shopGold) && shopGold == 750, "shop sell returns configured value");
+
+            var gate = new GatekeeperCore();
+            gate.Add(new GatekeeperDestination { DestinationId = 3, MapId = 42, MinimumLevel = 10, Cost = 200, X = 1, Y = 2, Z = 3 });
+            long travelGold = 500;
+            Check(!gate.TryResolve(3, 9, ref travelGold, out _), "gatekeeper enforces level requirement");
+            Check(gate.TryResolve(3, 10, ref travelGold, out GatekeeperDestination destination) && destination.MapId == 42 && travelGold == 300, "gatekeeper resolves data-driven destination and cost");
+
+            int upgrade = 0;
+            long upgradeGold = 1000;
+            var blacksmith = new BlacksmithCore(new BlacksmithUpgradeProfile
+            {
+                MaxLevel = 5,
+                CostForNextLevel = next => next * 100,
+                SuccessProbabilityForNextLevel = next => 0.75
+            });
+            Check(blacksmith.TryUpgrade(ref upgrade, ref upgradeGold, 0.5) && upgrade == 1 && upgradeGold == 900, "blacksmith consumes configured cost and succeeds by supplied roll");
+            Check(!blacksmith.TryUpgrade(ref upgrade, ref upgradeGold, 0.9) && upgrade == 1 && upgradeGold == 700, "blacksmith failure keeps level while preserving paid cost semantics");
+
+            var mana = new ResourcePoolCore(100);
+            var skills = new SkillCore();
+            skills.Learn(new SkillDefinitionCore(300, 2, 20, 0.10, 0.20, 1.0, true));
+            Check(skills.TryCast(300, 10, mana) && mana.Current == 80, "skill starts only with resource and required target");
+            skills.Tick(0.11);
+            Check(skills.LastCast != null && skills.LastCast.TargetId == 10 && skills.LastCast.Rank == 2, "skill cast locks original target and rank");
+            skills.Tick(0.20);
+            Check(skills.Phase == SkillCastPhase.Idle && !skills.TryCast(300, 10, mana), "skill cooldown blocks immediate recast");
+            skills.Tick(0.70);
+            Check(skills.TryCast(300, 10, mana), "skill becomes available after configured cooldown");
+
+            var friends = new FriendsCore();
+            Check(friends.ReceiveRequest(8) && friends.AcceptIncoming(8, true), "friend request acceptance creates friend");
+            Check(friends.Friends[8].Online && friends.SetOnline(8, false) && !friends.Friends[8].Online, "friend online state updates independently");
+
+            var guild = new GuildCore("ParityGuild", 20);
+            Check(guild.Create(1) && guild.AddMember(1, 2) && guild.SetOfficer(1, 2, true), "guild leader adds and promotes officer");
+            Check(guild.AddMember(2, 3), "guild officer can add member");
+            Check(guild.TransferLeadership(1, 2) && guild.LeaderId == 2, "guild leadership transfer is deterministic");
+
+            var flow = new ClientFlowCore();
+            Check(flow.ReadyForLogin() && flow.BeginConnect() && flow.LoginAccepted(), "client boot/login/connect flow advances");
+            Check(flow.SelectServer(1), "server selection advances to character select");
+            Check(flow.SetCharacterList(new[] { new CharacterSummaryCore(100, "Parity", 80, 0) }), "character list accepts unique slots and ids");
+            Check(flow.EnterCharacter(100) && flow.WorldAccepted() && flow.State == ClientFlowState.InWorld, "character enters world only after explicit world acceptance");
+
+            var lootInventory = new InventoryCore(2);
+            var loot = new LootCore();
+            loot.Spawn(new LootDropCore(1, 500, 2, 7));
+            Check(!loot.TryCollect(1, 8, lootInventory, 99), "reserved loot rejects another player");
+            Check(loot.TryCollect(1, 7, lootInventory, 99) && lootInventory.CountItem(500) == 2, "reserved player collects loot atomically");
+
+            var npc = new NpcInteractionCore();
+            npc.Register(90, NpcServiceKind.Shop | NpcServiceKind.Blacksmith);
+            Check(npc.Open(90) && npc.Supports(NpcServiceKind.Shop) && !npc.Supports(NpcServiceKind.Warehouse), "NPC exposes only registered services");
+
+            var weather = new WeatherCore();
+            weather.TransitionTo(WeatherKindCore.Rain, 2.0);
+            weather.Tick(1.0);
+            Check(weather.Current == WeatherKindCore.Clear && Math.Abs(weather.Blend - 0.5) < 0.0001, "weather transition reports intermediate blend");
+            weather.Tick(1.0);
+            Check(weather.Current == WeatherKindCore.Rain && weather.Blend == 1.0, "weather transition completes at target");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }

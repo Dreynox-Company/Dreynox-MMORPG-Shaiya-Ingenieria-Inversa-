@@ -11,6 +11,14 @@
 - Combate determinista: selección, target lock, hit, recovery y guard timeout.
 - Múltiples targets con HP independiente.
 - Party, Trade, Duel y Raid: core de estado listo para protocolo/UI.
+- Friends: solicitudes, aceptación y presencia online.
+- Guild: miembros, officers y transferencia de liderazgo con capacidad configurable.
+- Inventario y Warehouse: stacking, movimiento, retirada y gold.
+- Stats/Buffs/Life: modificadores, expiración, death/rebirth.
+- Skills: aprendizaje/rank, target lock, resource cost, windup/recovery/cooldown data-driven.
+- Quests/Shops/Gatekeepers/Blacksmith: máquinas de estado y servicios data-driven.
+- Loot/NPC/Weather: ownership, servicios NPC y transiciones de clima.
+- Flujo de cliente: boot/login/server/character/world/disconnect.
 - Streaming espacial de sectores.
 - Cámara orbital con collision SphereCast.
 - Networking worker TCP/UDP existente.

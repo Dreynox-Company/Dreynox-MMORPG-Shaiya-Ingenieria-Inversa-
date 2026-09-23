@@ -150,5 +150,105 @@ namespace Dreynox.Mmorpg.Tests
             Assert.IsTrue(raid.ContainsMember(2));
             Assert.AreEqual(2, raid.MemberCount);
         }
+
+        [Test]
+        public void InventoryProgressionQuestAndServicesAreDeterministic()
+        {
+            var inventory = new InventoryCore(4);
+            Assert.AreEqual(0, inventory.Add(100, 120, 99));
+            Assert.AreEqual(120, inventory.CountItem(100));
+            Assert.IsTrue(inventory.Remove(100, 21));
+            Assert.AreEqual(99, inventory.CountItem(100));
+
+            var life = new LifeCore(1000);
+            Assert.AreEqual(1000, life.Damage(1000));
+            Assert.IsTrue(life.Dead);
+            life.Rebirth(0.25);
+            Assert.AreEqual(250, life.Health);
+
+            var quest = new QuestCore(1);
+            quest.AddObjective(10, 2);
+            Assert.IsTrue(quest.Accept());
+            Assert.IsTrue(quest.Progress(10, 2));
+            Assert.AreEqual(QuestState.Completed, quest.State);
+            Assert.IsTrue(quest.Reward());
+
+            var shop = new ShopCore();
+            shop.SetPrice(200, 100, 50);
+            long gold = 500;
+            Assert.IsTrue(shop.TryBuy(inventory, 200, 2, 99, ref gold));
+            Assert.AreEqual(300, gold);
+            Assert.IsTrue(shop.TrySell(inventory, 200, 1, ref gold));
+            Assert.AreEqual(350, gold);
+        }
+
+        [Test]
+        public void SkillsFriendsGuildAndClientFlowPreserveLockedState()
+        {
+            var resource = new ResourcePoolCore(100);
+            var skills = new SkillCore();
+            skills.Learn(new SkillDefinitionCore(1, 3, 25, 0.1, 0.2, 1.0, true));
+            Assert.IsTrue(skills.TryCast(1, 77, resource));
+            skills.Tick(0.11);
+            Assert.NotNull(skills.LastCast);
+            Assert.AreEqual(77, skills.LastCast.TargetId);
+            Assert.AreEqual(3, skills.LastCast.Rank);
+
+            var friends = new FriendsCore();
+            Assert.IsTrue(friends.ReceiveRequest(5));
+            Assert.IsTrue(friends.AcceptIncoming(5, true));
+            Assert.IsTrue(friends.Friends[5].Online);
+
+            var guild = new GuildCore("Test", 10);
+            Assert.IsTrue(guild.Create(1));
+            Assert.IsTrue(guild.AddMember(1, 2));
+            Assert.IsTrue(guild.SetOfficer(1, 2, true));
+            Assert.IsTrue(guild.AddMember(2, 3));
+
+            var flow = new ClientFlowCore();
+            Assert.IsTrue(flow.ReadyForLogin());
+            Assert.IsTrue(flow.BeginConnect());
+            Assert.IsTrue(flow.LoginAccepted());
+            Assert.IsTrue(flow.SelectServer(1));
+            Assert.IsTrue(flow.SetCharacterList(new[] { new CharacterSummaryCore(10, "Hero", 1, 0) }));
+            Assert.IsTrue(flow.EnterCharacter(10));
+            Assert.IsTrue(flow.WorldAccepted());
+            Assert.AreEqual(ClientFlowState.InWorld, flow.State);
+        }
+
+        [Test]
+        public void LootNpcWeatherAndBlacksmithRemainDataDriven()
+        {
+            var inventory = new InventoryCore(3);
+            var loot = new LootCore();
+            Assert.IsTrue(loot.Spawn(new LootDropCore(1, 300, 2, 9)));
+            Assert.IsFalse(loot.TryCollect(1, 10, inventory, 99));
+            Assert.IsTrue(loot.TryCollect(1, 9, inventory, 99));
+
+            var npc = new NpcInteractionCore();
+            npc.Register(7, NpcServiceKind.Shop | NpcServiceKind.Gatekeeper);
+            Assert.IsTrue(npc.Open(7));
+            Assert.IsTrue(npc.Supports(NpcServiceKind.Shop));
+            Assert.IsFalse(npc.Supports(NpcServiceKind.Blacksmith));
+
+            var weather = new WeatherCore();
+            weather.TransitionTo(WeatherKindCore.Fog, 2);
+            weather.Tick(1);
+            Assert.AreEqual(0.5, weather.Blend, 0.0001);
+            weather.Tick(1);
+            Assert.AreEqual(WeatherKindCore.Fog, weather.Current);
+
+            int level = 0;
+            long gold = 1000;
+            var blacksmith = new BlacksmithCore(new BlacksmithUpgradeProfile
+            {
+                MaxLevel = 3,
+                CostForNextLevel = next => 100 * next,
+                SuccessProbabilityForNextLevel = next => 0.5
+            });
+            Assert.IsTrue(blacksmith.TryUpgrade(ref level, ref gold, 0.25));
+            Assert.AreEqual(1, level);
+            Assert.AreEqual(900, gold);
+        }
     }
 }

@@ -24,6 +24,11 @@ Este repositorio trabaja sobre **paridad del cliente de juego** frente a `game.e
 - Montura y calibración de altura de asiento sin acumulación por frame.
 - Target lock de combate, vida independiente por oponente y guardia de 8 s.
 - Party, Trade, Duel y Raid como máquinas de estado puras para integrar con protocolo.
+- Friends y Guild con roles/solicitudes/presencia como core determinista.
+- Inventario, Warehouse, stats, buffs, death/rebirth y loot.
+- Skills data-driven con target lock, resource cost, windup/recovery y cooldown.
+- Quests, shops, gatekeepers, blacksmith, NPC services y weather.
+- Flujo Boot → Login → Server → Character → World, listo para conectar al protocolo real.
 - Streaming espacial determinista de sectores.
 - Cámara tercera persona con órbita, zoom y colisión SphereCast.
 - Sandbox Unity jugable para comparación iterativa con `game.exe`.

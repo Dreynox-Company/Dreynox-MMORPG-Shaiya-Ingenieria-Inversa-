@@ -37,3 +37,17 @@ Estados usados: `PORTED_CORE`, `UNITY_ADAPTER`, `REAL_ASSET_PENDING`, `PROTOCOL_
 | UI original | VISUAL_QA_PENDING | Canvas/UXML final |
 | Windows executable | build method listo | requiere activación Unity en CI o build local |
 | Android/iOS | arquitectura compartida | profiling físico |
+
+| Inventory / Warehouse | PORTED_CORE | conectar UI + catálogo real |
+| Stats / Buffs / Death-Rebirth | PORTED_CORE | conectar datos/protocolo real |
+| Skills / Cooldowns | PORTED_CORE | mapear skill tables y packets verificados |
+| Quests | PORTED_CORE | contenido real + UI/protocolo |
+| Shops | PORTED_CORE | catálogo/NPC/protocolo real |
+| Gatekeepers | PORTED_CORE | destinos reales + world transition |
+| Blacksmith | PORTED_CORE | alimentar costes/probabilidades desde datos confirmados |
+| Friends | PORTED_CORE | PROTOCOL_PENDING + UI |
+| Guild | PORTED_CORE | PROTOCOL_PENDING + UI |
+| Loot | PORTED_CORE | world entities + protocol |
+| NPC services | PORTED_CORE | NPC metadata + UI |
+| Weather | PORTED_CORE | renderer/audio + packets/world state |
+| Login / server / character / world flow | PORTED_CORE | protocol packets + UI scenes |
