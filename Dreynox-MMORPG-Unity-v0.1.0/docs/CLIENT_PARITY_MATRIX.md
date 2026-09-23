@@ -45,7 +45,7 @@ Estados:
 | Login → server → character → world | PORTED_CORE | conectar escenas UI + protocolo |
 | World sector streaming | PORTED_CORE | conectar escenas/chunks reales |
 | Terrain / sky | REAL_ASSET_PENDING | migrar pipeline visual del cliente Flutter |
-| Personajes / sets / armas reales | REAL_ASSET_PENDING | prefabs, rigs, materiales, sockets |
+| Personajes / sets / armas reales | REAL_ASSET_PENDING | prefabs, rigs, materiales, sockets |\n| Runtime animación semántica | UNITY_ADAPTER | Playables + catálogo + crossfade; conectar ANI derivados reales por clase/arma |
 | ANI reales | REAL_ASSET_PENDING | Animator/PlayableGraph + catálogo por clase/arma |
 | EFT / lapisia / VFX | REAL_ASSET_PENDING | VFX Graph/Particle System/URP |
 | UI completa | VISUAL_QA_PENDING | reconstrucción Canvas/UI Toolkit y capturas |\n| Captura/comparación visual | UNITY_ADAPTER | F8 + MAE/RMSE/PSNR/SSIM + diff PNG; falta corpus de escenas equivalentes game.exe |
