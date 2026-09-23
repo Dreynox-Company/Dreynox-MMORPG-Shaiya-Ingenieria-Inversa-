@@ -1,48 +1,99 @@
-name: Unity Client Parity
+name: Unity CI · Windows
+run-name: "Unity CI · ${{ github.ref_name }} · ${{ github.event_name }}"
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Qué debe ejecutar Unity en el runner Windows"
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - tests-only
+          - build-only
+          - preflight
+      clean_library:
+        description: "Ignorar caché y regenerar Library desde cero"
+        required: true
+        default: false
+        type: boolean
+
   push:
     branches:
       - main
       - work/unity-reverse-engineering-v0.2.0
       - chore/unity-personal-self-hosted-ci
+    paths:
+      - "Assets/**"
+      - "Packages/**"
+      - "ProjectSettings/**"
+      - "Tools/**"
+      - ".github/workflows/unity-windows-build.yml"
+
   pull_request:
     branches:
       - main
+    paths:
+      - "Assets/**"
+      - "Packages/**"
+      - "ProjectSettings/**"
+      - "Tools/**"
+      - ".github/workflows/unity-windows-build.yml"
 
 permissions:
   contents: read
-  checks: write
 
 env:
   UNITY_PROJECT_PATH: "."
 
 jobs:
   parity-core:
+    name: Deterministic parity gate
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 15
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          python-version: '3.12'
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
 
       - name: Validate Unity project sources
         run: python "$UNITY_PROJECT_PATH/Tools/validate_project.py"
 
-      - uses: actions/setup-dotnet@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
       - name: Compile and run deterministic client parity harness
         run: dotnet run --project "$UNITY_PROJECT_PATH/Tools/ParityHarness/ParityHarness.csproj" --configuration Release
 
+      - name: Parity gate summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Deterministic parity gate"
+            echo ""
+            echo "- Ref: \`${GITHUB_REF_NAME}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Result: \`${{ job.status }}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
   unity-windows:
+    name: Unity Personal · Windows x64
     needs: parity-core
 
-    # SECURITY: this repository is public. Never execute fork PR code on the
-    # self-hosted Windows machine that contains the Unity Personal entitlement.
+    # This repository is public. Never execute fork PR code on the Windows
+    # machine that contains the user's Unity Personal named-user entitlement.
     if: github.event_name != 'pull_request'
 
     runs-on:
@@ -50,49 +101,129 @@ jobs:
       - Windows
       - X64
 
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     concurrency:
-      group: unity-personal-${{ github.repository }}
+      group: unity-windows-${{ github.repository }}-${{ github.ref }}
       cancel-in-progress: true
 
+    defaults:
+      run:
+        shell: pwsh
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout with Git LFS
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           lfs: true
+          clean: true
+          persist-credentials: false
+
+      - name: Clean stale CI outputs
+        run: |
+          @(
+            "TestResults",
+            "BuildLogs",
+            "Builds/WindowsParity"
+          ) | ForEach-Object {
+            $path = Join-Path $env:GITHUB_WORKSPACE $_
+            if (Test-Path $path) {
+              Remove-Item -LiteralPath $path -Recurse -Force
+            }
+          }
+
+      - name: Force clean Unity Library
+        if: github.event_name == 'workflow_dispatch' && inputs.clean_library == true
+        run: |
+          $library = Join-Path $env:GITHUB_WORKSPACE "Library"
+          if (Test-Path $library) {
+            Remove-Item -LiteralPath $library -Recurse -Force
+          }
+          Write-Host "Unity Library limpia solicitada manualmente."
 
       - name: Restore Unity Library cache
-        uses: actions/cache@v4
+        if: github.event_name != 'workflow_dispatch' || inputs.clean_library != true
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.UNITY_PROJECT_PATH }}/Library
-          key: unity-library-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**') }}
+          key: unity-library-${{ runner.os }}-${{ hashFiles('ProjectSettings/**', 'Packages/**', 'Assets/**') }}
           restore-keys: |
             unity-library-${{ runner.os }}-
 
       - name: Unity Personal entitlement and CLI preflight
-        shell: pwsh
+        id: unity-preflight
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task preflight
 
       - name: Unity EditMode tests
-        shell: pwsh
+        id: unity-tests
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'tests-only'
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task test
 
       - name: Upload Unity test evidence
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'tests-only')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Dreynox-Mmorpg-Unity-TestResults
-          path: |
-            ${{ env.UNITY_PROJECT_PATH }}/TestResults/
+          path: ${{ env.UNITY_PROJECT_PATH }}/TestResults/
           if-no-files-found: warn
           retention-days: 14
 
       - name: Build StandaloneWindows64
-        shell: pwsh
+        id: unity-build
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'build-only'
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task build
 
+      - name: Verify build manifest and SHA-256
+        id: verify-build
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'build-only'
+        run: |
+          $root = Join-Path $env:GITHUB_WORKSPACE "Builds\WindowsParity"
+          $exePath = Join-Path $root "DreynoxMmorpg-Parity.exe"
+          $manifestPath = Join-Path $root "dreynox-build-manifest.txt"
+
+          if (-not (Test-Path $exePath)) {
+            throw "No existe el ejecutable esperado: $exePath"
+          }
+
+          if (-not (Test-Path $manifestPath)) {
+            throw "No existe el manifest esperado: $manifestPath"
+          }
+
+          $manifest = @{}
+          Get-Content $manifestPath | ForEach-Object {
+            $parts = $_ -split "=", 2
+            if ($parts.Count -eq 2) {
+              $manifest[$parts[0]] = $parts[1]
+            }
+          }
+
+          $actualSha = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expectedSha = [string]$manifest["sha256"]
+
+          if ([string]::IsNullOrWhiteSpace($expectedSha)) {
+            throw "El manifest no contiene sha256."
+          }
+
+          if ($actualSha -ne $expectedSha.ToLowerInvariant()) {
+            throw "SHA-256 inconsistente. Manifest=$expectedSha Actual=$actualSha"
+          }
+
+          @(
+            "workflow_run_id=$env:GITHUB_RUN_ID"
+            "workflow_run_number=$env:GITHUB_RUN_NUMBER"
+            "commit=$env:GITHUB_SHA"
+            "ref=$env:GITHUB_REF_NAME"
+            "runner=$env:RUNNER_NAME"
+            "verified_sha256=$actualSha"
+            "verified_utc=$((Get-Date).ToUniversalTime().ToString('o'))"
+          ) | Set-Content -Path (Join-Path $root "ci-metadata.txt") -Encoding utf8
+
+          "sha256=$actualSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Build verificado: $actualSha"
+
       - name: Upload Windows player
-        uses: actions/upload-artifact@v4
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'build-only'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Dreynox-Mmorpg-Parity-Windows-x64
           path: ${{ env.UNITY_PROJECT_PATH }}/Builds/WindowsParity/
@@ -100,10 +231,79 @@ jobs:
           retention-days: 14
 
       - name: Upload Unity build log
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'build-only')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Dreynox-Mmorpg-Unity-BuildLogs
           path: ${{ env.UNITY_PROJECT_PATH }}/BuildLogs/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Failure diagnostics
+        if: failure()
+        run: |
+          Write-Host "===== Unity CI diagnostics ====="
+          @(
+            "TestResults/editmode-editor.log",
+            "BuildLogs/windows-parity-editor.log"
+          ) | ForEach-Object {
+            $path = Join-Path $env:GITHUB_WORKSPACE $_
+            if (Test-Path $path) {
+              Write-Host ""
+              Write-Host "----- $_ (últimas 160 líneas) -----"
+              Get-Content -Path $path -Tail 160
+            }
+          }
+
+      - name: Unity CI summary
+        if: always()
+        env:
+          DISPATCH_MODE: ${{ inputs.mode }}
+          CLEAN_LIBRARY: ${{ inputs.clean_library }}
+          TEST_OUTCOME: ${{ steps.unity-tests.outcome }}
+          BUILD_OUTCOME: ${{ steps.unity-build.outcome }}
+          VERIFIED_SHA256: ${{ steps.verify-build.outputs.sha256 }}
+        run: |
+          $mode = if ([string]::IsNullOrWhiteSpace($env:DISPATCH_MODE)) { "full" } else { $env:DISPATCH_MODE }
+          $sha = if ([string]::IsNullOrWhiteSpace($env:VERIFIED_SHA256)) { "-" } else { $env:VERIFIED_SHA256 }
+          $tests = if ([string]::IsNullOrWhiteSpace($env:TEST_OUTCOME)) { "skipped" } else { $env:TEST_OUTCOME }
+          $build = if ([string]::IsNullOrWhiteSpace($env:BUILD_OUTCOME)) { "skipped" } else { $env:BUILD_OUTCOME }
+
+          @(
+            "## Dreynox MMORPG · Unity Windows CI"
+            ""
+            "| Campo | Valor |"
+            "|---|---|"
+            "| Runner | \`$env:RUNNER_NAME\` |"
+            "| Ref | \`$env:GITHUB_REF_NAME\` |"
+            "| Commit | \`$env:GITHUB_SHA\` |"
+            "| Modo | \`$mode\` |"
+            "| Clean Library | \`$env:CLEAN_LIBRARY\` |"
+            "| EditMode tests | \`$tests\` |"
+            "| Windows build | \`$build\` |"
+            "| SHA-256 | \`$sha\` |"
+          ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+  pipeline-summary:
+    name: CI summary
+    needs:
+      - parity-core
+      - unity-windows
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Final workflow summary
+        shell: bash
+        run: |
+          {
+            echo "## Unity CI · Resultado final"
+            echo ""
+            echo "| Gate | Resultado |"
+            echo "|---|---|"
+            echo "| Deterministic parity | \`${{ needs.parity-core.result }}\` |"
+            echo "| Unity Windows x64 | \`${{ needs.unity-windows.result }}\` |"
+            echo ""
+            echo "Event: \`${{ github.event_name }}\` · Ref: \`${{ github.ref_name }}\` · SHA: \`${{ github.sha }}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
