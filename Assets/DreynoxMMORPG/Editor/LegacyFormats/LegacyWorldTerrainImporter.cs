@@ -182,6 +182,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
             runtime.AddComponent<DreynoxBootstrap>();
             runtime.AddComponent<ParityScreenshotCapture>();
+            runtime.AddComponent<LegacyNpcInteractionRuntime>();
 
             GameObject terrainObject =
                 Terrain.CreateTerrainGameObject(terrainData);
@@ -799,6 +800,13 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 go.transform.SetParent(group.transform, false);
                 go.transform.position = portal.Position;
 
+                if (portal.TargetMapId > int.MaxValue)
+                {
+                    throw new InvalidDataException(
+                        "Portal " + i +
+                        " target map id exceeds Int32.");
+                }
+
                 LegacyWorldMarker marker =
                     go.AddComponent<LegacyWorldMarker>();
 
@@ -811,6 +819,17 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     0f,
                     Vector3.zero,
                     Vector3.zero);
+
+                LegacyPortalRuntime portalRuntime =
+                    go.AddComponent<LegacyPortalRuntime>();
+
+                portalRuntime.Configure(
+                    MapId,
+                    portal.FactionOrPortalId,
+                    portal.MinLevel,
+                    portal.MaxLevel,
+                    (int)portal.TargetMapId,
+                    portal.TargetPosition);
             }
         }
 
@@ -1104,6 +1123,33 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         };
                 }
 
+                LegacyNpcSaleItemRuntime[] saleItems =
+                    definition.SaleItems
+                        .Select(
+                            item =>
+                                new LegacyNpcSaleItemRuntime
+                                {
+                                    type = item.Type,
+                                    typeId = item.TypeId
+                                })
+                        .ToArray();
+
+                int[] inQuestIds =
+                    definition.InQuestIds
+                        .Select(value => (int)value)
+                        .ToArray();
+
+                int[] outQuestIds =
+                    definition.OutQuestIds
+                        .Select(value => (int)value)
+                        .ToArray();
+
+                NpcServiceKind services =
+                    NpcServiceResolverCore.Resolve(
+                        source.NpcType,
+                        inQuestIds.Length > 0 ||
+                        outQuestIds.Length > 0);
+
                 for (int positionIndex = 0;
                      positionIndex < source.Positions.Count;
                      positionIndex++)
@@ -1128,6 +1174,14 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                                 translation.Name,
                             welcomeMessage =
                                 translation.WelcomeMessage,
+                            services =
+                                services,
+                            saleItems =
+                                saleItems,
+                            inQuestIds =
+                                inQuestIds,
+                            outQuestIds =
+                                outQuestIds,
                             position = position.Position,
                             yawDegrees =
                                 position.Yaw * Mathf.Rad2Deg,
