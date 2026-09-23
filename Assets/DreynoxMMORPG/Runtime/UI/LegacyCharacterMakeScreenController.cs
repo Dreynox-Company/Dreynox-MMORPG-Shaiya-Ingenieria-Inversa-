@@ -133,6 +133,16 @@ namespace Dreynox.Mmorpg.UI
             AppearanceChanged?.Invoke();
         }
 
+        public void SelectModeBasic()
+        {
+            SelectMode(CharacterDifficultyMode.Basic);
+        }
+
+        public void SelectModeUltimate()
+        {
+            SelectMode(CharacterDifficultyMode.Ultimate);
+        }
+
         public void NextFace()
         {
             _face = (_face + 1) % 5;
