@@ -125,7 +125,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
         }
 
         [Test]
-        public void CanonicalMonsterSDataResolvesEveryMapZeroMobWhenCorpusIsConfigured()
+        public void CanonicalMonsterExt5AndDbMonsterTablesMatchPs0032WhenCorpusIsConfigured()
         {
             CanonicalClientCorpus corpus =
                 CanonicalClientCorpus.FromStoredRoot();
@@ -137,11 +137,28 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     "Canonical ps0032 corpus is not configured on this machine.");
             }
 
-            LegacyMonsterSDataFile monsters =
+            LegacyMonsterSDataFile legacyClient =
                 LegacyMonsterSDataParser.ParseEncrypted(
                     corpus.Resolve(
                         "DATA_Español/monster/monster.sdata"),
                     validateChecksum: true);
+
+            Assert.AreEqual(4774, legacyClient.Records.Count);
+            Assert.AreEqual("Error Monster", legacyClient.Records[0].MobName);
+            CollectionAssert.AreEqual(
+                new byte[] { 1, 0, 0, 50, 0 },
+                legacyClient.Records[0].Extension5);
+            Assert.AreEqual(217, legacyClient.Records[1].ModelId);
+
+            LegacyDbMonsterDataFile db =
+                LegacyDbMonsterDataParser.ParseData(
+                    corpus.Resolve(
+                        "DATA_Español/binarysdata/dbmonsterdata.sdata"));
+
+            LegacyDbMonsterTextFile textTable =
+                LegacyDbMonsterDataParser.ParseText(
+                    corpus.Resolve(
+                        "DATA_Español/binarysdata/dbmonstertext_spn.sdata"));
 
             LegacyMonFile models =
                 LegacyMonParser.Parse(
@@ -153,10 +170,36 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     corpus.Resolve(
                         "DATA_Español/world/0.svmap"));
 
-            Assert.Greater(
-                monsters.Records.Count,
-                4984,
-                "Map 0 references MobId values through 4984.");
+            Assert.AreEqual(5008, db.Records.Count);
+            Assert.AreEqual(5008, textTable.Count);
+            Assert.AreEqual(863, models.Records.Count);
+
+            Assert.IsTrue(
+                db.TryGet(
+                    1,
+                    out LegacyDbMonsterDataRecord first));
+
+            Assert.AreEqual(217, first.Image);
+            Assert.AreEqual(38, first.Level);
+            Assert.AreEqual(2765, first.Hp);
+
+            Assert.IsTrue(
+                db.TryGet(
+                    4984,
+                    out LegacyDbMonsterDataRecord tideWitch));
+
+            Assert.AreEqual(262, tideWitch.Image);
+            Assert.AreEqual(80, tideWitch.Level);
+            Assert.AreEqual(130230, tideWitch.Hp);
+
+            Assert.IsTrue(
+                textTable.TryGetName(
+                    4984,
+                    out string tideWitchName));
+
+            Assert.AreEqual(
+                "Bruja de la marea",
+                tideWitchName);
 
             var uniqueMobIds =
                 new HashSet<uint>();
@@ -177,25 +220,79 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 }
             }
 
+            Assert.AreEqual(65, uniqueMobIds.Count);
+            Assert.IsTrue(uniqueMobIds.Contains(4984));
+
             foreach (uint mobId in uniqueMobIds)
             {
                 Assert.IsTrue(
-                    monsters.TryGet(
+                    db.TryGet(
                         mobId,
-                        out LegacyMonsterRecord record),
-                    "Missing Monster.SData record " + mobId + ".");
+                        out LegacyDbMonsterDataRecord record),
+                    "Missing DBMonsterData id " + mobId + ".");
 
-                Assert.GreaterOrEqual(
-                    record.ModelId,
-                    0,
-                    "Negative model for MobId " + mobId + ".");
-
+                Assert.GreaterOrEqual(record.Image, 0);
                 Assert.Less(
-                    record.ModelId,
+                    record.Image,
                     models.Records.Count,
-                    "MON model index out of range for MobId " +
-                    mobId + ".");
+                    "MON image out of range for MobId " + mobId + ".");
+
+                Assert.IsTrue(
+                    textTable.TryGetName(
+                        mobId,
+                        out string name),
+                    "Missing Spanish DBMonsterText id " + mobId + ".");
+
+                Assert.IsNotNull(name);
             }
+        }
+
+        [Test]
+        public void BinaryMonsterDataParsesExplicitIdsAndSpanishNames()
+        {
+            string[] fields =
+            {
+                "id", "image", "level", "ai", "hp", "size", "attrib",
+                "normaltime", "normalstep", "chasetime", "chasestep",
+                "chaserange", "attackani1", "attacktype1", "attacktime1",
+                "attackrange1", "attack1", "attackplus1", "attackattrib1",
+                "attackspecial1", "attackok1", "attackani2", "attacktype2",
+                "attacktime2", "attackrange2", "attack2", "attackplus2",
+                "attackattrib2", "attackspecial2", "attackok2", "attackani3",
+                "attacktype3", "attacktime3", "attackrange3", "attack3",
+                "attackplus3", "attackattrib3", "attackspecial3", "attackok3"
+            };
+
+            LegacyDbMonsterDataFile db =
+                LegacyDbMonsterDataParser.ParseDataPlain(
+                    BuildBinaryMonsterDataFixture(fields));
+
+            Assert.AreEqual(1, db.Records.Count);
+
+            LegacyDbMonsterDataRecord record =
+                db.Records[0];
+
+            Assert.AreEqual(4984, record.Id);
+            Assert.AreEqual(262, record.Image);
+            Assert.AreEqual(80, record.Level);
+            Assert.AreEqual(130230, record.Hp);
+            Assert.AreEqual(2, record.Size);
+            Assert.AreEqual(4, record.Element);
+
+            LegacyDbMonsterTextFile names =
+                LegacyDbMonsterDataParser.ParseTextPlain(
+                    BuildBinaryMonsterTextFixture(
+                        4984,
+                        "Bruja de la marea"));
+
+            Assert.IsTrue(
+                names.TryGetName(
+                    4984,
+                    out string value));
+
+            Assert.AreEqual(
+                "Bruja de la marea",
+                value);
         }
 
         private static byte[] EncryptRegularForTest(
@@ -301,6 +398,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
             writer.Write(attackAni3);
             writer.Write(attackPlus3);
             writer.Write(questItemId);
+            writer.Write(new byte[] { 1, 0, 0, 50, 0 });
         }
         [Test]
         public void MonsterModelResolverDetectsDirectIndexing()
@@ -382,6 +480,83 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     records[1],
                     mode,
                     3));
+        }
+
+        private static byte[] BuildBinaryMonsterDataFixture(
+            IReadOnlyList<string> fields)
+        {
+            using (MemoryStream stream = new MemoryStream())
+            using (BinaryWriter writer =
+                   new BinaryWriter(stream, Encoding.Unicode))
+            {
+                writer.Write(new byte[128]);
+                writer.Write(fields.Count);
+
+                for (int i = 0; i < fields.Count; i++)
+                {
+                    writer.Write((byte)fields[i].Length);
+                    writer.Write(
+                        Encoding.Unicode.GetBytes(
+                            fields[i]));
+                }
+
+                writer.Write(1);
+
+                for (int i = 0; i < fields.Count; i++)
+                {
+                    long value = 0;
+
+                    switch (fields[i])
+                    {
+                        case "id": value = 4984; break;
+                        case "image": value = 262; break;
+                        case "level": value = 80; break;
+                        case "ai": value = 1; break;
+                        case "hp": value = 130230; break;
+                        case "size": value = 2; break;
+                        case "attrib": value = 4; break;
+                        case "normaltime": value = 4000; break;
+                        case "normalstep": value = 6; break;
+                        case "chasetime": value = 1800; break;
+                        case "chasestep": value = 9; break;
+                        case "chaserange": value = 9; break;
+                    }
+
+                    writer.Write(value);
+                }
+
+                return stream.ToArray();
+            }
+        }
+
+        private static byte[] BuildBinaryMonsterTextFixture(
+            long id,
+            string name)
+        {
+            byte[] bytes = new byte[name.Length];
+            for (int i = 0; i < name.Length; i++)
+                bytes[i] = (byte)name[i];
+
+            using (MemoryStream stream = new MemoryStream())
+            using (BinaryWriter writer =
+                   new BinaryWriter(stream, Encoding.UTF8))
+            {
+                writer.Write(new byte[128]);
+                writer.Write(2);
+
+                writer.Write((byte)2);
+                writer.Write(Encoding.Unicode.GetBytes("id"));
+
+                writer.Write((byte)4);
+                writer.Write(Encoding.Unicode.GetBytes("name"));
+
+                writer.Write(1);
+                writer.Write(id);
+                writer.Write(bytes.Length);
+                writer.Write(bytes);
+
+                return stream.ToArray();
+            }
         }
 
     }
