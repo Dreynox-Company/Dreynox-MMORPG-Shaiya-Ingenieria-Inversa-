@@ -6,5 +6,10 @@ namespace Dreynox.Mmorpg.Gameplay.Equipment
     {
         [SerializeField] private string socketName;
         public string SocketName => socketName;
+
+        public void Configure(string value)
+        {
+            socketName = value ?? string.Empty;
+        }
     }
 }
