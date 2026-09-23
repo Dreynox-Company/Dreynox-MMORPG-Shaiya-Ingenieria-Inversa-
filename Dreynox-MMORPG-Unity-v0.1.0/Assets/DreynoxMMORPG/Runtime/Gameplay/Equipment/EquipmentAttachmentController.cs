@@ -50,6 +50,19 @@ namespace Dreynox.Mmorpg.Gameplay.Equipment
 
         public bool Has(EquipmentSlot slot) => _instances.ContainsKey(slot) && _instances[slot] != null;
 
-        public bool TryGetDefinition(EquipmentSlot slot, out AttachmentDefinition definition) => _definitions.TryGetValue(slot, out definition);
+        public bool TryGetDefinition(
+            EquipmentSlot slot,
+            out AttachmentDefinition definition)
+        {
+            return _definitions.TryGetValue(slot, out definition);
+        }
+
+        public bool TryGetInstance(
+            EquipmentSlot slot,
+            out GameObject instance)
+        {
+            return _instances.TryGetValue(slot, out instance) &&
+                   instance != null;
+        }
     }
 }
