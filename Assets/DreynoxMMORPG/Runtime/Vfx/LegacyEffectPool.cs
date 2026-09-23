@@ -167,7 +167,11 @@ namespace Dreynox.Mmorpg.Vfx
             }
 
             item.sourcePrefab = prefab;
+
+            item.returning = true;
             instance.SetActive(false);
+            item.returning = false;
+
             return item;
         }
     }
