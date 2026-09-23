@@ -9,21 +9,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Este paso le pide a Unity el archivo de activación (.alf)
+      # Usamos la versión v2 que es la oficial estable para este paso
       - name: Request activation file
-        uses: game-ci/unity-request-activation-file@v4
+        uses: game-ci/unity-request-activation-file@v2
         id: get-alf
         with:
           unityVersion: 6000.0.0f1
 
-      # Este paso guarda el archivo en GitHub para que lo descargues
-      - name: Upload ALF Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Unity6-Activation-File
-          path: ${{ steps.get-alf.outputs.filePath }}
-
-      # Este paso va a guardar el archivo para que lo puedas descargar de GitHub
+      # Guarda el archivo generado (.alf) en tus artefactos de GitHub
       - name: Upload ALF Artifact
         uses: actions/upload-artifact@v4
         with:
