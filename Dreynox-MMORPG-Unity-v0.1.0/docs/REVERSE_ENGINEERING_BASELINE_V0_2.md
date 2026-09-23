@@ -33,14 +33,16 @@ The auxiliary table is 32 bytes per row:
 
 Validation additionally requires exact resource coverage from byte 128 to `auxiliaryOffset`, no gaps/overlaps, contiguous fragment chains, exact chunk byte totals, and no unused auxiliary rows.
 
-## Known original game.exe identity
+## Known game.exe baselines
 
-A previously validated reference build is tracked only by non-secret static identity:
+Evidence from the previous investigation contains more than one Shaiya client binary. They are deliberately catalogued as separate baselines rather than conflated:
 
-- bytes: `5,352,488`
-- SHA-256: `509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d`
+| Baseline | Bytes | SHA-256 | Evidence |
+|---|---:|---|---|
+| `ps0032-x86-3.3.2.10` | 5,352,488 | `509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d` | Audited PE32 x86 client / ps0032 reference |
+| `spk-v4-selected-client-2026-09-20` | 8,297,632 | `4768f225250838787db5496ecf304753fb44a6c161b5290f06e836b83e0dd1e8` | Later client selected during SPK V4 static inspection |
 
-`EXE Parity Inspector` verifies whether a selected local `game.exe` is that exact reference and captures PE architecture, sections and import DLLs. The Unity executable is not expected to be byte-identical; future parity gates are behavioral/visual.
+`EXE Parity Inspector` identifies which exact baseline was selected before comparing PE architecture, sections and import DLLs. Unknown fingerprints remain valid inspection targets but are explicitly treated as independent variants. The Unity executable is not expected to be byte-identical; future parity gates are behavioral/visual.
 
 ## Windows build
 

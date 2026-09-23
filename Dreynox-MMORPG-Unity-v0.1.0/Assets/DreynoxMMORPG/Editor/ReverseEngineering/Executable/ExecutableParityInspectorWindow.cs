@@ -46,9 +46,12 @@ namespace Dreynox.Mmorpg.Editor.ReverseEngineering.Executable
                 _legacy = File.Exists(_legacyPath) ? PortableExecutableInspector.Analyze(_legacyPath) : null;
                 _dreynox = File.Exists(_dreynoxPath) ? PortableExecutableInspector.Analyze(_dreynoxPath) : null;
                 if (_legacy == null && _dreynox == null) throw new FileNotFoundException("No se seleccionó ningún ejecutable existente.");
-                _status = _legacy != null && LegacyGameExeBaseline.IsExactKnownBuild(_legacy)
-                    ? "game.exe coincide exactamente con la referencia estática validada previamente."
-                    : _legacy != null ? "game.exe es un PE válido, pero no coincide con la huella de la referencia conocida." : "Build Dreynox analizado; falta seleccionar el game.exe de referencia.";
+                LegacyGameExeIdentity match = LegacyGameExeBaseline.Match(_legacy);
+                _status = match != null
+                    ? "game.exe coincide exactamente con baseline conocido: " + match.id + "."
+                    : _legacy != null
+                        ? "game.exe es un PE válido, pero no coincide con ninguna huella catalogada. Se tratará como una variante independiente."
+                        : "Build Dreynox analizado; falta seleccionar el game.exe de referencia.";
             }
             catch (Exception ex)
             {
@@ -70,7 +73,12 @@ namespace Dreynox.Mmorpg.Editor.ReverseEngineering.Executable
             EditorGUILayout.LabelField("Subsystem", "0x" + info.subsystem.ToString("X4"));
             EditorGUILayout.LabelField("Sections", string.Join(", ", info.sections.Select(x => x.name)));
             EditorGUILayout.LabelField("Import DLLs", info.importDlls.Count == 0 ? "(no enumeradas)" : string.Join(", ", info.importDlls));
-            if (legacy) EditorGUILayout.LabelField("Referencia conocida", LegacyGameExeBaseline.IsExactKnownBuild(info) ? "MATCH" : "DIFFERENT");
+            if (legacy)
+            {
+                LegacyGameExeIdentity match = LegacyGameExeBaseline.Match(info);
+                EditorGUILayout.LabelField("Baseline", match == null ? "UNKNOWN / NUEVA VARIANTE" : match.id);
+                if (match != null) EditorGUILayout.HelpBox(match.evidence, MessageType.None);
+            }
         }
 
         private void DrawComparison()

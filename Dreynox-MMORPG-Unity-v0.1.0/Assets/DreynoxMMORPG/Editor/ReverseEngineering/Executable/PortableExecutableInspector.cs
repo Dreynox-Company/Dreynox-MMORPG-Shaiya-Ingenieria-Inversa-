@@ -43,15 +43,46 @@ namespace Dreynox.Mmorpg.Editor.ReverseEngineering.Executable
         public string MachineHex => "0x" + machine.ToString("X4");
     }
 
+    [Serializable]
+    public sealed class LegacyGameExeIdentity
+    {
+        public string id;
+        public string evidence;
+        public long fileBytes;
+        public string sha256;
+    }
+
     public static class LegacyGameExeBaseline
     {
-        public const long FileBytes = 5_352_488;
-        public const string Sha256 = "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d";
-
-        public static bool IsExactKnownBuild(PortableExecutableInfo info)
+        private static readonly LegacyGameExeIdentity[] Known =
         {
-            return info != null && info.fileBytes == FileBytes && string.Equals(info.sha256, Sha256, StringComparison.OrdinalIgnoreCase);
+            new LegacyGameExeIdentity
+            {
+                id = "ps0032-x86-3.3.2.10",
+                evidence = "Cliente PE32 x86 validado en auditoría y referencia ps0032.",
+                fileBytes = 5_352_488,
+                sha256 = "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d"
+            },
+            new LegacyGameExeIdentity
+            {
+                id = "spk-v4-selected-client-2026-09-20",
+                evidence = "Cliente seleccionado en inspección estática SPK V4; mantener separado del baseline ps0032.",
+                fileBytes = 8_297_632,
+                sha256 = "4768f225250838787db5496ecf304753fb44a6c161b5290f06e836b83e0dd1e8"
+            }
+        };
+
+        public static IReadOnlyList<LegacyGameExeIdentity> KnownBuilds => Known;
+
+        public static LegacyGameExeIdentity Match(PortableExecutableInfo info)
+        {
+            if (info == null) return null;
+            return Known.FirstOrDefault(x =>
+                x.fileBytes == info.fileBytes &&
+                string.Equals(x.sha256, info.sha256, StringComparison.OrdinalIgnoreCase));
         }
+
+        public static bool IsExactKnownBuild(PortableExecutableInfo info) => Match(info) != null;
     }
 
     public static class PortableExecutableInspector
