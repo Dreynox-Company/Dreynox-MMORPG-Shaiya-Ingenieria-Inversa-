@@ -354,5 +354,36 @@ namespace Dreynox.Mmorpg.Tests
             Assert.AreEqual(10, combat.LastHitTargetId.Value);
         }
 
+        [TestCase(30)]
+        [TestCase(60)]
+        [TestCase(144)]
+        public void CombatDescentDurationIsFrameRateIndependent(int framesPerSecond)
+        {
+            var flight = new FlightTransitionCore();
+            flight.SetWingsEquipped(true);
+            Assert.IsTrue(flight.ToggleManualFlight());
+            flight.Tick(FlightTransitionCore.DefaultTakeoffSeconds);
+            flight.SetMoving(true);
+            flight.SetCombatGuard(true);
+            Assert.IsTrue(flight.BeginCombatDescent());
+
+            double dt = 1.0 / framesPerSecond;
+            double elapsed = 0.0;
+            while (flight.Phase == ClientFlightPhase.CombatDescending &&
+                   elapsed < 1.0)
+            {
+                flight.Tick(dt);
+                elapsed += dt;
+            }
+
+            Assert.AreEqual(ClientFlightPhase.Grounded, flight.Phase);
+            Assert.GreaterOrEqual(
+                elapsed + 0.0000001,
+                FlightTransitionCore.DefaultCombatDescentSeconds);
+            Assert.LessOrEqual(
+                elapsed,
+                FlightTransitionCore.DefaultCombatDescentSeconds + dt + 0.0000001);
+        }
+
     }
 }
