@@ -86,10 +86,9 @@ namespace Dreynox.Mmorpg.Tests.Editor
                         "DATA_Español/entity/building/R1_Rock_11.smod"));
 
             Assert.AreEqual(1, parsed.Meshes.Count);
-            Assert.AreEqual(
+            StringAssert.AreEqualIgnoringCase(
                 "A1_bluff_03.tga",
-                parsed.Meshes[0].TextureName,
-                true);
+                parsed.Meshes[0].TextureName);
 
             Assert.AreEqual(
                 394,
