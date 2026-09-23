@@ -23,9 +23,9 @@
 - Cámara orbital con collision SphereCast.
 - Networking worker TCP/UDP existente.
 - Inspector de `game.exe` y catálogo de variantes conocidas.
-- Sandbox jugable para iteraciones lado a lado.
+- Sandbox jugable para iteraciones lado a lado.\n- `SemanticAnimationPlayer` basado en Playables para conectar clips reales por semántica sin Animator monolítico.
 
-## Activo ahora
+## Gate determinista actual\n\n- Parity harness C# puro: **91 checks verdes** en la última ejecución validada de esta iteración.\n- Incluye cámara +90°→-X, vuelo manual, descenso de combate, target diferido, 30/60/144 Hz, visual metrics, inventario, skills, quests, social, world streaming y client flow.\n- Unity Player/EditMode siguen condicionados a que GitHub Actions disponga de activación Unity; el pipeline no declara un EXE si esa etapa no se ejecuta.\n\n## Activo ahora
 
 1. Conectar los `ParityCore` ya portados a adapters Unity reales sin duplicar lógica.
 2. Conectar assets reales extraídos: rigs, personajes, armas, alas, ANI, mapas, cielo y materiales.
