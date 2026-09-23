@@ -1,24 +1,119 @@
-name: Get Unity Activation File
+name: Unity Client Parity
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - work/unity-reverse-engineering-v0.2.0
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  checks: write
+
+env:
+  UNITY_PROJECT_PATH: Dreynox-MMORPG-Unity-v0.1.0
 
 jobs:
-  unity-windows:
+  parity-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Usamos la versión v2 que es la oficial estable para este paso
-      - name: Request activation file
-        uses: game-ci/unity-request-activation-file@v2
-        id: get-alf
+      - uses: actions/setup-python@v5
         with:
-          unityVersion: 6000.0.0f1
+          python-version: '3.12'
 
-      # Guarda el archivo generado (.alf) en tus artefactos de GitHub
-      - name: Upload ALF Artifact
+      - name: Validate Unity project sources
+        run: python "$UNITY_PROJECT_PATH/Tools/validate_project.py"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Compile and run deterministic client parity harness
+        run: dotnet run --project "$UNITY_PROJECT_PATH/Tools/ParityHarness/ParityHarness.csproj" --configuration Release
+
+  unity-windows:
+    needs: parity-core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true # Crucial para descargar assets pesados si usas Git LFS
+
+      - name: Detect Unity activation
+        id: unity-license
+        shell: bash
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          # Se activa si hay licencia personal O si están los datos completos de una licencia Pro
+          if [ -n "$UNITY_LICENSE" ] || { [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; }; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Unity activation configuration detected. Proceeding with Unity workflows."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Unity activation not configured; deterministic C# parity gate still ran."
+          fi
+
+      - name: Cache Unity Library
+        if: steps.unity-license.outputs.ready == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.UNITY_PROJECT_PATH }}/Library
+          key: Library-${{ runner.os }}-${{ hashFiles('Dreynox-MMORPG-Unity-v0.1.0/Assets/**', 'Dreynox-MMORPG-Unity-v0.1.0/Packages/**', 'Dreynox-MMORPG-Unity-v0.1.0/ProjectSettings/**') }}
+          restore-keys: |
+            Library-${{ runner.os }}-
+
+      - name: Unity EditMode tests
+        if: steps.unity-license.outputs.ready == 'true'
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          testMode: EditMode
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          artifactsPath: ${{ env.UNITY_PROJECT_PATH }}/TestResults
+
+      - name: Build StandaloneWindows64
+        if: steps.unity-license.outputs.ready == 'true'
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          unityVersion: auto
+          targetPlatform: StandaloneWindows64
+          buildMethod: Dreynox.Mmorpg.Editor.Build.DreynoxWindowsBuild.BuildParityBatch
+          allowDirtyBuild: true
+
+      - name: Upload Windows player
+        if: steps.unity-license.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: Unity6-Activation-File
-          path: ${{ steps.get-alf.outputs.filePath }}
+          name: Dreynox-Mmorpg-Parity-Windows-x64
+          path: ${{ env.UNITY_PROJECT_PATH }}/Builds/WindowsParity/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Unity test evidence
+        if: always() && steps.unity-license.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dreynox-Mmorpg-Unity-TestResults
+          path: ${{ env.UNITY_PROJECT_PATH }}/TestResults/
+          if-no-files-found: warn
+          retention-days: 14
