@@ -95,6 +95,33 @@ function Invoke-Checked {
     }
 }
 
+function Remove-DirectoryWithRetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [int]$Attempts = 5
+    )
+
+    if (-not (Test-Path $Path)) {
+        return
+    }
+
+    for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+        try {
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+            return
+        }
+        catch {
+            if ($attempt -ge $Attempts) {
+                throw
+            }
+
+            Write-Warning "No se pudo limpiar $Path (intento $attempt/$Attempts). Reintentando..."
+            Start-Sleep -Seconds 2
+        }
+    }
+}
+
 Set-Location $RepoRoot
 
 Write-Host "Unity project: $RepoRoot"
@@ -127,16 +154,45 @@ Después abre una nueva terminal y verifica:
 
         $TestResult = Join-Path $ResultsDir "editmode-results.xml"
         $TestLog = Join-Path $ResultsDir "editmode-editor.log"
+        $PackageCache = Join-Path $RepoRoot "Library\PackageCache"
 
-        Invoke-Checked -Executable $UnityEditor -Arguments @(
-            "-batchmode",
-            "-nographics",
-            "-projectPath", $RepoRoot,
-            "-runTests",
-            "-testPlatform", "editmode",
-            "-testResults", $TestResult,
-            "-logFile", $TestLog
-        ) -Description "Unity EditMode tests"
+        # Self-hosted Windows runners can retain a transient Package Manager lock
+        # after a cancelled Unity process. Rebuild PackageCache from a clean state.
+        Remove-DirectoryWithRetry -Path $PackageCache
+
+        for ($attempt = 1; $attempt -le 2; $attempt++) {
+            Remove-Item -LiteralPath $TestResult -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $TestLog -Force -ErrorAction SilentlyContinue
+
+            try {
+                Invoke-Checked -Executable $UnityEditor -Arguments @(
+                    "-batchmode",
+                    "-nographics",
+                    "-projectPath", $RepoRoot,
+                    "-runTests",
+                    "-testPlatform", "editmode",
+                    "-testResults", $TestResult,
+                    "-logFile", $TestLog
+                ) -Description "Unity EditMode tests"
+            }
+            catch {
+                $packageRenameLock = $false
+                if (Test-Path $TestLog) {
+                    $packageRenameLock = [bool](Select-String -Path $TestLog -Pattern "EPERM: operation not permitted, rename" -SimpleMatch -Quiet)
+                }
+
+                if ($attempt -lt 2 -and $packageRenameLock) {
+                    Write-Warning "Unity Package Manager encontró un lock EPERM; limpiando PackageCache y reintentando una vez."
+                    Remove-DirectoryWithRetry -Path $PackageCache
+                    Start-Sleep -Seconds 2
+                    continue
+                }
+
+                throw
+            }
+
+            break
+        }
 
         if (-not (Test-Path $TestResult)) {
             throw "Unity terminó sin generar $TestResult."
