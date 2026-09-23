@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - work/unity-reverse-engineering-v0.2.0
+      - 'work/unity-*'
   pull_request:
     branches:
       - main
@@ -14,7 +14,7 @@ permissions:
   checks: write
 
 env:
-  UNITY_PROJECT_PATH: Dreynox-MMORPG-Unity-v0.1.0
+  UNITY_PROJECT_PATH: .
 
 jobs:
   parity-core:
@@ -27,14 +27,14 @@ jobs:
           python-version: '3.12'
 
       - name: Validate Unity project sources
-        run: python "$UNITY_PROJECT_PATH/Tools/validate_project.py"
+        run: python "Tools/validate_project.py"
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
       - name: Compile and run deterministic client parity harness
-        run: dotnet run --project "$UNITY_PROJECT_PATH/Tools/ParityHarness/ParityHarness.csproj" --configuration Release
+        run: dotnet run --project "Tools/ParityHarness/ParityHarness.csproj" --configuration Release
 
   unity-windows:
     needs: parity-core
@@ -66,8 +66,8 @@ jobs:
         if: steps.unity-license.outputs.ready == 'true'
         uses: actions/cache@v4
         with:
-          path: ${{ env.UNITY_PROJECT_PATH }}/Library
-          key: Library-${{ runner.os }}-${{ hashFiles('Dreynox-MMORPG-Unity-v0.1.0/Assets/**', 'Dreynox-MMORPG-Unity-v0.1.0/Packages/**', 'Dreynox-MMORPG-Unity-v0.1.0/ProjectSettings/**') }}
+          path: Library
+          key: Library-${{ runner.os }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-${{ runner.os }}-
 
@@ -105,7 +105,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Dreynox-Mmorpg-Parity-Windows-x64
-          path: ${{ env.UNITY_PROJECT_PATH }}/Builds/WindowsParity/
+          path: Builds/WindowsParity/
           if-no-files-found: error
           retention-days: 14
 
@@ -114,6 +114,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Dreynox-Mmorpg-Unity-TestResults
-          path: ${{ env.UNITY_PROJECT_PATH }}/TestResults/
+          path: TestResults/
           if-no-files-found: warn
           retention-days: 14
