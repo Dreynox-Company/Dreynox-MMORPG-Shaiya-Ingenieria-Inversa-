@@ -299,6 +299,26 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                             outputRoot,
                             "death");
 
+                    GameObject attackEffect1 =
+                        LegacyEftPrefabImporter.Import(
+                            corpus,
+                            record.Attack1Effect);
+
+                    GameObject attackEffect2 =
+                        LegacyEftPrefabImporter.Import(
+                            corpus,
+                            record.Attack2Effect);
+
+                    GameObject attackEffect3 =
+                        LegacyEftPrefabImporter.Import(
+                            corpus,
+                            record.Attack3Effect);
+
+                    GameObject dieEffect =
+                        LegacyEftPrefabImporter.Import(
+                            corpus,
+                            record.DieEffect);
+
                     LegacyMonFeedbackController feedback =
                         entity.AddComponent<LegacyMonFeedbackController>();
 
@@ -308,7 +328,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         attack1,
                         attack2,
                         attack3,
-                        death);
+                        death,
+                        attackEffect1,
+                        attackEffect2,
+                        attackEffect3,
+                        dieEffect);
                 }
 
                 string prefabPath =
