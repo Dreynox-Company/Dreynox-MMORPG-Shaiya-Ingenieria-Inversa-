@@ -82,9 +82,10 @@ for source in ROOT.rglob('*.cs'):
             str(source.relative_to(ROOT))
         )
 
-    # A lone backslash inside a C# character literal is invalid. The valid
-    # backslash literal is '\\\\'.
-    if "'\\\\'" in text and "'\\\\\\\\'" not in text:
+    # A lone backslash inside a C# character literal is invalid. Construct
+    # the token explicitly to avoid escaping ambiguity in this validator.
+    invalid_backslash_char = "'" + chr(92) + "'"
+    if invalid_backslash_char in text:
         errors.append(
             'invalid C# backslash character literal: ' +
             str(source.relative_to(ROOT))
