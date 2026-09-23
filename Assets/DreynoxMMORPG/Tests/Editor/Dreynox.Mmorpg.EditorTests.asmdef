@@ -1,0 +1,15 @@
+{
+  "name": "Dreynox.Mmorpg.EditorTests",
+  "rootNamespace": "Dreynox.Mmorpg.Tests",
+  "references": ["Dreynox.Mmorpg.Runtime", "Dreynox.Mmorpg.Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
