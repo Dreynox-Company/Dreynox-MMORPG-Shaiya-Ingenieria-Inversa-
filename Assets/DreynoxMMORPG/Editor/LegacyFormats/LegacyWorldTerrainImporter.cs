@@ -101,6 +101,33 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     ", MON=" + monsterModels.Records.Count + ".");
             }
 
+            string npcQuestPath =
+                ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/npc/npcquest.sdata");
+
+            string npcMonPath =
+                ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/npc/npc.mon");
+
+            LegacyNpcQuestHeaderFile npcDefinitions =
+                LegacyNpcQuestHeaderParser.ParseEncrypted(
+                    npcQuestPath,
+                    validateChecksum: true);
+
+            LegacyMonFile npcModels =
+                LegacyMonParser.Parse(npcMonPath);
+
+            if (npcDefinitions.Definitions.Count != 2394 ||
+                npcModels.Records.Count != 264)
+            {
+                throw new InvalidDataException(
+                    "Canonical NPC catalogs changed. Definitions=" +
+                    npcDefinitions.Definitions.Count +
+                    ", MON=" + npcModels.Records.Count + ".");
+            }
+
             ValidateMapZeroBaseline(wld, svmap);
 
             EnsureFolder(OutputRoot);
@@ -244,6 +271,43 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 actor.transform,
                 monsterSpawns);
 
+            int resolvedNpcDefinitions;
+            int unresolvedNpcDefinitions;
+            int uniqueNpcModels;
+
+            List<LegacyNpcSpawnDefinition> npcSpawns =
+                BuildNpcSpawnDefinitions(
+                    corpus,
+                    svmap,
+                    npcDefinitions,
+                    npcModels,
+                    out resolvedNpcDefinitions,
+                    out unresolvedNpcDefinitions,
+                    out uniqueNpcModels);
+
+            if (resolvedNpcDefinitions != 141 ||
+                unresolvedNpcDefinitions != 9 ||
+                npcSpawns.Count != 180 ||
+                uniqueNpcModels != 41)
+            {
+                throw new InvalidDataException(
+                    "Canonical Map 0 NPC resolution changed. " +
+                    "resolvedDefs=" + resolvedNpcDefinitions +
+                    ", unresolvedDefs=" + unresolvedNpcDefinitions +
+                    ", positions=" + npcSpawns.Count +
+                    ", models=" + uniqueNpcModels + ".");
+            }
+
+            GameObject npcRuntime =
+                new GameObject("SVMAP_NPCs_Runtime");
+
+            LegacyNpcSpawnStreamer npcStreamer =
+                npcRuntime.AddComponent<LegacyNpcSpawnStreamer>();
+
+            npcStreamer.Configure(
+                actor.transform,
+                npcSpawns);
+
             GameObject cameraObject =
                 new GameObject("Main Camera");
 
@@ -298,6 +362,9 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 svmap.MonsterInstanceCount + " monster instances, " +
                 uniqueMonsterModels + " unique monster models, " +
                 monsterSpawns.Count + " streamed monster definitions, " +
+                resolvedNpcDefinitions + " resolved NPC definitions / " +
+                npcSpawns.Count + " NPC positions / " +
+                uniqueNpcModels + " NPC models, " +
                 buildingInstances + " buildings, " +
                 shapeInstances + " shapes and " +
                 treeInstances + " trees.");
@@ -877,6 +944,155 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     size,
                     Vector3.zero);
             }
+        }
+
+        private static List<LegacyNpcSpawnDefinition>
+            BuildNpcSpawnDefinitions(
+                CanonicalClientCorpus corpus,
+                LegacySvmapFile svmap,
+                LegacyNpcQuestHeaderFile definitions,
+                LegacyMonFile npcModels,
+                out int resolvedDefinitionCount,
+                out int unresolvedDefinitionCount,
+                out int uniqueModelCount)
+        {
+            if (corpus == null)
+                throw new ArgumentNullException(nameof(corpus));
+            if (svmap == null)
+                throw new ArgumentNullException(nameof(svmap));
+            if (definitions == null)
+                throw new ArgumentNullException(nameof(definitions));
+            if (npcModels == null)
+                throw new ArgumentNullException(nameof(npcModels));
+
+            var prefabs =
+                new Dictionary<int, GameObject>();
+
+            var spawns =
+                new List<LegacyNpcSpawnDefinition>();
+
+            resolvedDefinitionCount = 0;
+            unresolvedDefinitionCount = 0;
+
+            for (int definitionIndex = 0;
+                 definitionIndex < svmap.Npcs.Count;
+                 definitionIndex++)
+            {
+                LegacySvmapNpc source =
+                    svmap.Npcs[definitionIndex];
+
+                LegacyNpcDefinition definition;
+                if (!definitions.TryGet(
+                        source.NpcType,
+                        source.NpcId,
+                        out definition))
+                {
+                    unresolvedDefinitionCount++;
+
+                    // Map 0 contains nine known placeholder definitions using
+                    // (0,0). Anything else is a real regression.
+                    if (source.NpcType != 0 ||
+                        source.NpcId != 0)
+                    {
+                        throw new InvalidDataException(
+                            "Map 0 references unresolved NPC key " +
+                            source.NpcType + "/" +
+                            source.NpcId + ".");
+                    }
+
+                    continue;
+                }
+
+                resolvedDefinitionCount++;
+
+                int modelIndex =
+                    definition.Model;
+
+                if (modelIndex < 0 ||
+                    modelIndex >= npcModels.Records.Count)
+                {
+                    throw new InvalidDataException(
+                        "NPC " + source.NpcType +
+                        "/" + source.NpcId +
+                        " resolves model " + modelIndex +
+                        " outside npc.mon.");
+                }
+
+                GameObject prefab;
+                if (!prefabs.TryGetValue(
+                        modelIndex,
+                        out prefab))
+                {
+                    prefab =
+                        LegacyMonPrefabImporter.Import(
+                            LegacyMonCatalogKind.Npc,
+                            modelIndex);
+
+                    if (prefab == null)
+                    {
+                        throw new InvalidDataException(
+                            "NPC MON importer returned null for model " +
+                            modelIndex + ".");
+                    }
+
+                    prefabs.Add(modelIndex, prefab);
+                }
+
+                LegacyNpcGateTargetRuntime[] gateTargets =
+                    new LegacyNpcGateTargetRuntime[
+                        definition.GateTargets.Count];
+
+                for (int gateIndex = 0;
+                     gateIndex < definition.GateTargets.Count;
+                     gateIndex++)
+                {
+                    LegacyNpcGateTarget target =
+                        definition.GateTargets[gateIndex];
+
+                    gateTargets[gateIndex] =
+                        new LegacyNpcGateTargetRuntime
+                        {
+                            mapId = target.MapId,
+                            position =
+                                new Vector3(
+                                    target.X,
+                                    target.Y,
+                                    target.Z),
+                            cost = target.Cost
+                        };
+                }
+
+                for (int positionIndex = 0;
+                     positionIndex < source.Positions.Count;
+                     positionIndex++)
+                {
+                    LegacySvmapNpcPosition position =
+                        source.Positions[positionIndex];
+
+                    spawns.Add(
+                        new LegacyNpcSpawnDefinition
+                        {
+                            npcType = source.NpcType,
+                            typeId = source.NpcId,
+                            modelIndex = modelIndex,
+                            faction = definition.Faction,
+                            moveDistance = definition.MoveDistance,
+                            moveSpeed = definition.MoveSpeed,
+                            merchantType =
+                                definition.MerchantType.HasValue
+                                    ? definition.MerchantType.Value
+                                    : -1,
+                            position = position.Position,
+                            yawDegrees =
+                                position.Yaw * Mathf.Rad2Deg,
+                            gateTargets = gateTargets,
+                            prefab = prefab
+                        });
+                }
+            }
+
+            uniqueModelCount = prefabs.Count;
+            return spawns;
         }
 
         private static List<LegacyMonsterSpawnDefinition>
