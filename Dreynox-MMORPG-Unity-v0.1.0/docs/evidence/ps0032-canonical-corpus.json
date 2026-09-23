@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "id": "ps0032-x86-3.3.2.10",
+  "sourceArchive": {
+    "multipart": [
+      "Sh.part1.rar",
+      "Sh.part2.rar",
+      "Sh.part3.rar",
+      "Sh.part4.rar",
+      "Sh.part5.rar",
+      "Sh.part6.rar",
+      "Sh.part7.rar"
+    ],
+    "innerZip": "Sh.zip",
+    "innerZipBytes": 3452205786,
+    "innerZipSha256": "78136f45ee45d3b0c6e03b829412189cab4d32ae5670a8d8b65892154673cfd5"
+  },
+  "client": {
+    "path": "game.exe",
+    "bytes": 5352488,
+    "sha256": "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d"
+  },
+  "data": {
+    "root": "DATA_Español/",
+    "files": 55521,
+    "totalArchiveFiles": 55539,
+    "totalUncompressedBytes": 7241062805,
+    "counts": {
+      "dds": 19652,
+      "tga": 10184,
+      "3dc": 7915,
+      "ani": 7305,
+      "smod": 2956,
+      "wav": 1872,
+      "3de": 1460,
+      "eft": 1066,
+      "3do": 557,
+      "svmap": 111,
+      "sdata": 87
+    },
+    "majorDirectories": {
+      "character": 15094,
+      "interface": 10168,
+      "entity": 7751,
+      "monster": 6073,
+      "effect": 4438,
+      "world": 2734,
+      "npc": 2528,
+      "sound": 1872,
+      "item": 1314,
+      "cloak": 1180,
+      "vehicle": 1017,
+      "terrain": 178,
+      "sky": 117
+    }
+  },
+  "wingEvidence": {
+    "wingPositionPath": "DATA_Español/excelxml/wingposition.xml",
+    "wingPositionBytes": 48463,
+    "wingPositionSha256": "8a2c376c898bb025550b5fe34b92a40dbbbb9e39063619cfee4756006908cd03",
+    "profiles": 48,
+    "families": 4,
+    "jobs": 6,
+    "sexes": 2,
+    "boneIndex": 4,
+    "wingMonPath": "DATA_Español/character/wing/wing.mon",
+    "wingMonBytes": 7476,
+    "wingMonSha256": "338444d1fef0f8026f1609a2f52cbe5732f2d17fdfb48ce410d206dee33c50dd"
+  },
+  "offline": {
+    "loginPort": 30800,
+    "sessions": 2,
+    "mode": "native ps0032 original; loopback only",
+    "mapPopulation": {
+      "0": {
+        "portals": 11,
+        "npcs": 141,
+        "mobAreas": 509,
+        "mobs": 1330,
+        "bosses": 0,
+        "obelisks": 1
+      },
+      "1": {
+        "portals": 11,
+        "npcs": 247,
+        "mobAreas": 502,
+        "mobs": 1186,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "2": {
+        "portals": 11,
+        "npcs": 194,
+        "mobAreas": 800,
+        "mobs": 868,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "18": {
+        "portals": 2,
+        "npcs": 72,
+        "mobAreas": 221,
+        "mobs": 452,
+        "bosses": 0,
+        "obelisks": 1
+      },
+      "19": {
+        "portals": 9,
+        "npcs": 128,
+        "mobAreas": 622,
+        "mobs": 1208,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "20": {
+        "portals": 8,
+        "npcs": 178,
+        "mobAreas": 601,
+        "mobs": 1236,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "29": {
+        "portals": 3,
+        "npcs": 137,
+        "mobAreas": 579,
+        "mobs": 1107,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "35": {
+        "portals": 3,
+        "npcs": 155,
+        "mobAreas": 0,
+        "mobs": 0,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "36": {
+        "portals": 5,
+        "npcs": 155,
+        "mobAreas": 0,
+        "mobs": 0,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "40": {
+        "portals": 0,
+        "npcs": 2,
+        "mobAreas": 0,
+        "mobs": 0,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "42": {
+        "portals": 3,
+        "npcs": 47,
+        "mobAreas": 0,
+        "mobs": 0,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "53": {
+        "portals": 4,
+        "npcs": 5,
+        "mobAreas": 0,
+        "mobs": 0,
+        "bosses": 0,
+        "obelisks": 0
+      },
+      "54": {
+        "portals": 5,
+        "npcs": 5,
+        "mobAreas": 0,
+        "mobs": 0,
+        "bosses": 0,
+        "obelisks": 0
+      }
+    }
+  }
+}

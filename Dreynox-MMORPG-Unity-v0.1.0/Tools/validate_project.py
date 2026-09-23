@@ -1,29 +1,85 @@
 from pathlib import Path
-import hashlib, json, sys
+import hashlib
+import json
+import sys
+
 ROOT = Path(__file__).resolve().parents[1]
+
 required = [
     'Assets/DreynoxMMORPG/Runtime/Dreynox.Mmorpg.Runtime.asmdef',
     'Assets/DreynoxMMORPG/Editor/Dreynox.Mmorpg.Editor.asmdef',
+    'Assets/DreynoxMMORPG/Runtime/ParityCore/ClientMotionCore.cs',
+    'Assets/DreynoxMMORPG/Runtime/ParityCore/ClientCoordinateCore.cs',
+    'Assets/DreynoxMMORPG/Runtime/ParityCore/FlightTransitionCore.cs',
+    'Assets/DreynoxMMORPG/Runtime/ParityCore/CombatCore.cs',
+    'Assets/DreynoxMMORPG/Runtime/Gameplay/Client/ShaiyaClientActor.cs',
+    'Assets/DreynoxMMORPG/Runtime/Gameplay/Animation/SemanticAnimationPlayer.cs',
+    'Assets/DreynoxMMORPG/Editor/Parity/VisualParityComparatorWindow.cs',
     'Packages/manifest.json',
     'ProjectSettings/ProjectVersion.txt',
-    'README.md'
+    'README.md',
 ]
-errors=[]
-for r in required:
-    if not (ROOT/r).exists(): errors.append('missing: '+r)
-json.loads((ROOT/'Packages/manifest.json').read_text(encoding='utf-8'))
-for p in ROOT.rglob('*.asmdef'): json.loads(p.read_text(encoding='utf-8'))
-for forbidden in ['Library','Temp','Logs','UserSettings']:
-    if (ROOT/forbidden).exists(): errors.append('forbidden generated dir: '+forbidden)
-for p in ROOT.rglob('*.cs'):
-    text=p.read_text(encoding='utf-8')
-    if text.count('{') != text.count('}'): errors.append('brace mismatch: '+str(p.relative_to(ROOT)))
-    if 'TODO' in text or 'IMPLEMENT HERE' in text.upper(): errors.append('placeholder marker: '+str(p.relative_to(ROOT)))
-manifest=[]
-for p in sorted(x for x in ROOT.rglob('*') if x.is_file() and '.git' not in x.parts):
-    h=hashlib.sha256(p.read_bytes()).hexdigest()
-    manifest.append(f'{h}  {p.relative_to(ROOT).as_posix()}')
-(ROOT/'SOURCE_SHA256.txt').write_text('\n'.join(manifest)+'\n',encoding='utf-8')
+
+# These files represented the bootstrap v0.1 architecture. They are
+# intentionally superseded by the authoritative ParityCore + ShaiyaClientActor
+# path. Reintroducing them would create two competing locomotion/flight/camera
+# implementations.
+superseded = [
+    'Assets/DreynoxMMORPG/Runtime/Gameplay/Flight/FlightController.cs',
+    'Assets/DreynoxMMORPG/Runtime/Gameplay/Locomotion/CharacterLocomotionMotor.cs',
+    'Assets/DreynoxMMORPG/Runtime/Gameplay/Locomotion/ShaiyaLocomotionModel.cs',
+    'Assets/DreynoxMMORPG/Runtime/Gameplay/Camera/ThirdPersonCameraCollision.cs',
+]
+
+errors = []
+
+for relative in required:
+    if not (ROOT / relative).exists():
+        errors.append('missing: ' + relative)
+
+json.loads((ROOT / 'Packages/manifest.json').read_text(encoding='utf-8'))
+for asmdef in ROOT.rglob('*.asmdef'):
+    json.loads(asmdef.read_text(encoding='utf-8'))
+
+for generated in ['Library', 'Temp', 'Logs', 'UserSettings']:
+    if (ROOT / generated).exists():
+        errors.append('forbidden generated dir: ' + generated)
+
+# Scope gate requested for Dreynox MMORPG: SPK/archive reverse-engineering
+# belongs to Shaiya Studio, not to this Unity client.
+spk_root = ROOT / 'Assets/DreynoxMMORPG/Editor/ReverseEngineering/Spk'
+if spk_root.exists():
+    spk_files = [p for p in spk_root.rglob('*') if p.is_file()]
+    if spk_files:
+        errors.append(
+            'scope violation: SPK reverse-engineering belongs to Shaiya Studio: ' +
+            ', '.join(str(p.relative_to(ROOT)) for p in spk_files[:10])
+        )
+
+for relative in superseded:
+    if (ROOT / relative).exists():
+        errors.append('superseded duplicate controller reintroduced: ' + relative)
+
+for source in ROOT.rglob('*.cs'):
+    text = source.read_text(encoding='utf-8')
+    if text.count('{') != text.count('}'):
+        errors.append('brace mismatch: ' + str(source.relative_to(ROOT)))
+    upper = text.upper()
+    if 'IMPLEMENT HERE' in upper or '// TODO:' in upper:
+        errors.append('placeholder marker: ' + str(source.relative_to(ROOT)))
+
+manifest = []
+for file in sorted(x for x in ROOT.rglob('*') if x.is_file() and '.git' not in x.parts):
+    digest = hashlib.sha256(file.read_bytes()).hexdigest()
+    manifest.append(f'{digest}  {file.relative_to(ROOT).as_posix()}')
+
+(ROOT / 'SOURCE_SHA256.txt').write_text(
+    '\n'.join(manifest) + '\n',
+    encoding='utf-8',
+)
+
 if errors:
-    print('\n'.join(errors)); sys.exit(1)
+    print('\n'.join(errors))
+    sys.exit(1)
+
 print(f'OK: {len(manifest)} files validated')

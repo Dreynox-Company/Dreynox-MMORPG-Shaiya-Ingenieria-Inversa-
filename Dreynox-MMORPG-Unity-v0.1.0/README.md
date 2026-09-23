@@ -1,121 +1,101 @@
-# Dreynox Mmorpg — Unity Migration v0.1.0
+# Dreynox MMORPG — Unity Client Parity
 
-Proyecto base oficial para la migración del trabajo de ingeniería inversa de Shaiya a **Unity 6 + C#**.
+Cliente MMORPG 3D en **Unity 6 + C#** que continúa la ingeniería inversa y reconstrucción funcional iniciada en el cliente Shaiya Flutter.
 
-## Objetivo
+## Alcance de este repositorio
 
-Dreynox Mmorpg es un MMORPG 3D multiplataforma (PC y móviles) con identidad propia. El cliente Flutter y Shaiya Studio existentes **no forman parte de este repositorio y no deben modificarse**. Este repositorio reutiliza conocimiento técnico previamente confirmado, pero reimplementa todo en C# y APIs nativas de Unity.
+Este repositorio trabaja sobre **paridad del cliente de juego** frente a `game.exe`: locomoción, cámara, mundo, personajes, equipamiento, animación, combate, UI, red, social y rendimiento.
 
-## Rama sugerida
+**Shaiya Studio permanece separado.** El montaje/descifrado SPK y las herramientas de archivo no forman parte de este proyecto Unity. Unity consume una carpeta `DATA` ya extraída o assets nativos previamente convertidos.
 
-`work/unity-migration-phase1-v0.1.0`
+## Rama activa
 
-## Qué incluye esta versión
+`work/unity-reverse-engineering-v0.2.0`
 
-- Proyecto Unity reconocible por Unity Hub (`Assets`, `Packages`, `ProjectSettings`).
-- Base URP 17 para Unity 6.
-- Inspector de carpeta DATA y archivos binarios.
-- Parser del header SPK v3 observado en el corpus real.
-- Descifrado AES-GCM 128/192/256 en C# puro para el índice SPK cuando se proporciona un perfil local autorizado.
-- Perfil privado separado de Git para no publicar secretos del corpus.
-- Importador de mallas guiado por perfiles de layout binario, útil para `.svmap`, `.3DC`, `.3DO` y formatos que sigan siendo investigados.
-- Clasificación de recursos Shaiya por extensión.
-- Pipeline de salida nativo a `Assets/DreynoxMMORPG/Imported`.
-- Sistema de attachments/equipment para armas, alas y monturas.
-- Estado de vuelo desacoplado de equipar alas y transición rápida de combate.
-- Locomoción con CharacterController y grounding.
-- Colisión de cámara por SphereCast.
-- Catálogo semántico de clips de animación.
-- Streaming aditivo de chunks de mundo.
-- Transporte TCP/UDP asíncrono usando Tasks y ConcurrentQueue; Unity solo consume paquetes en Main Thread.
-- Control de calidad adaptativo PC/móvil.
-- Herramienta para GPU Instancing y flags de Occlusion Culling.
-- Generador de escena Bootstrap.
-- Pruebas Editor para SPK y AES-GCM.
-- Validación de integridad del repositorio y workflow de GitHub sin necesidad de licencia Unity.
+## Baseline actual migrado
 
-## Primer arranque
+- Núcleo C# determinista de locomoción y selección semántica de animaciones.
+- Idle / walk / run / jump / mounted idle-walk-run.
+- Movimiento relativo a cámara y cancelación al perder foco.
+- Reglas de arma de una mano, escudo y armas de dos manos.
+- Perfil específico de movimiento con lanza.
+- Alas equipadas sin activar vuelo automáticamente.
+- Vuelo manual, hover y movimiento de vuelo.
+- Montura y calibración de altura de asiento sin acumulación por frame.
+- Target lock de combate, vida independiente por oponente y guardia de 8 s.
+- Party, Trade, Duel y Raid como máquinas de estado puras para integrar con protocolo.
+- Friends y Guild con roles/solicitudes/presencia como core determinista.
+- Inventario, Warehouse, stats, buffs, death/rebirth y loot.
+- Skills data-driven con target lock, resource cost, windup/recovery y cooldown.
+- Quests, shops, gatekeepers, blacksmith, NPC services y weather.
+- Flujo Boot → Login → Server → Character → World, listo para conectar al protocolo real.
+- Streaming espacial determinista de sectores.
+- Cámara tercera persona con órbita, zoom y colisión SphereCast.
+- Sandbox Unity jugable para comparación iterativa con `game.exe`.
+- Inspector PE para catalogar exactamente qué variante de `game.exe` se usa en cada comparación.
+- Transporte TCP/UDP fuera del Main Thread ya existente.
+- URP y calidad adaptativa PC/móvil.
 
-1. Descomprime o sube todo el contenido a la raíz del repositorio GitHub.
-2. En Unity Hub: **Add > Add project from disk** y selecciona la carpeta raíz.
-3. Abre con Unity 6. Unity puede solicitar actualizar el proyecto a tu patch instalado; acepta si es una versión Unity 6 compatible.
-4. Espera a que Package Manager resuelva URP.
-5. Ejecuta `Dreynox MMORPG > Project > Create/Refresh Bootstrap Scene`.
-6. Abre `Assets/DreynoxMMORPG/Scenes/Bootstrap.unity`.
-7. Para ingeniería inversa: `Dreynox MMORPG > Reverse Engineering > DATA / SPK Inspector`.
+## Abrir el proyecto
 
-## URP
-
-La dependencia URP está declarada en `Packages/manifest.json`. Unity 6 fija sus paquetes gráficos a versiones compatibles con el Editor. Si Unity actualiza el package lock al abrir con un patch más reciente, ese cambio es normal.
-
-Para crear el Pipeline Asset nativo desde tu versión de Unity:
-
-`Assets > Create > Rendering > URP Asset (with Universal Renderer)`
-
-Así evitamos versionar un YAML de pipeline generado por un patch concreto y conservamos compatibilidad entre Unity 6.x.
-
-## Datos originales
-
-El repositorio no incluye `DATA`, `data.spk`, `game.exe`, claves, assets comerciales ni binarios propietarios. Usa una copia local de archivos sobre los que tengas permiso de investigación. La herramienta trabaja en solo lectura sobre el origen y escribe únicamente en el árbol `Assets/DreynoxMMORPG/Imported`.
-
-## Estado SPK v3 migrado
-
-La estructura observada y ya soportada por el parser incluye:
-
-- Header de 128 bytes.
-- Versión en offset `0x04`.
-- Offset de índice en `0x08` (`UInt64 LE`).
-- Tamaño almacenado del índice en `0x10`.
-- Tamaño decodificado en `0x18`.
-- Conteo de registros en `0x20`.
-- Tamaño de bloque en `0x24`.
-- Nonce de 12 bytes en `0x28`.
-- Tag GCM de 16 bytes en `0x34`.
-- Hash SHA-256 de 32 bytes en `0x44`.
-- Offset auxiliar en `0x64`.
-- Conteo auxiliar en `0x6C`.
-
-El descifrado del índice requiere un perfil local. No se versiona ninguna clave en Git.
-
-## Qué NO se afirma todavía
-
-- No se afirma que `.svmap`, `.3DC`, `.3DO` o `.ANI` estén completamente descifrados en Unity.
-- El importador de mallas es **profile-driven**: convierte correctamente cuando el layout confirmado se expresa en un perfil; no inventa offsets.
-- La extracción completa de todos los recursos SPK, especialmente fragmentados/compresión específica, continúa como trabajo de ingeniería inversa.
-- No se ha compilado este ZIP dentro de un Editor Unity en este entorno; se incluyen pruebas y validaciones de fuente para detectar errores estructurales antes de abrirlo.
-
-## Estructura
+En Unity Hub selecciona esta carpeta, la que contiene directamente:
 
 ```text
-Assets/DreynoxMMORPG/
-├── Runtime/
-│   ├── App/
-│   ├── Core/
-│   ├── Gameplay/
-│   ├── Networking/
-│   ├── Rendering/
-│   ├── UI/
-│   └── World/
-├── Editor/
-│   ├── ReverseEngineering/
-│   └── ProjectTools/
-├── Tests/Editor/
-├── Imported/
-└── LocalSecrets/          # ignorado por Git
+Assets/
+Packages/
+ProjectSettings/
 ```
 
-## Principio de arquitectura
+Después ejecuta:
 
-```text
-Shaiya legacy DATA/SPK
-        ↓ (solo Editor)
-BinaryReader + parsers + perfiles verificados
-        ↓
-Mesh / Texture / Material / AnimationClip / Prefab / ScriptableObject
-        ↓
-Dreynox Mmorpg Runtime
-        ↓
-URP + Unity Physics + Animator + networking asíncrono
-```
+`Dreynox MMORPG > Client Parity > Create Refresh Sandbox`
 
-El runtime final no debe depender del parsing de formatos antiguos.
+El sandbox contiene un actor controlable, cámara tercera persona, objetivos independientes y HUD de diagnóstico.
+
+Controles actuales de validación:
+
+- `W/A/S/D`: movimiento.
+- `Shift`: correr.
+- `Space`: salto.
+- `Shift + Space`: alternar vuelo cuando hay alas.
+- `Q/E`: bajar/subir durante vuelo.
+- Botón derecho + ratón: cámara.
+- Rueda: zoom.
+- Click izquierdo: seleccionar objetivo.
+- `1..4`: ataques de prueba.
+
+## Build Windows
+
+Dentro de Unity:
+
+`Dreynox MMORPG > Build > Windows x64 > Parity Lab`
+
+Ese build es únicamente el laboratorio reproducible de comparación funcional. El build de cliente real usa:
+
+`Dreynox MMORPG > Build > Windows x64 > Client Release`
+
+y queda bloqueado deliberadamente hasta que existan las escenas reales `Boot/Login/World`; no sustituye contenido faltante por placeholders.
+
+CI puede compilar el Parity Lab con GameCI cuando el repositorio tenga configurada activación Unity. Sin licencia, CI ejecuta igualmente validación de fuentes y el parity harness C# puro.
+
+## DATA legado
+
+`Dreynox MMORPG > Legacy Client > Extracted DATA Inspector`
+
+Ese módulo únicamente inspecciona recursos **ya extraídos** y permite convertir layouts confirmados a assets Unity. No abre ni descifra SPK.
+
+## Regla de paridad
+
+No buscamos igualdad binaria entre Unity y el ejecutable clásico. La paridad se mide por comportamiento reproducible:
+
+1. estado de personaje y animación;
+2. cámara y movimiento;
+3. equipamiento / sockets;
+4. combate y timings;
+5. mundo y streaming;
+6. UI y social;
+7. protocolo y networking;
+8. render y rendimiento;
+9. capturas lado a lado y regresiones automatizadas.
+
+`main` no debe recibir una fase hasta que su gate correspondiente esté verificado.
