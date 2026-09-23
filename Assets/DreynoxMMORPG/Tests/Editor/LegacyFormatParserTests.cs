@@ -122,6 +122,78 @@ namespace Dreynox.Mmorpg.Tests.Editor
         }
 
         [Test]
+        public void ThreeDcSkeletonlessCloakLayoutParsesWithoutBoneTable()
+        {
+            byte[] bytes = BuildSkeletonless3dc();
+            Legacy3dcFile parsed = Legacy3dcParser.Parse(bytes);
+
+            Assert.AreEqual(Legacy3dcLayout.Skeletonless, parsed.Layout);
+            Assert.IsFalse(parsed.HasEmbeddedSkeleton);
+            Assert.AreEqual(1, parsed.Vertices.Count);
+            Assert.AreEqual(1, parsed.Faces.Count);
+        }
+
+        [Test]
+        public void ThreeDcTexturePrefixedLayoutPreservesTextureName()
+        {
+            byte[] bytes = BuildTexturePrefixed3dc();
+            Legacy3dcFile parsed = Legacy3dcParser.Parse(bytes);
+
+            Assert.AreEqual(Legacy3dcLayout.TexturePrefixed, parsed.Layout);
+            Assert.AreEqual("Mob_Rend_01.TGA", parsed.EmbeddedTextureName);
+            Assert.AreEqual(1, parsed.InverseBindMatrices.Count);
+            Assert.AreEqual(1, parsed.Vertices.Count);
+        }
+
+        [Test]
+        public void ThreeDcConcatenatedSectionsRequireParseMany()
+        {
+            byte[] first = Build3dc(
+                444,
+                1,
+                new[]
+                {
+                    new VertexFixture
+                    {
+                        Position = Vector3.zero,
+                        W1 = 1f,
+                        B1 = 0,
+                        Normal = Vector3.up,
+                        UV = Vector2.zero
+                    }
+                },
+                Array.Empty<ushort[]>());
+
+            byte[] second = Build3dc(
+                0,
+                1,
+                new[]
+                {
+                    new VertexFixture
+                    {
+                        Position = Vector3.one,
+                        W1 = 1f,
+                        B1 = 0,
+                        Normal = Vector3.up,
+                        UV = Vector2.one
+                    }
+                },
+                Array.Empty<ushort[]>());
+
+            byte[] combined = new byte[first.Length + second.Length];
+            Buffer.BlockCopy(first, 0, combined, 0, first.Length);
+            Buffer.BlockCopy(second, 0, combined, first.Length, second.Length);
+
+            Assert.Throws<InvalidDataException>(
+                () => Legacy3dcParser.Parse(combined));
+
+            var parsed = Legacy3dcParser.ParseMany(combined);
+            Assert.AreEqual(2, parsed.Count);
+            Assert.AreEqual(444, parsed[0].Version);
+            Assert.AreEqual(0, parsed[1].Version);
+        }
+
+        [Test]
         public void CanonicalPs0032SamplesMatchObservedStructureWhenCorpusIsConfigured()
         {
             CanonicalClientCorpus corpus =
@@ -244,6 +316,63 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     writer.Write(faces[i][2]);
                 }
 
+                return stream.ToArray();
+            }
+        }
+
+        private static byte[] BuildSkeletonless3dc()
+        {
+            using (MemoryStream stream = new MemoryStream())
+            using (BinaryWriter writer = new BinaryWriter(stream))
+            {
+                writer.Write(0);
+                writer.Write(1);
+
+                WriteVector3(writer, new Vector3(0f, 1f, 0f));
+                writer.Write(1f);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+                WriteVector3(writer, Vector3.forward);
+                writer.Write(0.5f);
+                writer.Write(0.5f);
+
+                writer.Write(1);
+                writer.Write((ushort)0);
+                writer.Write((ushort)0);
+                writer.Write((ushort)0);
+
+                return stream.ToArray();
+            }
+        }
+
+        private static byte[] BuildTexturePrefixed3dc()
+        {
+            using (MemoryStream stream = new MemoryStream())
+            using (BinaryWriter writer = new BinaryWriter(stream))
+            {
+                byte[] name =
+                    Encoding.ASCII.GetBytes("Mob_Rend_01.TGA\0");
+
+                writer.Write(name.Length);
+                writer.Write(name);
+
+                writer.Write(1);
+                WriteIdentityMatrix(writer);
+
+                writer.Write(1);
+                WriteVector3(writer, Vector3.zero);
+                writer.Write(1f);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+                writer.Write((byte)0);
+                WriteVector3(writer, Vector3.up);
+                writer.Write(0f);
+                writer.Write(0f);
+
+                writer.Write(0);
                 return stream.ToArray();
             }
         }
