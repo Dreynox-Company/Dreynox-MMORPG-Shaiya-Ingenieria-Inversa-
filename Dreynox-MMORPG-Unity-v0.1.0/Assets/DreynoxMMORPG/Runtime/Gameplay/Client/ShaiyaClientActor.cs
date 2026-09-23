@@ -1,3 +1,4 @@
+using Dreynox.Mmorpg.Gameplay.AnimationSystem;
 using Dreynox.Mmorpg.Gameplay.Equipment;
 using Dreynox.Mmorpg.ParityCore;
 using UnityEngine;
@@ -10,6 +11,7 @@ namespace Dreynox.Mmorpg.Gameplay.Client
         [Header("References")]
         [SerializeField] private Transform cameraReference;
         [SerializeField] private Animator animator;
+        [SerializeField] private SemanticAnimationPlayer semanticAnimationPlayer;
         [SerializeField] private EquipmentAttachmentController equipmentAttachments;
 
         [Header("Ground locomotion")]
@@ -59,6 +61,8 @@ namespace Dreynox.Mmorpg.Gameplay.Client
                 cameraReference = Camera.main.transform;
             if (equipmentAttachments == null)
                 equipmentAttachments = GetComponent<EquipmentAttachmentController>();
+            if (semanticAnimationPlayer == null)
+                semanticAnimationPlayer = GetComponent<SemanticAnimationPlayer>();
         }
 
         private void Update()
@@ -224,6 +228,16 @@ namespace Dreynox.Mmorpg.Gameplay.Client
                 return;
 
             _lastAnimationGeneration = _motion.ClipGeneration;
+
+            if (semanticAnimationPlayer != null &&
+                semanticAnimationPlayer.PlaySemantic(_motion.ClipKey))
+            {
+                return;
+            }
+
+            // Compatibility path while real ANI-derived catalogs are being
+            // connected. Release QA must surface missing semantic clips rather
+            // than silently replacing them with unrelated animations.
             if (animator == null || animator.runtimeAnimatorController == null)
                 return;
 
