@@ -116,21 +116,22 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           lfs: true
-          clean: true
+          clean: false
           persist-credentials: false
 
-      - name: Clean stale CI outputs
+      - name: Sanitize workspace while preserving Unity Library
         run: |
-          @(
-            "TestResults",
-            "BuildLogs",
-            "Builds/WindowsParity"
-          ) | ForEach-Object {
-            $path = Join-Path $env:GITHUB_WORKSPACE $_
-            if (Test-Path $path) {
-              Remove-Item -LiteralPath $path -Recurse -Force
-            }
-          }
+          git reset --hard HEAD
+          git clean -ffdx -e Library/
+          Write-Host "Workspace saneado; Library se conserva para acelerar Unity."
+
+      - name: Detect local Unity Library
+        id: library-state
+        run: |
+          $library = Join-Path $env:GITHUB_WORKSPACE "Library"
+          $present = Test-Path $library
+          "present=$($present.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Local Unity Library present: $present"
 
       - name: Force clean Unity Library
         if: github.event_name == 'workflow_dispatch' && inputs.clean_library == true
@@ -142,7 +143,7 @@ jobs:
           Write-Host "Unity Library limpia solicitada manualmente."
 
       - name: Restore Unity Library cache
-        if: github.event_name != 'workflow_dispatch' || inputs.clean_library != true
+        if: (github.event_name != 'workflow_dispatch' || inputs.clean_library != true) && steps.library-state.outputs.present != 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.UNITY_PROJECT_PATH }}/Library
