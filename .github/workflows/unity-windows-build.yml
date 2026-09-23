@@ -80,14 +80,14 @@ jobs:
           projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: auto
           targetPlatform: StandaloneWindows64
-          buildMethod: Dreynox.Mmorpg.Editor.Build.DreynoxWindowsBuild.BuildBatch
+          buildMethod: Dreynox.Mmorpg.Editor.Build.DreynoxWindowsBuild.BuildParityBatch
           allowDirtyBuild: true
       - name: Upload Windows player
         if: steps.unity-license.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: Dreynox-Mmorpg-Windows-x64
-          path: ${{ env.UNITY_PROJECT_PATH }}/Builds/Windows/
+          name: Dreynox-Mmorpg-Parity-Windows-x64
+          path: ${{ env.UNITY_PROJECT_PATH }}/Builds/WindowsParity/
           if-no-files-found: error
           retention-days: 14
       - name: Upload Unity test evidence
