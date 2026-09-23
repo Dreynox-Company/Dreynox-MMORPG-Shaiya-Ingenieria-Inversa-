@@ -1,15 +1,27 @@
+name: Get Unity Activation File
+
+on:
+  workflow_dispatch:
+
+jobs:
   unity-windows:
-    needs: parity-core
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Este paso mágico le va a pedir a Unity el archivo de activación (.alf)
+      # Este paso le pide a Unity el archivo de activación (.alf)
       - name: Request activation file
         uses: game-ci/unity-request-activation-file@v4
         id: get-alf
         with:
-          unityVersion: 6000.0.0f1 # O la versión de Unity 6 que uses
+          unityVersion: 6000.0.0f1
+
+      # Este paso guarda el archivo en GitHub para que lo descargues
+      - name: Upload ALF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Unity6-Activation-File
+          path: ${{ steps.get-alf.outputs.filePath }}
 
       # Este paso va a guardar el archivo para que lo puedas descargar de GitHub
       - name: Upload ALF Artifact
