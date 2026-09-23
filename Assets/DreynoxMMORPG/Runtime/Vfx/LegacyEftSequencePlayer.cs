@@ -34,6 +34,10 @@ namespace Dreynox.Mmorpg.Vfx
         private bool _forceOneShot;
 
         public bool IsPlaying => _playing;
+        public int SequenceCount =>
+            sequences != null ? sequences.Length : 0;
+        public int EffectCount =>
+            effects != null ? effects.Length : 0;
 
         public string CurrentSequence =>
             _sequence != null
@@ -112,6 +116,78 @@ namespace Dreynox.Mmorpg.Vfx
             LegacyEftSequenceDefinition sequence =
                 FindSequence(sequenceName);
 
+            return StartSequence(
+                sequence,
+                forceOneShot);
+        }
+
+        public bool PlaySequence(
+            int sequenceIndex,
+            bool forceOneShot = true)
+        {
+            if (sequences == null ||
+                sequenceIndex < 0 ||
+                sequenceIndex >= sequences.Length)
+                return false;
+
+            return StartSequence(
+                sequences[sequenceIndex],
+                forceOneShot);
+        }
+
+        public bool PlayRawEffect(
+            int effectIndex,
+            bool forceOneShot = true)
+        {
+            if (effects == null ||
+                effectIndex < 0 ||
+                effectIndex >= effects.Length ||
+                effects[effectIndex] == null)
+                return false;
+
+            LegacyEftParticleEmitter emitter =
+                effects[effectIndex];
+
+            var synthetic =
+                new LegacyEftSequenceDefinition
+                {
+                    name =
+                        "raw_effect_" +
+                        effectIndex,
+                    events =
+                        new[]
+                        {
+                            new LegacyEftSequenceEvent
+                            {
+                                effectIndex =
+                                    effectIndex,
+                                time = 0f
+                            }
+                        },
+                    duration =
+                        Mathf.Max(
+                            0.05f,
+                            emitter
+                                .EstimatedOneShotDuration)
+                };
+
+            return StartSequence(
+                synthetic,
+                forceOneShot);
+        }
+
+        public bool PlayDefault(
+            bool forceOneShot = true)
+        {
+            return PlaySequence(
+                0,
+                forceOneShot);
+        }
+
+        private bool StartSequence(
+            LegacyEftSequenceDefinition sequence,
+            bool forceOneShot)
+        {
             if (sequence == null)
                 return false;
 
@@ -139,18 +215,6 @@ namespace Dreynox.Mmorpg.Vfx
             }
 
             return true;
-        }
-
-        public bool PlayDefault(
-            bool forceOneShot = true)
-        {
-            if (sequences == null ||
-                sequences.Length == 0)
-                return false;
-
-            return Play(
-                sequences[0].name,
-                forceOneShot);
         }
 
         public void Stop()
