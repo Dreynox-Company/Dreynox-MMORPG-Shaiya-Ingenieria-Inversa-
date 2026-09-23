@@ -21,8 +21,8 @@ namespace Dreynox.Mmorpg.Vfx
 
     public sealed class LegacyEftSequencePlayer : MonoBehaviour
     {
-        [SerializeField] private LegacyEftEffectPlayer[] effects =
-            Array.Empty<LegacyEftEffectPlayer>();
+        [SerializeField] private LegacyEftParticleEmitter[] effects =
+            Array.Empty<LegacyEftParticleEmitter>();
         [SerializeField] private LegacyEftSequenceDefinition[] sequences =
             Array.Empty<LegacyEftSequenceDefinition>();
         [SerializeField] private bool deactivateWhenFinished = true;
@@ -31,21 +31,26 @@ namespace Dreynox.Mmorpg.Vfx
         private float _time;
         private int _nextEvent;
         private bool _playing;
+        private bool _forceOneShot;
 
         public bool IsPlaying => _playing;
+
         public string CurrentSequence =>
             _sequence != null
                 ? _sequence.name
                 : string.Empty;
 
         public void Configure(
-            LegacyEftEffectPlayer[] effectPlayers,
+            LegacyEftParticleEmitter[] effectEmitters,
             LegacyEftSequenceDefinition[] definitions)
         {
-            effects = effectPlayers ??
-                      Array.Empty<LegacyEftEffectPlayer>();
-            sequences = definitions ??
-                        Array.Empty<LegacyEftSequenceDefinition>();
+            effects =
+                effectEmitters ??
+                Array.Empty<LegacyEftParticleEmitter>();
+
+            sequences =
+                definitions ??
+                Array.Empty<LegacyEftSequenceDefinition>();
         }
 
         private void Awake()
@@ -74,8 +79,24 @@ namespace Dreynox.Mmorpg.Vfx
                 _nextEvent++;
             }
 
-            if (_time >= _sequence.duration &&
-                _nextEvent >= events.Length)
+            bool allEmittersFinished =
+                true;
+
+            for (int i = 0;
+                 i < effects.Length;
+                 i++)
+            {
+                if (effects[i] != null &&
+                    effects[i].IsPlaying)
+                {
+                    allEmittersFinished = false;
+                    break;
+                }
+            }
+
+            if (_nextEvent >= events.Length &&
+                allEmittersFinished &&
+                _time >= _sequence.duration)
             {
                 _playing = false;
 
@@ -84,7 +105,9 @@ namespace Dreynox.Mmorpg.Vfx
             }
         }
 
-        public bool Play(string sequenceName)
+        public bool Play(
+            string sequenceName,
+            bool forceOneShot = true)
         {
             LegacyEftSequenceDefinition sequence =
                 FindSequence(sequenceName);
@@ -98,6 +121,8 @@ namespace Dreynox.Mmorpg.Vfx
             _time = 0f;
             _nextEvent = 0;
             _playing = true;
+            _forceOneShot = forceOneShot;
+
             gameObject.SetActive(true);
 
             LegacyEftSequenceEvent[] events =
@@ -116,13 +141,16 @@ namespace Dreynox.Mmorpg.Vfx
             return true;
         }
 
-        public bool PlayDefault()
+        public bool PlayDefault(
+            bool forceOneShot = true)
         {
             if (sequences == null ||
                 sequences.Length == 0)
                 return false;
 
-            return Play(sequences[0].name);
+            return Play(
+                sequences[0].name,
+                forceOneShot);
         }
 
         public void Stop()
@@ -168,11 +196,14 @@ namespace Dreynox.Mmorpg.Vfx
                 index >= effects.Length)
                 return;
 
-            LegacyEftEffectPlayer effect =
+            LegacyEftParticleEmitter effect =
                 effects[index];
 
-            if (effect != null)
-                effect.Play();
+            if (effect == null)
+                return;
+
+            effect.gameObject.SetActive(true);
+            effect.Play(_forceOneShot);
         }
 
         private void StopAllEffects()
@@ -184,9 +215,13 @@ namespace Dreynox.Mmorpg.Vfx
                  i < effects.Length;
                  i++)
             {
-                if (effects[i] != null)
-                    effects[i].Stop(
-                        deactivate: true);
+                if (effects[i] == null)
+                    continue;
+
+                effects[i].Stop(
+                    clearParticles: true);
+
+                effects[i].gameObject.SetActive(false);
             }
         }
     }
