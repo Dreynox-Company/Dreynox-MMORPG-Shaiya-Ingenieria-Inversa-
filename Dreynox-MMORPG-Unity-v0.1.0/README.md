@@ -68,9 +68,15 @@ Controles actuales de validación:
 
 Dentro de Unity:
 
-`Dreynox MMORPG > Build > Windows x64 Release`
+`Dreynox MMORPG > Build > Windows x64 > Parity Lab`
 
-CI puede compilar el Player con GameCI cuando el repositorio tenga configurada activación Unity. Sin licencia, CI ejecuta igualmente validación de fuentes y el parity harness C# puro.
+Ese build es únicamente el laboratorio reproducible de comparación funcional. El build de cliente real usa:
+
+`Dreynox MMORPG > Build > Windows x64 > Client Release`
+
+y queda bloqueado deliberadamente hasta que existan las escenas reales `Boot/Login/World`; no sustituye contenido faltante por placeholders.
+
+CI puede compilar el Parity Lab con GameCI cuando el repositorio tenga configurada activación Unity. Sin licencia, CI ejecuta igualmente validación de fuentes y el parity harness C# puro.
 
 ## DATA legado
 
