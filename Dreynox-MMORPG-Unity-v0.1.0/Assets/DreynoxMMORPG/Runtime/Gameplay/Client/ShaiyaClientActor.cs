@@ -14,6 +14,11 @@ namespace Dreynox.Mmorpg.Gameplay.Client
         [SerializeField] private SemanticAnimationPlayer semanticAnimationPlayer;
         [SerializeField] private EquipmentAttachmentController equipmentAttachments;
 
+        [Header("Legacy character identity")]
+        [SerializeField, Range(0, 3)] private int family;
+        [SerializeField, Range(0, 5)] private int job;
+        [SerializeField, Range(0, 1)] private int sex;
+
         [Header("Ground locomotion")]
         [SerializeField] private float walkSpeed = 4.5f;
         [SerializeField] private float runSpeed = 7.5f;
@@ -53,6 +58,9 @@ namespace Dreynox.Mmorpg.Gameplay.Client
         public FlightTransitionCore Flight => _flight;
         public string CurrentSemanticAnimation => _motion.ClipKey;
         public bool IsGrounded => _controller != null && _controller.isGrounded;
+        public int Family => family;
+        public int Job => job;
+        public int Sex => sex;
 
         private void Awake()
         {
@@ -251,6 +259,24 @@ namespace Dreynox.Mmorpg.Gameplay.Client
             cameraReference = reference;
         }
 
+        public void ConfigureLegacyIdentity(
+            int characterFamily,
+            int characterJob,
+            int characterSex)
+        {
+            if (characterFamily < 0 || characterFamily > 3)
+                throw new System.ArgumentOutOfRangeException(nameof(characterFamily));
+            if (characterJob < 0 || characterJob > 5)
+                throw new System.ArgumentOutOfRangeException(nameof(characterJob));
+            if (characterSex < 0 || characterSex > 1)
+                throw new System.ArgumentOutOfRangeException(nameof(characterSex));
+
+            family = characterFamily;
+            job = characterJob;
+            sex = characterSex;
+            ApplyEquippedWingPose();
+        }
+
         public void SetWeaponFamily(ClientWeaponFamily family)
         {
             _equipment.EquipMainHand(family);
@@ -314,6 +340,7 @@ namespace Dreynox.Mmorpg.Gameplay.Client
                         true,
                         definition.wingLocalYawCorrection,
                         definition.wingLocalHeightCorrection);
+                    ApplyEquippedWingPose();
                     break;
 
                 case EquipmentSlot.Mount:
@@ -344,6 +371,30 @@ namespace Dreynox.Mmorpg.Gameplay.Client
                     SetMounted(false);
                     break;
             }
+        }
+
+        private void ApplyEquippedWingPose()
+        {
+            if (equipmentAttachments == null)
+                return;
+
+            GameObject wingInstance;
+            if (!equipmentAttachments.TryGetInstance(
+                    EquipmentSlot.Wings,
+                    out wingInstance))
+                return;
+
+            WingAttachmentPoseApplier applier =
+                wingInstance.GetComponent<WingAttachmentPoseApplier>();
+
+            if (applier == null)
+                applier = wingInstance.AddComponent<WingAttachmentPoseApplier>();
+
+            applier.Configure(
+                wingInstance.transform,
+                family,
+                job,
+                sex);
         }
 
         public void SelectCombatTarget(int id, int maxHealth)
