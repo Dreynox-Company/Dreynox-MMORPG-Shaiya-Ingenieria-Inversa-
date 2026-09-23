@@ -95,7 +95,7 @@ namespace Dreynox.Mmorpg.Editor.Corpus
         {
             string current = root;
             string[] parts = relativePath
-                .Replace('\', '/')
+                .Replace('\\', '/')
                 .Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
 
             for (int i = 0; i < parts.Length; i++)
