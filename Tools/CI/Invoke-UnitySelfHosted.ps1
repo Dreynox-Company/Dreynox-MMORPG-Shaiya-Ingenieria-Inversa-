@@ -1,3 +1,6 @@
+# Dreynox MMORPG self-hosted Unity CI entrypoint.
+# Unity Personal credentials remain local to the Windows user; this script never reads GitHub license secrets.
+
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("preflight", "test", "build")]
