@@ -7,10 +7,12 @@ namespace Dreynox.Mmorpg.Vfx
     {
         [System.NonSerialized] internal GameObject sourcePrefab;
         [System.NonSerialized] internal bool returning;
+        [System.NonSerialized] internal bool pooled;
 
         private void OnDisable()
         {
             if (!returning &&
+                !pooled &&
                 sourcePrefab != null &&
                 Application.isPlaying)
             {
@@ -126,6 +128,23 @@ namespace Dreynox.Mmorpg.Vfx
             return item.gameObject;
         }
 
+        public static void Release(
+            GameObject instance)
+        {
+            if (instance == null)
+                return;
+
+            LegacyPooledEffectInstance item =
+                instance.GetComponent<
+                    LegacyPooledEffectInstance>();
+
+            if (item == null ||
+                item.pooled)
+                return;
+
+            Return(item);
+        }
+
         public static void Clear()
         {
             foreach (KeyValuePair<GameObject, Stack<LegacyPooledEffectInstance>> pair in Pool)
@@ -147,10 +166,12 @@ namespace Dreynox.Mmorpg.Vfx
             LegacyPooledEffectInstance item)
         {
             if (item == null ||
-                item.sourcePrefab == null)
+                item.sourcePrefab == null ||
+                item.pooled)
                 return;
 
             item.returning = true;
+            item.pooled = true;
 
             LegacyEftSequencePlayer sequence =
                 item.GetComponent<
@@ -203,6 +224,7 @@ namespace Dreynox.Mmorpg.Vfx
 
                     pooled.sourcePrefab =
                         prefab;
+                    pooled.pooled = false;
 
                     return pooled;
                 }
@@ -226,6 +248,7 @@ namespace Dreynox.Mmorpg.Vfx
             }
 
             item.sourcePrefab = prefab;
+            item.pooled = false;
 
             item.returning = true;
             instance.SetActive(false);
