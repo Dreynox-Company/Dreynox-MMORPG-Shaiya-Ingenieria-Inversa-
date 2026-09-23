@@ -385,5 +385,75 @@ namespace Dreynox.Mmorpg.Tests
                 FlightTransitionCore.DefaultCombatDescentSeconds + dt + 0.0000001);
         }
 
+        [Test]
+        public void CanonicalWingPositionTableCoversEveryLegacyCombination()
+        {
+            Assert.AreEqual(48, LegacyWingPoseCore.Count);
+
+            for (int family = 0; family < 4; family++)
+            for (int job = 0; job < 6; job++)
+            for (int sex = 0; sex < 2; sex++)
+            {
+                Assert.IsTrue(
+                    LegacyWingPoseCore.TryResolve(
+                        family,
+                        job,
+                        sex,
+                        out LegacyWingPose pose),
+                    "Missing wing profile for " +
+                    family + "/" + job + "/" + sex);
+
+                Assert.AreEqual(4, pose.BoneIndex);
+                Assert.AreEqual(90.0, pose.RotZ, 0.0000001);
+                Assert.AreEqual(0.0, pose.LeftRight, 0.0000001);
+            }
+        }
+
+        [Test]
+        public void CanonicalWingPositionSamplesMatchSuppliedCorpus()
+        {
+            LegacyWingPose humanMaleFighter =
+                LegacyWingPoseCore.Resolve(0, 0, 0);
+            Assert.AreEqual(170.0, humanMaleFighter.RotX, 0.0000001);
+            Assert.AreEqual(0.05, humanMaleFighter.UpDown, 0.0000001);
+            Assert.AreEqual(-0.18, humanMaleFighter.FrontBack, 0.0000001);
+
+            LegacyWingPose elfFemaleRogue =
+                LegacyWingPoseCore.Resolve(1, 2, 1);
+            Assert.AreEqual(175.0, elfFemaleRogue.RotX, 0.0000001);
+            Assert.AreEqual(0.03, elfFemaleRogue.UpDown, 0.0000001);
+            Assert.AreEqual(-0.12, elfFemaleRogue.FrontBack, 0.0000001);
+
+            LegacyWingPose deathEaterMaleShooter =
+                LegacyWingPoseCore.Resolve(3, 3, 0);
+            Assert.AreEqual(185.0, deathEaterMaleShooter.RotX, 0.0000001);
+            Assert.AreEqual(0.15, deathEaterMaleShooter.UpDown, 0.0000001);
+            Assert.AreEqual(-0.14, deathEaterMaleShooter.FrontBack, 0.0000001);
+        }
+
+        [Test]
+        public void OfflineWorldPopulationMatchesCapturedPs0032Sessions()
+        {
+            Assert.AreEqual(13, LegacyWorldPopulationCore.All.Count);
+            Assert.AreEqual(30800, LegacyWorldPopulationCore.LoginPort);
+
+            LegacyWorldPopulation map0 = LegacyWorldPopulationCore.Get(0);
+            Assert.AreEqual(11, map0.Portals);
+            Assert.AreEqual(141, map0.Npcs);
+            Assert.AreEqual(509, map0.MobAreas);
+            Assert.AreEqual(1330, map0.Mobs);
+            Assert.AreEqual(1, map0.Obelisks);
+
+            LegacyWorldPopulation map1 = LegacyWorldPopulationCore.Get(1);
+            Assert.AreEqual(247, map1.Npcs);
+            Assert.AreEqual(502, map1.MobAreas);
+            Assert.AreEqual(1186, map1.Mobs);
+
+            LegacyWorldPopulation map2 = LegacyWorldPopulationCore.Get(2);
+            Assert.AreEqual(194, map2.Npcs);
+            Assert.AreEqual(800, map2.MobAreas);
+            Assert.AreEqual(868, map2.Mobs);
+        }
+
     }
 }
