@@ -170,6 +170,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             EnsureFolder(outputRoot + "/Textures");
             EnsureFolder(outputRoot + "/Materials");
             EnsureFolder(outputRoot + "/Animations");
+            EnsureFolder(outputRoot + "/Audio");
             EnsureFolder(outputRoot + "/Prefabs");
 
             GameObject entity =
@@ -265,6 +266,49 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     target.Configure(
                         recordIndex + 1,
                         1000);
+
+                    AudioClip attack1 =
+                        ImportAudioClipOptional(
+                            corpus,
+                            catalog,
+                            record.Attack1Wav,
+                            outputRoot,
+                            "attack_1");
+
+                    AudioClip attack2 =
+                        ImportAudioClipOptional(
+                            corpus,
+                            catalog,
+                            record.Attack2Wav,
+                            outputRoot,
+                            "attack_2");
+
+                    AudioClip attack3 =
+                        ImportAudioClipOptional(
+                            corpus,
+                            catalog,
+                            record.Attack3Wav,
+                            outputRoot,
+                            "attack_3");
+
+                    AudioClip death =
+                        ImportAudioClipOptional(
+                            corpus,
+                            catalog,
+                            record.DeathWav,
+                            outputRoot,
+                            "death");
+
+                    LegacyMonFeedbackController feedback =
+                        entity.AddComponent<LegacyMonFeedbackController>();
+
+                    feedback.Configure(
+                        player,
+                        target,
+                        attack1,
+                        attack2,
+                        attack3,
+                        death);
                 }
 
                 string prefabPath =
@@ -484,6 +528,82 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 FileName = file,
                 Loop = loop
             };
+        }
+
+        private static AudioClip ImportAudioClipOptional(
+            CanonicalClientCorpus corpus,
+            CatalogSpec catalog,
+            string fileName,
+            string outputRoot,
+            string semantic)
+        {
+            if (!IsResourceName(fileName))
+                return null;
+
+            string source =
+                ResolveResourceOptional(
+                    corpus,
+                    catalog.ResourceRoot,
+                    "wav",
+                    fileName);
+
+            if (source == null)
+                return null;
+
+            string extension =
+                Path.GetExtension(source);
+
+            string destination =
+                outputRoot + "/Audio/" +
+                Sanitize(semantic) + "_" +
+                Sanitize(
+                    Path.GetFileNameWithoutExtension(source)) +
+                extension.ToLowerInvariant();
+
+            string absolute =
+                Path.GetFullPath(destination);
+
+            string directory =
+                Path.GetDirectoryName(absolute);
+
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+
+            File.Copy(
+                source,
+                absolute,
+                true);
+
+            AssetDatabase.ImportAsset(
+                destination,
+                ImportAssetOptions.ForceSynchronousImport);
+
+            AudioImporter importer =
+                AssetImporter.GetAtPath(destination)
+                as AudioImporter;
+
+            if (importer != null)
+            {
+                AudioImporterSampleSettings settings =
+                    importer.defaultSampleSettings;
+
+                settings.loadType =
+                    AudioClipLoadType.CompressedInMemory;
+
+                settings.compressionFormat =
+                    AudioCompressionFormat.Vorbis;
+
+                settings.quality = 0.72f;
+
+                importer.defaultSampleSettings = settings;
+                importer.forceToMono = false;
+                importer.preloadAudioData = true;
+                importer.loadInBackground = false;
+                importer.SaveAndReimport();
+            }
+
+            return AssetDatabase.LoadAssetAtPath<AudioClip>(
+                destination);
         }
 
         private static string ResolveResource(
