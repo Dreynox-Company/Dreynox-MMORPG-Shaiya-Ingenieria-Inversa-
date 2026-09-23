@@ -49,6 +49,97 @@ namespace Dreynox.Mmorpg.ParityCore
         Quest = 16
     }
 
+    public static class NpcServiceResolverCore
+    {
+        // NpcQuest.SData group ids observed in the canonical ps0032 client:
+        // 1 Merchant, 2 GateKeeper, 3 Blacksmith, 4 PvPManager,
+        // 5 GamblingHouse, 6 Warehouse, 7 Normal, 8 Guard, 9 Animal,
+        // 10 Apprentice, 11 GuildMaster, 12 DeadNpc, 13 CombatCommander.
+        public static NpcServiceKind Resolve(
+            int npcType,
+            bool hasQuestLinks)
+        {
+            NpcServiceKind result =
+                NpcServiceKind.None;
+
+            switch (npcType)
+            {
+                case 1:
+                    result |=
+                        NpcServiceKind.Shop;
+                    break;
+
+                case 2:
+                    result |=
+                        NpcServiceKind.Gatekeeper;
+                    break;
+
+                case 3:
+                    result |=
+                        NpcServiceKind.Blacksmith;
+                    break;
+
+                case 6:
+                    result |=
+                        NpcServiceKind.Warehouse;
+                    break;
+            }
+
+            if (hasQuestLinks)
+                result |=
+                    NpcServiceKind.Quest;
+
+            return result;
+        }
+    }
+
+    public readonly struct PortalTravelCore
+    {
+        public readonly int SourceMapId;
+        public readonly int PortalId;
+        public readonly int MinimumLevel;
+        public readonly int MaximumLevel;
+        public readonly int TargetMapId;
+        public readonly double TargetX;
+        public readonly double TargetY;
+        public readonly double TargetZ;
+
+        public PortalTravelCore(
+            int sourceMapId,
+            int portalId,
+            int minimumLevel,
+            int maximumLevel,
+            int targetMapId,
+            double targetX,
+            double targetY,
+            double targetZ)
+        {
+            if (sourceMapId < 0)
+                throw new ArgumentOutOfRangeException(nameof(sourceMapId));
+            if (minimumLevel < 0)
+                throw new ArgumentOutOfRangeException(nameof(minimumLevel));
+            if (maximumLevel < minimumLevel)
+                throw new ArgumentOutOfRangeException(nameof(maximumLevel));
+            if (targetMapId < 0)
+                throw new ArgumentOutOfRangeException(nameof(targetMapId));
+
+            SourceMapId = sourceMapId;
+            PortalId = portalId;
+            MinimumLevel = minimumLevel;
+            MaximumLevel = maximumLevel;
+            TargetMapId = targetMapId;
+            TargetX = targetX;
+            TargetY = targetY;
+            TargetZ = targetZ;
+        }
+
+        public bool CanEnter(int level)
+        {
+            return level >= MinimumLevel &&
+                   level <= MaximumLevel;
+        }
+    }
+
     public sealed class NpcInteractionCore
     {
         private readonly Dictionary<int, NpcServiceKind> _services = new Dictionary<int, NpcServiceKind>();
