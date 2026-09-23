@@ -334,5 +334,25 @@ namespace Dreynox.Mmorpg.Tests
             Assert.Less(result.Ssim, 1.0);
         }
 
+        [Test]
+        public void CapturedTargetAttackDoesNotRetargetBeforeExecution()
+        {
+            var combat = new CombatCore();
+            combat.RegisterTarget(10, 1000);
+            combat.RegisterTarget(11, 1000);
+
+            Assert.IsTrue(combat.SelectTarget(10));
+            int captured = combat.SelectedTargetId.Value;
+            Assert.IsTrue(combat.SelectTarget(11));
+
+            Assert.IsTrue(combat.RequestAttackAt(captured, 125, 0.01, 0.02, 0.01));
+            combat.Tick(0.03);
+
+            Assert.AreEqual(875, combat.Targets[10].Health);
+            Assert.AreEqual(1000, combat.Targets[11].Health);
+            Assert.AreEqual(11, combat.SelectedTargetId.Value);
+            Assert.AreEqual(10, combat.LastHitTargetId.Value);
+        }
+
     }
 }
