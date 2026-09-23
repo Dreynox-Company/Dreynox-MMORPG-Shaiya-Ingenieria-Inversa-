@@ -316,6 +316,48 @@ namespace Dreynox.Mmorpg.ParityHarness
                     "combat descent timing remains bounded at " + fps + " Hz");
             }
 
+            Check(LegacyWingPoseCore.Count == 48,
+                "canonical wing table contains 4x6x2 profiles");
+            LegacyWingPose canonicalWing =
+                LegacyWingPoseCore.Resolve(0, 0, 0);
+            Check(canonicalWing.BoneIndex == 4 &&
+                  Math.Abs(canonicalWing.RotX - 170.0) < 0.0000001 &&
+                  Math.Abs(canonicalWing.RotZ - 90.0) < 0.0000001 &&
+                  Math.Abs(canonicalWing.UpDown - 0.05) < 0.0000001 &&
+                  Math.Abs(canonicalWing.FrontBack + 0.18) < 0.0000001,
+                "canonical human fighter wing pose matches supplied WingPosition.xml");
+
+            bool allWingProfilesPresent = true;
+            for (int family = 0; family < 4; family++)
+            for (int job = 0; job < 6; job++)
+            for (int sex = 0; sex < 2; sex++)
+            {
+                if (!LegacyWingPoseCore.TryResolve(
+                        family,
+                        job,
+                        sex,
+                        out LegacyWingPose pose) ||
+                    pose.BoneIndex != 4 ||
+                    Math.Abs(pose.RotZ - 90.0) > 0.0000001)
+                {
+                    allWingProfilesPresent = false;
+                }
+            }
+            Check(allWingProfilesPresent,
+                "all canonical wing profiles resolve with verified bone and rotation");
+
+            LegacyWorldPopulation offlineMap0 =
+                LegacyWorldPopulationCore.Get(0);
+            Check(LegacyWorldPopulationCore.LoginPort == 30800 &&
+                  LegacyWorldPopulationCore.All.Count == 13,
+                "offline ps0032 baseline exposes captured login port and maps");
+            Check(offlineMap0.Portals == 11 &&
+                  offlineMap0.Npcs == 141 &&
+                  offlineMap0.MobAreas == 509 &&
+                  offlineMap0.Mobs == 1330 &&
+                  offlineMap0.Obelisks == 1,
+                "offline map 0 population matches both captured sessions");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
