@@ -116,15 +116,34 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     npcQuestPath,
                     validateChecksum: true);
 
+            string npcTranslationPath =
+                ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/npc/npcquesttrans_spain.sdata");
+
+            LegacyNpcQuestTranslationHeaderFile npcTranslations =
+                LegacyNpcQuestTranslationParser.Parse(
+                    npcTranslationPath,
+                    npcDefinitions);
+
             LegacyMonFile npcModels =
                 LegacyMonParser.Parse(npcMonPath);
 
             if (npcDefinitions.Definitions.Count != 2394 ||
+                npcTranslations.Translations.Count != 2394 ||
+                npcTranslations.NpcTranslationBytesConsumed != 219081 ||
+                npcTranslations.QuestTranslationCount != 4085 ||
                 npcModels.Records.Count != 264)
             {
                 throw new InvalidDataException(
                     "Canonical NPC catalogs changed. Definitions=" +
                     npcDefinitions.Definitions.Count +
+                    ", translations=" +
+                    npcTranslations.Translations.Count +
+                    ", translationOffset=" +
+                    npcTranslations.NpcTranslationBytesConsumed +
+                    ", questTranslations=" +
+                    npcTranslations.QuestTranslationCount +
                     ", MON=" + npcModels.Records.Count + ".");
             }
 
@@ -280,6 +299,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     corpus,
                     svmap,
                     npcDefinitions,
+                    npcTranslations,
                     npcModels,
                     out resolvedNpcDefinitions,
                     out unresolvedNpcDefinitions,
@@ -951,6 +971,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 CanonicalClientCorpus corpus,
                 LegacySvmapFile svmap,
                 LegacyNpcQuestHeaderFile definitions,
+                LegacyNpcQuestTranslationHeaderFile translations,
                 LegacyMonFile npcModels,
                 out int resolvedDefinitionCount,
                 out int unresolvedDefinitionCount,
@@ -962,6 +983,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 throw new ArgumentNullException(nameof(svmap));
             if (definitions == null)
                 throw new ArgumentNullException(nameof(definitions));
+            if (translations == null)
+                throw new ArgumentNullException(nameof(translations));
             if (npcModels == null)
                 throw new ArgumentNullException(nameof(npcModels));
 
@@ -1004,6 +1027,19 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 }
 
                 resolvedDefinitionCount++;
+
+                LegacyNpcTranslation translation;
+                if (!translations.TryGet(
+                        source.NpcType,
+                        source.NpcId,
+                        out translation))
+                {
+                    throw new InvalidDataException(
+                        "Map 0 NPC " +
+                        source.NpcType + "/" +
+                        source.NpcId +
+                        " has no Spanish translation.");
+                }
 
                 int modelIndex =
                     definition.Model;
@@ -1049,6 +1085,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     LegacyNpcGateTarget target =
                         definition.GateTargets[gateIndex];
 
+                    string gateLabel =
+                        gateIndex < translation.TeleportNames.Length
+                            ? translation.TeleportNames[gateIndex]
+                            : string.Empty;
+
                     gateTargets[gateIndex] =
                         new LegacyNpcGateTargetRuntime
                         {
@@ -1058,7 +1099,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                                     target.X,
                                     target.Y,
                                     target.Z),
-                            cost = target.Cost
+                            cost = target.Cost,
+                            label = gateLabel
                         };
                 }
 
@@ -1082,6 +1124,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                                 definition.MerchantType.HasValue
                                     ? definition.MerchantType.Value
                                     : -1,
+                            displayName =
+                                translation.Name,
+                            welcomeMessage =
+                                translation.WelcomeMessage,
                             position = position.Position,
                             yawDegrees =
                                 position.Yaw * Mathf.Rad2Deg,
