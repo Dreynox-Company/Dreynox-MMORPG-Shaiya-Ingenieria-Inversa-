@@ -26,22 +26,25 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             new List<LegacyEftSequence>();
     }
 
-    public struct LegacyEftRotation
+    public struct LegacyEftColorFrame
     {
-        public Quaternion Rotation;
+        public float R;
+        public float G;
+        public float B;
+        public float A;
         public float Time;
     }
 
-    public struct LegacyEftOpacityFrame
+    public struct LegacyEftFloatFrame
     {
-        public float Opacity;
+        public float Value;
         public float Time;
     }
 
-    public struct LegacyEftSub3
+    public struct LegacyEftScaleFrame
     {
-        public float Unknown1;
-        public float Unknown2;
+        public float Min;
+        public float Max;
         public float Time;
     }
 
@@ -49,57 +52,57 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
     {
         public string Name = string.Empty;
 
-        public int Unknown1;
-        public int Unknown2;
-        public int Unknown3;
-        public int Unknown4;
-        public int Unknown5;
-        public int Unknown6;
-        public int Unknown7;
-        public int Unknown8;
-        public int MeshIndex;
-        public int Unknown10;
+        public bool VelocityRandomX;
+        public bool VelocityRandomY;
+        public bool VelocityRandomZ;
+        public bool Loop;
+        public int DestinationBlend;
+        public int VelocityMode;
+        public int SourceBlend;
+        public bool TextureLoop;
+        public int MeshIndex = -1;
+        public bool MotionPathEnabled;
 
-        public float Unknown11;
-        public float Unknown12;
-        public float Unknown13;
-        public float Unknown14;
-        public float Unknown15;
-        public float Unknown16;
-        public float Unknown17;
+        public float DelayPerFrame;
+        public float EmitRateMax;
+        public float LifeMax;
+        public float EmitRateMin;
+        public float LifeMin;
+        public float EmitterDuration;
+        public float SwirlSpeed;
         public float Unknown18;
 
-        public Vector3 UnknownVector1;
-        public Vector3 UnknownVector2;
-        public Vector3 Position;
-        public Vector3 UnknownVector4;
-        public Vector3 UnknownVector5;
+        public Vector3 EmitPositionSpread;
+        public Vector3 Acceleration;
+        public Vector3 EmitOrigin;
+        public Vector3 VelocityMin;
+        public Vector3 VelocityMax;
 
-        public int Unknown19;
-        public int Unknown20;
-        public int Unknown21;
+        public int BaseAxis;
+        public bool GravityEnabled;
+        public bool AttractEnabled;
+        public Vector3 AttractPoint;
+        public float AttractStrength;
 
-        public Vector3 UnknownVector6;
+        public bool AngularVelocityRandom;
+        public bool RotationEnabled;
+        public float AngularVelocity;
+        public int RotationAxis;
 
-        public float Unknown22;
-        public int Unknown23;
-        public int Unknown24;
-        public float Unknown25;
-        public int Unknown26;
-        public float Unknown27;
-        public float Unknown28;
+        public int Ef3Unused;
+        public int DistanceScaleMode;
 
-        public List<LegacyEftRotation> Rotations { get; } =
-            new List<LegacyEftRotation>();
-        public List<LegacyEftOpacityFrame> OpacityFrames { get; } =
-            new List<LegacyEftOpacityFrame>();
-        public List<LegacyEftSub3> Sub3 { get; } =
-            new List<LegacyEftSub3>();
+        public List<LegacyEftColorFrame> ColorFrames { get; } =
+            new List<LegacyEftColorFrame>();
+        public List<LegacyEftFloatFrame> VelocityScaleFrames { get; } =
+            new List<LegacyEftFloatFrame>();
+        public List<LegacyEftScaleFrame> ScaleFrames { get; } =
+            new List<LegacyEftScaleFrame>();
 
-        public int Unknown29;
-        public int Unknown30;
-        public int Unknown31;
-        public int Unknown32;
+        public bool MirrorTexture;
+        public int InitialRotationAxis;
+        public int InitialRotationMinDegrees;
+        public int InitialRotationMaxDegrees;
 
         public List<int> TextureIds { get; } =
             new List<int>();
@@ -242,113 +245,122 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     Name = ReadString(reader)
                 };
 
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                10L * 4L +
-                8L * 4L +
-                5L * 12L +
-                3L * 4L +
-                12L +
-                4L + 4L + 4L + 4L + 4L);
+            effect.VelocityRandomX =
+                ReadBool32(reader);
+            effect.VelocityRandomY =
+                ReadBool32(reader);
+            effect.VelocityRandomZ =
+                ReadBool32(reader);
+            effect.Loop =
+                ReadBool32(reader);
+            effect.DestinationBlend =
+                reader.ReadInt32();
+            effect.VelocityMode =
+                reader.ReadInt32();
+            effect.SourceBlend =
+                reader.ReadInt32();
+            effect.TextureLoop =
+                ReadBool32(reader);
+            effect.MeshIndex =
+                reader.ReadInt32();
+            effect.MotionPathEnabled =
+                ReadBool32(reader);
 
-            effect.Unknown1 = reader.ReadInt32();
-            effect.Unknown2 = reader.ReadInt32();
-            effect.Unknown3 = reader.ReadInt32();
-            effect.Unknown4 = reader.ReadInt32();
-            effect.Unknown5 = reader.ReadInt32();
-            effect.Unknown6 = reader.ReadInt32();
-            effect.Unknown7 = reader.ReadInt32();
-            effect.Unknown8 = reader.ReadInt32();
-            effect.MeshIndex = reader.ReadInt32();
-            effect.Unknown10 = reader.ReadInt32();
-
-            effect.Unknown11 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
-            effect.Unknown12 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
-            effect.Unknown13 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
-            effect.Unknown14 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
-            effect.Unknown15 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
-            effect.Unknown16 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
-            effect.Unknown17 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
+            effect.DelayPerFrame =
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
+            effect.EmitRateMax =
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
+            effect.LifeMax =
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
+            effect.EmitRateMin =
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
+            effect.LifeMin =
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
+            effect.EmitterDuration =
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
+            effect.SwirlSpeed =
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
             effect.Unknown18 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
 
-            effect.UnknownVector1 =
-                LegacyFormatPrimitives.ReadVector3(reader);
-            effect.UnknownVector2 =
-                LegacyFormatPrimitives.ReadVector3(reader);
-            effect.Position =
-                LegacyFormatPrimitives.ReadVector3(reader);
-            effect.UnknownVector4 =
-                LegacyFormatPrimitives.ReadVector3(reader);
-            effect.UnknownVector5 =
-                LegacyFormatPrimitives.ReadVector3(reader);
+            effect.EmitPositionSpread =
+                LegacyFormatPrimitives
+                    .ReadVector3(reader);
+            effect.Acceleration =
+                LegacyFormatPrimitives
+                    .ReadVector3(reader);
+            effect.EmitOrigin =
+                LegacyFormatPrimitives
+                    .ReadVector3(reader);
+            effect.VelocityMin =
+                LegacyFormatPrimitives
+                    .ReadVector3(reader);
+            effect.VelocityMax =
+                LegacyFormatPrimitives
+                    .ReadVector3(reader);
 
-            effect.Unknown19 = reader.ReadInt32();
-            effect.Unknown20 = reader.ReadInt32();
-            effect.Unknown21 = reader.ReadInt32();
+            effect.BaseAxis =
+                reader.ReadInt32();
+            effect.GravityEnabled =
+                ReadBool32(reader);
+            effect.AttractEnabled =
+                ReadBool32(reader);
+            effect.AttractPoint =
+                LegacyFormatPrimitives
+                    .ReadVector3(reader);
+            effect.AttractStrength =
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
 
-            effect.UnknownVector6 =
-                LegacyFormatPrimitives.ReadVector3(reader);
-
-            effect.Unknown22 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
-            effect.Unknown23 = reader.ReadInt32();
-            effect.Unknown24 = reader.ReadInt32();
-            effect.Unknown25 =
-                LegacyFormatPrimitives.ReadFiniteSingle(reader);
-            effect.Unknown26 = reader.ReadInt32();
+            effect.AngularVelocityRandom =
+                ReadBool32(reader);
+            effect.RotationEnabled =
+                ReadBool32(reader);
+            effect.AngularVelocity =
+                LegacyFormatPrimitives
+                    .ReadFiniteSingle(reader);
+            effect.RotationAxis =
+                reader.ReadInt32();
 
             if (format == LegacyEftFormat.EF3)
             {
-                effect.Unknown27 =
-                    LegacyFormatPrimitives.ReadFiniteSingle(reader);
-                effect.Unknown28 =
-                    LegacyFormatPrimitives.ReadFiniteSingle(reader);
+                effect.Ef3Unused =
+                    reader.ReadInt32();
+                effect.DistanceScaleMode =
+                    reader.ReadInt32();
             }
 
-            int rotationCount =
+            int colorCount =
                 LegacyFormatPrimitives.ReadCount(
                     reader,
-                    "EFT rotation",
+                    "EFT color frame",
                     MaxListCount);
 
             for (int i = 0;
-                 i < rotationCount;
+                 i < colorCount;
                  i++)
             {
-                effect.Rotations.Add(
-                    new LegacyEftRotation
+                effect.ColorFrames.Add(
+                    new LegacyEftColorFrame
                     {
-                        Rotation =
+                        R =
                             LegacyFormatPrimitives
-                                .ReadQuaternion(reader),
-                        Time =
+                                .ReadFiniteSingle(reader),
+                        G =
                             LegacyFormatPrimitives
-                                .ReadFiniteSingle(reader)
-                    });
-            }
-
-            int opacityCount =
-                LegacyFormatPrimitives.ReadCount(
-                    reader,
-                    "EFT opacity",
-                    MaxListCount);
-
-            for (int i = 0;
-                 i < opacityCount;
-                 i++)
-            {
-                effect.OpacityFrames.Add(
-                    new LegacyEftOpacityFrame
-                    {
-                        Opacity =
+                                .ReadFiniteSingle(reader),
+                        B =
+                            LegacyFormatPrimitives
+                                .ReadFiniteSingle(reader),
+                        A =
                             LegacyFormatPrimitives
                                 .ReadFiniteSingle(reader),
                         Time =
@@ -357,23 +369,20 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     });
             }
 
-            int sub3Count =
+            int velocityScaleCount =
                 LegacyFormatPrimitives.ReadCount(
                     reader,
-                    "EFT sub3",
+                    "EFT velocity scale frame",
                     MaxListCount);
 
             for (int i = 0;
-                 i < sub3Count;
+                 i < velocityScaleCount;
                  i++)
             {
-                effect.Sub3.Add(
-                    new LegacyEftSub3
+                effect.VelocityScaleFrames.Add(
+                    new LegacyEftFloatFrame
                     {
-                        Unknown1 =
-                            LegacyFormatPrimitives
-                                .ReadFiniteSingle(reader),
-                        Unknown2 =
+                        Value =
                             LegacyFormatPrimitives
                                 .ReadFiniteSingle(reader),
                         Time =
@@ -382,24 +391,45 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     });
             }
 
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                16);
+            int scaleCount =
+                LegacyFormatPrimitives.ReadCount(
+                    reader,
+                    "EFT scale frame",
+                    MaxListCount);
 
-            effect.Unknown29 = reader.ReadInt32();
-            effect.Unknown30 = reader.ReadInt32();
-            effect.Unknown31 = reader.ReadInt32();
-            effect.Unknown32 = reader.ReadInt32();
+            for (int i = 0;
+                 i < scaleCount;
+                 i++)
+            {
+                effect.ScaleFrames.Add(
+                    new LegacyEftScaleFrame
+                    {
+                        Min =
+                            LegacyFormatPrimitives
+                                .ReadFiniteSingle(reader),
+                        Max =
+                            LegacyFormatPrimitives
+                                .ReadFiniteSingle(reader),
+                        Time =
+                            LegacyFormatPrimitives
+                                .ReadFiniteSingle(reader)
+                    });
+            }
+
+            effect.MirrorTexture =
+                ReadBool32(reader);
+            effect.InitialRotationAxis =
+                reader.ReadInt32();
+            effect.InitialRotationMinDegrees =
+                reader.ReadInt32();
+            effect.InitialRotationMaxDegrees =
+                reader.ReadInt32();
 
             int textureCount =
                 LegacyFormatPrimitives.ReadCount(
                     reader,
                     "EFT effect texture",
                     MaxListCount);
-
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                checked((long)textureCount * 4L));
 
             for (int i = 0;
                  i < textureCount;
@@ -437,10 +467,6 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     "EFT sequence record",
                     MaxListCount);
 
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                checked((long)recordCount * 8L));
-
             for (int i = 0;
                  i < recordCount;
                  i++)
@@ -457,6 +483,27 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             }
 
             return sequence;
+        }
+
+        private static bool ReadBool32(
+            BinaryReader reader)
+        {
+            LegacyFormatPrimitives.EnsureRemaining(
+                reader,
+                4);
+
+            int value =
+                reader.ReadInt32();
+
+            if (value != 0 &&
+                value != 1)
+            {
+                throw new InvalidDataException(
+                    "EFT boolean field contains " +
+                    value + " instead of 0/1.");
+            }
+
+            return value != 0;
         }
 
         private static void ReadStringList(
