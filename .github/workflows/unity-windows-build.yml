@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - work/unity-reverse-engineering-v0.2.0
   pull_request:
     branches:
