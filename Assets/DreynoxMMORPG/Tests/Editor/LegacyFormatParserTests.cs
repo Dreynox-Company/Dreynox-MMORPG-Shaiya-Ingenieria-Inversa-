@@ -235,6 +235,94 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 56);
         }
 
+        [Test]
+        public void WldFldTerrainHeaderParsesHeightAndTextureData()
+        {
+            ushort[] rawHeights =
+            {
+                10000, 10001, 10002,
+                10003, 10004, 10005,
+                10006, 10007, 10008
+            };
+
+            byte[] bytes =
+                BuildWldTerrain(
+                    4,
+                    rawHeights,
+                    new byte[9],
+                    "TestDetail.dds",
+                    8f,
+                    "Step.wav",
+                    ".wtr");
+
+            LegacyWldTerrainFile parsed =
+                LegacyWldTerrainParser.Parse(bytes);
+
+            Assert.AreEqual("FLD\0", parsed.Signature);
+            Assert.AreEqual(4, parsed.MapSize);
+            Assert.AreEqual(3, parsed.Resolution);
+            Assert.AreEqual(9, parsed.RawHeights.Length);
+            Assert.AreEqual(1, parsed.Textures.Count);
+            Assert.AreEqual("TestDetail.dds", parsed.Textures[0].TextureName);
+            Assert.AreEqual(8f, parsed.Textures[0].TileSize, 0.000001f);
+            Assert.AreEqual("Step.wav", parsed.Textures[0].WalkSound);
+            Assert.AreEqual(".wtr", parsed.InnerLayout);
+            Assert.AreEqual(
+                LegacyTerrainHeightCore.Decode(10004),
+                parsed.WorldHeightAtSample(1, 1),
+                0.000001);
+        }
+
+        [Test]
+        public void CanonicalMapZeroWldAndSvmapMatchVerifiedCorpusWhenConfigured()
+        {
+            CanonicalClientCorpus corpus =
+                CanonicalClientCorpus.FromStoredRoot();
+
+            if (corpus == null || !corpus.Validate().IsCanonical)
+                Assert.Ignore(
+                    "Canonical ps0032 corpus is not configured on this machine.");
+
+            LegacyWldTerrainFile wld =
+                LegacyWldTerrainParser.Parse(
+                    corpus.Resolve("DATA_Español/world/0.wld"));
+
+            Assert.AreEqual(2048, wld.MapSize);
+            Assert.AreEqual(1025, wld.Resolution);
+            Assert.AreEqual(7, wld.Textures.Count);
+            Assert.AreEqual(
+                "A1_Grass_field.dds",
+                wld.Textures[0].TextureName);
+            Assert.AreEqual(8f, wld.Textures[0].TileSize, 0.000001f);
+
+            int x =
+                LegacyTerrainHeightCore.WorldToSampleIndex(
+                    184.4588165283203,
+                    wld.MapSize);
+
+            int z =
+                LegacyTerrainHeightCore.WorldToSampleIndex(
+                    1826.923583984375,
+                    wld.MapSize);
+
+            Assert.AreEqual(11268, wld.RawHeightAt(x, z));
+            Assert.AreEqual(
+                25.36,
+                wld.WorldHeightAtSample(x, z),
+                0.0001);
+
+            LegacySvmapFile svmap =
+                LegacySvmapParser.Parse(
+                    corpus.Resolve("DATA_Español/world/0.svmap"));
+
+            Assert.AreEqual(2048, svmap.MapSize);
+            Assert.AreEqual(11, svmap.Portals.Count);
+            Assert.AreEqual(509, svmap.MonsterAreas.Count);
+            Assert.AreEqual(1330, svmap.MonsterInstanceCount);
+            Assert.AreEqual(150, svmap.Npcs.Count);
+            Assert.AreEqual(198, svmap.NpcPositionCount);
+        }
+
         private static void Assert3dc(
             CanonicalClientCorpus corpus,
             string relativePath,
@@ -267,6 +355,70 @@ namespace Dreynox.Mmorpg.Tests.Editor
             Assert.AreEqual(start, parsed.StartKeyframe, relativePath);
             Assert.AreEqual(end, parsed.EndKeyframe, relativePath);
             Assert.AreEqual(bones, parsed.Bones.Count, relativePath);
+        }
+
+        private static byte[] BuildWldTerrain(
+            int mapSize,
+            ushort[] heights,
+            byte[] textureMap,
+            string textureName,
+            float tileSize,
+            string walkSound,
+            string innerLayout)
+        {
+            int resolution =
+                LegacyTerrainHeightCore.ResolutionForMapSize(mapSize);
+
+            int expected =
+                resolution * resolution;
+
+            if (heights.Length != expected ||
+                textureMap.Length != expected)
+            {
+                throw new ArgumentException(
+                    "Synthetic WLD sample arrays do not match map resolution.");
+            }
+
+            using (MemoryStream stream = new MemoryStream())
+            using (BinaryWriter writer = new BinaryWriter(stream))
+            {
+                writer.Write(Encoding.ASCII.GetBytes("FLD\0"));
+                writer.Write((uint)mapSize);
+
+                for (int i = 0; i < heights.Length; i++)
+                    writer.Write(heights[i]);
+
+                writer.Write(textureMap);
+                writer.Write(1);
+
+                WriteFixedAscii256(writer, textureName);
+                writer.Write(tileSize);
+                WriteFixedAscii256(writer, walkSound);
+                WriteFixedAscii256(writer, innerLayout);
+
+                return stream.ToArray();
+            }
+        }
+
+        private static void WriteFixedAscii256(
+            BinaryWriter writer,
+            string value)
+        {
+            byte[] output = new byte[256];
+            byte[] source =
+                Encoding.ASCII.GetBytes(value ?? string.Empty);
+
+            int count =
+                Math.Min(source.Length, output.Length - 1);
+
+            Buffer.BlockCopy(
+                source,
+                0,
+                output,
+                0,
+                count);
+
+            writer.Write(output);
         }
 
         private static byte[] Build3dc(
