@@ -48,7 +48,7 @@ Estados:
 | Personajes / sets / armas reales | REAL_ASSET_PENDING | prefabs, rigs, materiales, sockets |
 | ANI reales | REAL_ASSET_PENDING | Animator/PlayableGraph + catálogo por clase/arma |
 | EFT / lapisia / VFX | REAL_ASSET_PENDING | VFX Graph/Particle System/URP |
-| UI completa | VISUAL_QA_PENDING | reconstrucción Canvas/UI Toolkit y capturas |
+| UI completa | VISUAL_QA_PENDING | reconstrucción Canvas/UI Toolkit y capturas |\n| Captura/comparación visual | UNITY_ADAPTER | F8 + MAE/RMSE/PSNR/SSIM + diff PNG; falta corpus de escenas equivalentes game.exe |
 | Audio | REAL_ASSET_PENDING | AudioMixer + spatial audio |
 | Networking cliente | PROTOCOL_PENDING | adaptar contratos confirmados, IO fuera Main Thread |
 | game.exe reference | PORTED_CORE tooling | huellas conocidas + inspector PE; no igualdad binaria |
