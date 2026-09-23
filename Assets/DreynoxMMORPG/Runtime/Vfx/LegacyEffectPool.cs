@@ -8,6 +8,7 @@ namespace Dreynox.Mmorpg.Vfx
         [System.NonSerialized] internal GameObject sourcePrefab;
         [System.NonSerialized] internal bool returning;
         [System.NonSerialized] internal bool pooled;
+        [System.NonSerialized] internal uint leaseId;
 
         private void OnDisable()
         {
@@ -26,6 +27,8 @@ namespace Dreynox.Mmorpg.Vfx
         private static readonly Dictionary<GameObject, Stack<LegacyPooledEffectInstance>>
             Pool =
                 new Dictionary<GameObject, Stack<LegacyPooledEffectInstance>>();
+
+        private static uint _nextLeaseId = 1;
 
         public static GameObject Play(
             GameObject prefab,
@@ -205,6 +208,20 @@ namespace Dreynox.Mmorpg.Vfx
             item.returning = false;
         }
 
+        private static uint NextLeaseId()
+        {
+            uint value =
+                _nextLeaseId++;
+
+            if (value == 0)
+            {
+                value =
+                    _nextLeaseId++;
+            }
+
+            return value;
+        }
+
         private static LegacyPooledEffectInstance Rent(
             GameObject prefab)
         {
@@ -225,6 +242,8 @@ namespace Dreynox.Mmorpg.Vfx
                     pooled.sourcePrefab =
                         prefab;
                     pooled.pooled = false;
+                    pooled.leaseId =
+                        NextLeaseId();
 
                     return pooled;
                 }
@@ -249,6 +268,8 @@ namespace Dreynox.Mmorpg.Vfx
 
             item.sourcePrefab = prefab;
             item.pooled = false;
+            item.leaseId =
+                NextLeaseId();
 
             item.returning = true;
             instance.SetActive(false);
