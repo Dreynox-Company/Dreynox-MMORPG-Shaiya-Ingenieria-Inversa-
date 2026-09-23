@@ -74,13 +74,30 @@ namespace Dreynox.Mmorpg.ParityCore
 
         public bool RequestAttack(int damage, double windupSeconds = 0.12, double hitSeconds = 0.18, double recoverySeconds = 0.28)
         {
+            if (!_selectedTargetId.HasValue) return false;
+            return RequestAttackAt(
+                _selectedTargetId.Value,
+                damage,
+                windupSeconds,
+                hitSeconds,
+                recoverySeconds);
+        }
+
+        public bool RequestAttackAt(
+            int targetId,
+            int damage,
+            double windupSeconds = 0.12,
+            double hitSeconds = 0.18,
+            double recoverySeconds = 0.28)
+        {
             if (damage <= 0) return false;
             if (_phase != AttackPhase.Idle) return false;
-            if (!_selectedTargetId.HasValue) return false;
+
             CombatTargetState target;
-            if (!_targets.TryGetValue(_selectedTargetId.Value, out target) || !target.Alive) return false;
+            if (!_targets.TryGetValue(targetId, out target) || !target.Alive) return false;
+
             if (hitSeconds < windupSeconds) hitSeconds = windupSeconds;
-            _lockedAttackTargetId = _selectedTargetId;
+            _lockedAttackTargetId = targetId;
             _pendingDamage = damage;
             _hitApplied = false;
             _phase = AttackPhase.Windup;
