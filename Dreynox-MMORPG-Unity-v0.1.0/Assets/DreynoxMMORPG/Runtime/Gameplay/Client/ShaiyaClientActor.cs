@@ -90,10 +90,13 @@ namespace Dreynox.Mmorpg.Gameplay.Client
         {
             bool airborne = _motion.IsAirborne;
             Transform basis = cameraReference != null ? cameraReference : transform;
-            Vector3 forward = Vector3.ProjectOnPlane(basis.forward, Vector3.up).normalized;
-            Vector3 right = Vector3.ProjectOnPlane(basis.right, Vector3.up).normalized;
-            Vector3 desiredDirection = forward * (float)_motion.MoveY + right * (float)_motion.MoveX;
-            desiredDirection = Vector3.ClampMagnitude(desiredDirection, 1f);
+            ClientCoordinateCore.ResolveCameraRelative(
+                _motion.MoveX,
+                _motion.MoveY,
+                basis.eulerAngles.y,
+                out double worldX,
+                out double worldZ);
+            Vector3 desiredDirection = new Vector3((float)worldX, 0f, (float)worldZ);
 
             float targetSpeed = ResolveSpeed();
             Vector3 targetPlanar = desiredDirection * targetSpeed;
