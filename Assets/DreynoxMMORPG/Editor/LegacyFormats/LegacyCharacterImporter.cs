@@ -95,9 +95,153 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             },
             new ClipSpec
             {
+                Semantic = "backstep",
+                Path = "DATA_Español/character/human/ani6/humm_003_bstep.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "step_left",
+                Path = "DATA_Español/character/human/ani6/humm_004_lstep.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "step_right",
+                Path = "DATA_Español/character/human/ani6/humm_005_rstep.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "swim_idle",
+                Path = "DATA_Español/character/human/ani6/humm_006_swnormal.ani",
+                Loop = true
+            },
+            new ClipSpec
+            {
+                Semantic = "swim",
+                Path = "DATA_Español/character/human/ani6/humm_007_swim.ani",
+                Loop = true
+            },
+            new ClipSpec
+            {
                 Semantic = "jump",
                 Path = "DATA_Español/character/human/ani6/humm_008_jump.ani",
                 Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "dead",
+                Path = "DATA_Español/character/human/ani6/humm_009_die.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "down",
+                Path = "DATA_Español/character/human/ani6/humm_010_down.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "stand_up",
+                Path = "DATA_Español/character/human/ani6/humm_011_up.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "sit",
+                Path = "DATA_Español/character/human/ani6/humm_012_sit.ani",
+                Loop = true
+            },
+            new ClipSpec
+            {
+                Semantic = "idle_1",
+                Path = "DATA_Español/character/human/ani6/humm_016_idle1.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "idle_2",
+                Path = "DATA_Español/character/human/ani6/humm_017_idle2.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "ladder",
+                Path = "DATA_Español/character/human/ani6/humm_018_ladder.ani",
+                Loop = true
+            },
+            new ClipSpec
+            {
+                Semantic = "select",
+                Path = "DATA_Español/character/human/ani6/humm_019_select.ani",
+                Loop = true
+            },
+            new ClipSpec
+            {
+                Semantic = "mount_idle",
+                Path = "DATA_Español/character/human/ani6/humm_020_vehicle.ani",
+                Loop = true
+            },
+            new ClipSpec
+            {
+                Semantic = "mount_run",
+                Path = "DATA_Español/character/human/ani6/humm_020_veh_run.ani",
+                Loop = true
+            },
+            new ClipSpec
+            {
+                Semantic = "combat_idle",
+                Path = "DATA_Español/character/human/ani6/humm_034_onready.ani",
+                Loop = true
+            },
+            new ClipSpec
+            {
+                Semantic = "attack_1",
+                Path = "DATA_Español/character/human/ani6/humm_035_onattack01.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "attack_2",
+                Path = "DATA_Español/character/human/ani6/humm_036_onattack02.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "attack_3",
+                Path = "DATA_Español/character/human/ani6/humm_037_onattack03.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "attack_4",
+                Path = "DATA_Español/character/human/ani6/humm_038_onattack04.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "damage",
+                Path = "DATA_Español/character/human/ani6/humm_039_ondamage.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "combat_move",
+                Path = "DATA_Español/character/human/ani6/humm_040_onrun.ani",
+                Loop = true
+            },
+            new ClipSpec
+            {
+                Semantic = "skill_001",
+                Path = "DATA_Español/character/human/ani6/humm_100_skill001.ani",
+                Loop = false
+            },
+            new ClipSpec
+            {
+                Semantic = "sleep",
+                Path = "DATA_Español/character/human/ani6/humm_114_sleep001.ani",
+                Loop = true
             }
         };
 
