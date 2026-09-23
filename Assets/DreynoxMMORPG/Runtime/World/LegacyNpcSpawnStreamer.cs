@@ -15,6 +15,8 @@ namespace Dreynox.Mmorpg.World
         public int moveDistance;
         public int moveSpeed;
         public int merchantType = -1;
+        public string displayName = string.Empty;
+        public string welcomeMessage = string.Empty;
         public Vector3 position;
         public float yawDegrees;
         public LegacyNpcGateTargetRuntime[] gateTargets =
@@ -194,7 +196,9 @@ namespace Dreynox.Mmorpg.World
                     0f);
 
             instance.name =
-                "NPC_Type_" +
+                "NPC_" +
+                SanitizeName(definition.displayName) +
+                "_Type_" +
                 definition.npcType +
                 "_Id_" +
                 definition.typeId +
@@ -220,6 +224,8 @@ namespace Dreynox.Mmorpg.World
                 definition.moveDistance,
                 definition.moveSpeed,
                 definition.merchantType,
+                definition.displayName,
+                definition.welcomeMessage,
                 definition.gateTargets);
 
             SemanticAnimationPlayer animation =
@@ -302,6 +308,18 @@ namespace Dreynox.Mmorpg.World
                     Despawn(spawn);
                 }
             }
+        }
+
+        private static string SanitizeName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "Unnamed";
+
+            return value
+                .Trim()
+                .Replace(' ', '_')
+                .Replace('/', '_')
+                .Replace('\\', '_');
         }
 
         private struct SpawnCandidate
