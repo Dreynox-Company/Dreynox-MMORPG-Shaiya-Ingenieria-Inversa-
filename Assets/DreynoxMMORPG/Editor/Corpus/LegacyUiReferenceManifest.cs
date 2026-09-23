@@ -18,9 +18,21 @@ namespace Dreynox.Mmorpg.Editor.Corpus
 
                 ["character.select.background"] =
                     "DATA_Español/interface/CharacterSelect/selectBG.tga",
+                ["character.select.buttons"] =
+                    "DATA_Español/interface/CharacterSelect/selectbtn.tga",
                 ["character.select.start"] =
                     "DATA_Español/interface/CharacterSelect/button/select_start.tga",
+                ["character.select.restore"] =
+                    "DATA_Español/interface/CharacterSelect/restore.tga",
 
+                ["character.make.background"] =
+                    "DATA_Español/interface/CharacterMake/ta_2d_character_createbg.tga",
+                ["character.make.modeBackground"] =
+                    "DATA_Español/interface/CharacterMake/ta_2d_modebg.tga",
+                ["character.make.basicInfo"] =
+                    "DATA_Español/interface/CharacterMake/basicinfo_bg.tga",
+                ["character.make.appearance"] =
+                    "DATA_Español/interface/CharacterMake/appearance_bg.tga",
                 ["character.make.tab"] =
                     "DATA_Español/interface/CharacterMake/button/create_tab_button.tga",
                 ["character.make.nav.left"] =
@@ -35,6 +47,16 @@ namespace Dreynox.Mmorpg.Editor.Corpus
                     "DATA_Español/interface/CharacterMake/button/navi_zoomin.tga",
                 ["character.make.nav.zoomOut"] =
                     "DATA_Español/interface/CharacterMake/button/navi_zoomout.tga",
+                ["character.make.name"] =
+                    "DATA_Español/interface/CharacterMake/ta_2d_character_name.tga",
+                ["character.make.sex.male"] =
+                    "DATA_Español/interface/CharacterMake/ta_2d_character_sexm_button.tga",
+                ["character.make.sex.female"] =
+                    "DATA_Español/interface/CharacterMake/ta_2d_character_sexw_button.tga",
+                ["character.make.mode.basic"] =
+                    "DATA_Español/interface/CharacterMake/ta_2d_mode_basic_normal.tga",
+                ["character.make.mode.ultimate"] =
+                    "DATA_Español/interface/CharacterMake/ta_2d_mode_ultimate_normal.tga",
 
                 ["wing.position"] =
                     "DATA_Español/excelxml/wingposition.xml",
