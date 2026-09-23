@@ -31,6 +31,60 @@ namespace Dreynox.Mmorpg.Vfx
             Quaternion rotation,
             Transform parent = null)
         {
+            return PlaySequence(
+                prefab,
+                0,
+                forceOneShot: true,
+                position,
+                rotation,
+                parent);
+        }
+
+        public static GameObject PlaySequence(
+            GameObject prefab,
+            int sequenceIndex,
+            bool forceOneShot,
+            Vector3 position,
+            Quaternion rotation,
+            Transform parent = null)
+        {
+            return PlayInternal(
+                prefab,
+                position,
+                rotation,
+                parent,
+                player =>
+                    player.PlaySequence(
+                        sequenceIndex,
+                        forceOneShot));
+        }
+
+        public static GameObject PlayRawEffect(
+            GameObject prefab,
+            int effectIndex,
+            bool forceOneShot,
+            Vector3 position,
+            Quaternion rotation,
+            Transform parent = null)
+        {
+            return PlayInternal(
+                prefab,
+                position,
+                rotation,
+                parent,
+                player =>
+                    player.PlayRawEffect(
+                        effectIndex,
+                        forceOneShot));
+        }
+
+        private static GameObject PlayInternal(
+            GameObject prefab,
+            Vector3 position,
+            Quaternion rotation,
+            Transform parent,
+            System.Func<LegacyEftSequencePlayer, bool> invoke)
+        {
             if (prefab == null)
                 return null;
 
@@ -57,12 +111,17 @@ namespace Dreynox.Mmorpg.Vfx
 
             item.gameObject.SetActive(true);
 
-            LegacyEftSequencePlayer sequence =
+            LegacyEftSequencePlayer player =
                 item.GetComponent<
                     LegacyEftSequencePlayer>();
 
-            if (sequence != null)
-                sequence.PlayDefault();
+            if (player == null ||
+                invoke == null ||
+                !invoke(player))
+            {
+                Return(item);
+                return null;
+            }
 
             return item.gameObject;
         }
