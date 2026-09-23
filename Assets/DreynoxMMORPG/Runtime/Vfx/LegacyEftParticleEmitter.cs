@@ -64,6 +64,7 @@ namespace Dreynox.Mmorpg.Vfx
         [SerializeField] private int initialRotationMinDegrees;
         [SerializeField] private int initialRotationMaxDegrees;
         [SerializeField] private bool motionPathEnabled;
+        [SerializeField] private bool renderMeshGeometry;
 
         [Header("Lifetime curves")]
         [SerializeField] private LegacyEftColorKey[] colorKeys =
@@ -199,6 +200,10 @@ namespace Dreynox.Mmorpg.Vfx
                 initialMaxDegrees;
             motionPathEnabled = useMotionPath;
             meshClip = pathOrMeshClip;
+            renderMeshGeometry =
+                meshClip != null &&
+                meshClip.BaseMesh != null &&
+                !motionPathEnabled;
 
             colorKeys =
                 colors ?? Array.Empty<LegacyEftColorKey>();
@@ -1112,31 +1117,57 @@ namespace Dreynox.Mmorpg.Vfx
                     ? state.rotation
                     : state.initialRotation;
 
+            // Retail 3DE geometry and billboards use opposite authored spin
+            // conventions. Mesh geometry also faces along the opposite local
+            // X/Z basis and therefore receives a 180-degree Y correction.
+            angle *=
+                renderMeshGeometry
+                    ? 1f
+                    : -1f;
+
             int axis =
                 rotationEnabled
                     ? rotationAxis
                     : initialRotationAxis;
 
+            Vector3 rotation;
+
             switch (axis)
             {
                 case 1:
-                    return new Vector3(
-                        angle,
-                        0f,
-                        0f);
+                    rotation =
+                        new Vector3(
+                            angle,
+                            0f,
+                            0f);
+                    break;
+
                 case 2:
-                    return new Vector3(
-                        0f,
-                        angle,
-                        0f);
+                    rotation =
+                        new Vector3(
+                            0f,
+                            angle,
+                            0f);
+                    break;
+
                 case 3:
-                    return new Vector3(
-                        0f,
-                        0f,
-                        angle);
+                    rotation =
+                        new Vector3(
+                            0f,
+                            0f,
+                            angle);
+                    break;
+
                 default:
-                    return Vector3.zero;
+                    rotation =
+                        Vector3.zero;
+                    break;
             }
+
+            if (renderMeshGeometry)
+                rotation.y += Mathf.PI;
+
+            return rotation;
         }
 
         private int ResolveCapacity()
