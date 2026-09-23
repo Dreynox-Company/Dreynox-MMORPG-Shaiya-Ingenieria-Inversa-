@@ -549,5 +549,86 @@ namespace Dreynox.Mmorpg.Tests
             Assert.AreEqual(ClientFlowState.CharacterSelect, flow.State);
         }
 
+        [Test]
+        public void CanonicalNpcServiceGroupsResolveDeterministically()
+        {
+            Assert.AreEqual(
+                NpcServiceKind.Shop,
+                NpcServiceResolverCore.Resolve(1, false));
+
+            Assert.AreEqual(
+                NpcServiceKind.Gatekeeper,
+                NpcServiceResolverCore.Resolve(2, false));
+
+            Assert.AreEqual(
+                NpcServiceKind.Blacksmith | NpcServiceKind.Quest,
+                NpcServiceResolverCore.Resolve(3, true));
+
+            Assert.AreEqual(
+                NpcServiceKind.Warehouse | NpcServiceKind.Quest,
+                NpcServiceResolverCore.Resolve(6, true));
+
+            Assert.AreEqual(
+                NpcServiceKind.Quest,
+                NpcServiceResolverCore.Resolve(8, true));
+
+            Assert.AreEqual(
+                NpcServiceKind.None,
+                NpcServiceResolverCore.Resolve(8, false));
+        }
+
+        [Test]
+        public void SvmapPortalRulesMatchOfflineServerSemantics()
+        {
+            var neutral =
+                new PortalTravelCore(
+                    0,
+                    0,
+                    1,
+                    80,
+                    1,
+                    10,
+                    20,
+                    30);
+
+            Assert.IsTrue(neutral.IsOpenByDefault);
+            Assert.IsTrue(neutral.CanEnter(40, 1, false));
+            Assert.IsTrue(neutral.CanEnter(40, 2, false));
+
+            var light =
+                new PortalTravelCore(
+                    0,
+                    1,
+                    20,
+                    30,
+                    18,
+                    100,
+                    10,
+                    200);
+
+            Assert.IsTrue(light.CanEnter(20, 1, false));
+            Assert.IsTrue(light.CanEnter(30, 1, false));
+            Assert.IsFalse(light.CanEnter(19, 1, false));
+            Assert.IsFalse(light.CanEnter(31, 1, false));
+            Assert.IsFalse(light.CanEnter(25, 2, false));
+
+            var boss =
+                new PortalTravelCore(
+                    0,
+                    7,
+                    1,
+                    80,
+                    42,
+                    500,
+                    20,
+                    500);
+
+            Assert.IsTrue(boss.IsBossActivatedPortal);
+            Assert.IsFalse(boss.IsOpenByDefault);
+            Assert.IsFalse(boss.CanEnter(50, 1, false));
+            Assert.IsTrue(boss.CanEnter(50, 1, true));
+            Assert.IsTrue(boss.CanEnter(50, 2, true));
+        }
+
     }
 }
