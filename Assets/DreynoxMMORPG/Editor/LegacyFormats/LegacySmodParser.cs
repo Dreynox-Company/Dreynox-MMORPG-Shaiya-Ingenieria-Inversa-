@@ -128,13 +128,6 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 TextureName = ReadLengthPrefixedAscii(reader)
             };
 
-            if (string.IsNullOrWhiteSpace(mesh.TextureName))
-            {
-                throw new InvalidDataException(
-                    "SMOD mesh " + ordinal +
-                    " has an empty texture name.");
-            }
-
             int vertexCount =
                 LegacyFormatPrimitives.ReadCount(
                     reader,
