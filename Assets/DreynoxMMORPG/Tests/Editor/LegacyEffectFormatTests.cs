@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Dreynox.Mmorpg.Editor.Corpus;
 using Dreynox.Mmorpg.Editor.LegacyFormats;
 using NUnit.Framework;
 using UnityEngine;
@@ -192,6 +194,144 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 0.25f,
                 parsed.Sequences[0].Records[0].Time,
                 0.000001f);
+        }
+
+        [Test]
+        public void CanonicalMonsterLinkedEffectsParseWithRetailLayoutWhenCorpusIsConfigured()
+        {
+            CanonicalClientCorpus corpus =
+                CanonicalClientCorpus.FromStoredRoot();
+
+            if (corpus == null ||
+                !corpus.Validate().IsCanonical)
+            {
+                Assert.Ignore(
+                    "Canonical ps0032 corpus is not configured on this machine.");
+            }
+
+            LegacyMonFile monsters =
+                LegacyMonParser.Parse(
+                    corpus.Resolve(
+                        "DATA_Español/monster/monster.mon"));
+
+            string effectRoot =
+                LegacyUiAssetImporter.ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/effect");
+
+            var names =
+                new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0;
+                 i < monsters.Records.Count &&
+                 names.Count < 24;
+                 i++)
+            {
+                LegacyMonRecord record =
+                    monsters.Records[i];
+
+                AddEffectName(names, record.Attack1Effect);
+                AddEffectName(names, record.Attack2Effect);
+                AddEffectName(names, record.Attack3Effect);
+                AddEffectName(names, record.DieEffect);
+                AddEffectName(names, record.AttachEffect);
+            }
+
+            Assert.Greater(
+                names.Count,
+                0,
+                "Canonical monster.mon did not expose any EFT references.");
+
+            int parsedCount = 0;
+
+            foreach (string name in names)
+            {
+                string path =
+                    ResolveEffectPath(
+                        effectRoot,
+                        name);
+
+                if (path == null)
+                    continue;
+
+                LegacyEftFile parsed =
+                    LegacyEftParser.Parse(path);
+
+                Assert.GreaterOrEqual(
+                    parsed.Effects.Count,
+                    0,
+                    name);
+
+                Assert.GreaterOrEqual(
+                    parsed.Sequences.Count,
+                    0,
+                    name);
+
+                parsedCount++;
+
+                if (parsedCount >= 12)
+                    break;
+            }
+
+            Assert.GreaterOrEqual(
+                parsedCount,
+                3,
+                "Too few canonical monster-linked EFT libraries were resolved.");
+        }
+
+        private static void AddEffectName(
+            ISet<string> output,
+            string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+
+            string normalized =
+                value.Trim();
+
+            if (string.Equals(
+                    normalized,
+                    "LOAD",
+                    StringComparison.OrdinalIgnoreCase))
+                return;
+
+            output.Add(normalized);
+        }
+
+        private static string ResolveEffectPath(
+            string effectRoot,
+            string name)
+        {
+            string direct =
+                CanonicalResourceIndex.FindUnique(
+                    effectRoot,
+                    name);
+
+            if (direct != null)
+                return direct;
+
+            if (Path.HasExtension(name))
+                return null;
+
+            foreach (string extension in
+                     new[]
+                     {
+                         ".eft",
+                         ".ef2",
+                         ".ef3"
+                     })
+            {
+                string candidate =
+                    CanonicalResourceIndex.FindUnique(
+                        effectRoot,
+                        name + extension);
+
+                if (candidate != null)
+                    return candidate;
+            }
+
+            return null;
         }
 
         private static void WriteEffect(
