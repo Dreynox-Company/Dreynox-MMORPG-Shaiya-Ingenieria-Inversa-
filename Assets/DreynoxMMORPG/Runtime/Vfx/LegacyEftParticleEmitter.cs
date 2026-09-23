@@ -362,13 +362,18 @@ namespace Dreynox.Mmorpg.Vfx
                 motionPathEnabled)
                 return;
 
-            if (_animatedMesh != null)
+            particleRenderer.renderMode =
+                ParticleSystemRenderMode.Mesh;
+
+            if (!Application.isPlaying)
             {
-                if (Application.isPlaying)
-                    Destroy(_animatedMesh);
-                else
-                    DestroyImmediate(_animatedMesh);
+                particleRenderer.mesh =
+                    meshClip.BaseMesh;
+                return;
             }
+
+            if (_animatedMesh != null)
+                Destroy(_animatedMesh);
 
             _animatedMesh =
                 Instantiate(
@@ -387,9 +392,6 @@ namespace Dreynox.Mmorpg.Vfx
             _animatedUvs =
                 new Vector2[
                     _animatedMesh.vertexCount];
-
-            particleRenderer.renderMode =
-                ParticleSystemRenderMode.Mesh;
 
             particleRenderer.mesh =
                 _animatedMesh;
