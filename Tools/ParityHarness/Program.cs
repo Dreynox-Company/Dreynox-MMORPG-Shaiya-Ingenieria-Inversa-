@@ -369,6 +369,66 @@ namespace Dreynox.Mmorpg.ParityHarness
             Check(LegacyTerrainHeightCore.WorldToSampleIndex(184.4588165283203, 2048) == 92,
                 "world X maps to the same terrain sample used by canonical NPC evidence");
 
+            var characterFlow = new ClientFlowCore();
+            characterFlow.ReadyForLogin();
+            characterFlow.BeginConnect();
+            characterFlow.LoginAccepted();
+            characterFlow.SelectServer(1);
+            characterFlow.SetCharacterList(
+                new[]
+                {
+                    new CharacterSummaryCore(
+                        900,
+                        "Existing",
+                        40,
+                        0,
+                        0,
+                        1,
+                        1,
+                        2,
+                        3,
+                        0,
+                        CharacterDifficultyMode.Basic)
+                });
+
+            Check(characterFlow.BeginCharacterCreate(1) &&
+                  characterFlow.State == ClientFlowState.CharacterCreate &&
+                  characterFlow.CharacterCreateSlot == 1,
+                "character select opens an empty creation slot");
+
+            var createRequest = new CharacterCreationRequestCore(
+                "NewHero",
+                1,
+                3,
+                5,
+                0,
+                2,
+                1,
+                CharacterDifficultyMode.Ultimate);
+
+            var createdCharacter = new CharacterSummaryCore(
+                901,
+                createRequest.Name,
+                1,
+                createRequest.Slot,
+                createRequest.Family,
+                createRequest.Job,
+                createRequest.Sex,
+                createRequest.Face,
+                createRequest.Hair,
+                0,
+                createRequest.Mode);
+
+            Check(characterFlow.CharacterCreated(createdCharacter) &&
+                  characterFlow.State == ClientFlowState.CharacterSelect &&
+                  characterFlow.Characters.Count == 2,
+                "character creation returns to select with preserved appearance");
+
+            Check(characterFlow.CharacterDeleted(900) &&
+                  characterFlow.Characters.Count == 1 &&
+                  characterFlow.Characters[0].CharacterId == 901,
+                "character deletion updates deterministic character slots");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
