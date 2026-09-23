@@ -10,6 +10,7 @@ namespace Dreynox.Mmorpg.World
         public int mapId;
         public Vector3 position;
         public int cost;
+        public string label;
     }
 
     public sealed class LegacyNpcRuntimeDescriptor : MonoBehaviour
@@ -21,6 +22,8 @@ namespace Dreynox.Mmorpg.World
         [SerializeField] private int moveDistance;
         [SerializeField] private int moveSpeed;
         [SerializeField] private int merchantType = -1;
+        [SerializeField] private string displayName = string.Empty;
+        [SerializeField, TextArea] private string welcomeMessage = string.Empty;
         [SerializeField] private LegacyNpcGateTargetRuntime[] gateTargets =
             Array.Empty<LegacyNpcGateTargetRuntime>();
 
@@ -31,6 +34,8 @@ namespace Dreynox.Mmorpg.World
         public int MoveDistance => moveDistance;
         public int MoveSpeed => moveSpeed;
         public int MerchantType => merchantType;
+        public string DisplayName => displayName;
+        public string WelcomeMessage => welcomeMessage;
         public IReadOnlyList<LegacyNpcGateTargetRuntime> GateTargets =>
             gateTargets;
 
@@ -42,6 +47,8 @@ namespace Dreynox.Mmorpg.World
             int movementDistance,
             int movementSpeed,
             int merchant,
+            string name,
+            string welcome,
             LegacyNpcGateTargetRuntime[] targets)
         {
             npcType = type;
@@ -51,6 +58,8 @@ namespace Dreynox.Mmorpg.World
             moveDistance = movementDistance;
             moveSpeed = movementSpeed;
             merchantType = merchant;
+            displayName = name ?? string.Empty;
+            welcomeMessage = welcome ?? string.Empty;
             gateTargets =
                 targets ?? Array.Empty<LegacyNpcGateTargetRuntime>();
         }
