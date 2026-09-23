@@ -1,0 +1,18 @@
+# Unity generated directories
+Library/
+Temp/
+Logs/
+UserSettings/
+obj/
+Build/
+Builds/
+
+# Local-only canonical legacy corpus imports / generated scenes
+Assets/DreynoxMMORPG/LocalLegacyGenerated/
+Assets/DreynoxMMORPG/Game/Scenes/Generated/
+
+# IDE / OS
+.vs/
+.idea/
+.DS_Store
+Thumbs.db
