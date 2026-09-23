@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  UNITY_PROJECT_PATH: Dreynox-MMORPG-Unity-v0.1.0
+
 jobs:
   source-validation:
     runs-on: ubuntu-latest
@@ -20,7 +23,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Validate repository structure
-        run: python Tools/validate_project.py
+        run: python "$UNITY_PROJECT_PATH/Tools/validate_project.py"
 
   unity-windows:
     needs: source-validation
@@ -43,8 +46,8 @@ jobs:
         if: steps.unity-license.outputs.ready == 'true'
         uses: actions/cache@v4
         with:
-          path: Library
-          key: Library-${{ runner.os }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          path: ${{ env.UNITY_PROJECT_PATH }}/Library
+          key: Library-${{ runner.os }}-${{ hashFiles('Dreynox-MMORPG-Unity-v0.1.0/Assets/**', 'Dreynox-MMORPG-Unity-v0.1.0/Packages/**', 'Dreynox-MMORPG-Unity-v0.1.0/ProjectSettings/**') }}
           restore-keys: |
             Library-${{ runner.os }}-
       - name: Build StandaloneWindows64
@@ -55,7 +58,7 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          projectPath: .
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
           unityVersion: auto
           targetPlatform: StandaloneWindows64
           buildMethod: Dreynox.Mmorpg.Editor.Build.DreynoxWindowsBuild.BuildBatch
@@ -65,6 +68,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Dreynox-Mmorpg-Windows-x64
-          path: Builds/Windows/
+          path: ${{ env.UNITY_PROJECT_PATH }}/Builds/Windows/
           if-no-files-found: error
           retention-days: 14
