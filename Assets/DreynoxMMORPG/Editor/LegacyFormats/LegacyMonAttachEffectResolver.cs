@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Dreynox.Mmorpg.Editor.Corpus;
 using Dreynox.Mmorpg.Vfx;
+using Dreynox.Mmorpg.World;
 
 namespace Dreynox.Mmorpg.Editor.LegacyFormats
 {
