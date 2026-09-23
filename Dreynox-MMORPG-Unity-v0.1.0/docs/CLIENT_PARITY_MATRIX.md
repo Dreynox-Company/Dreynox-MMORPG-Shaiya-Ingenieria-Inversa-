@@ -1,53 +1,69 @@
-# Matriz de paridad del cliente
+# Dreynox MMORPG — matriz de paridad del cliente
 
-Estados usados: `PORTED_CORE`, `UNITY_ADAPTER`, `REAL_ASSET_PENDING`, `PROTOCOL_PENDING`, `VISUAL_QA_PENDING`.
+Esta matriz mide la migración del **cliente de juego** desde el trabajo validado de Shaiya Flutter hacia Unity 6.  
+**SPK, descifrado de archivos y Shaiya Studio están fuera del alcance de este repositorio.**
 
-| Dominio | Estado Unity actual | Gate siguiente |
+Estados:
+- `PORTED_CORE`: regla determinista migrada y cubierta por pruebas/harness.
+- `UNITY_ADAPTER`: existe implementación ejecutable en Unity.
+- `REAL_ASSET_PENDING`: la lógica existe, pero falta conectar modelos/ANI/materiales/escenas reales.
+- `PROTOCOL_PENDING`: falta conectar paquetes/opcodes confirmados.
+- `VISUAL_QA_PENDING`: falta comparación visual reproducible contra game.exe.
+
+| Dominio | Estado | Evidencia / siguiente gate |
 |---|---|---|
-| Idle / Walk / Run | UNITY_ADAPTER | comparar clips/velocidad con assets reales |
-| Focus loss / key repeat | PORTED_CORE | EditMode + Player test |
-| Jump / grounding | UNITY_ADAPTER | colisión real por mapa |
-| Cámara relativa | UNITY_ADAPTER | comparación de sensibilidad y límites |
-| Cámara vs geometría | UNITY_ADAPTER | mapas reales |
-| One-hand + shield | UNITY_ADAPTER | assets/sockets reales |
-| Two-hand / spear | UNITY_ADAPTER | clips reales por clase |
-| Wings | UNITY_ADAPTER | bone/socket y ANI reales |
-| Flight / hover | UNITY_ADAPTER | transición visual por arquetipo |
-| Mounts | UNITY_ADAPTER | asiento por recurso + clips reales |
-| Target lock | PORTED_CORE | selección/UI real |
-| Multi-target HP | PORTED_CORE | entidades de mundo reales |
-| Combat guard 8 s | PORTED_CORE | protocolo PvE/PvP |
-| Party | PORTED_CORE | PROTOCOL_PENDING |
-| Trade | PORTED_CORE | PROTOCOL_PENDING + UI |
-| Duel | PORTED_CORE | PROTOCOL_PENDING + reglas PvP |
-| Raid | PORTED_CORE | PROTOCOL_PENDING + UI |
-| Guild | PROTOCOL_PENDING | migrar contrato Flutter |
-| Friends | PROTOCOL_PENDING | migrar contrato Flutter |
-| Inventory / equipment | REAL_ASSET_PENDING | datos/slots reales |
-| Stats / skills / buffs | PROTOCOL_PENDING | port de modelos y opcodes |
-| Quests | PROTOCOL_PENDING | modelos + UI |
-| Shops / warehouse | PROTOCOL_PENDING | modelos + UI |
-| Gatekeepers | REAL_ASSET_PENDING | world transitions reales |
-| Blacksmith | PROTOCOL_PENDING | reglas/resultado/UI |
-| Death / rebirth | PORTED_CORE parcial | actor HP + protocolo |
-| World streaming | PORTED_CORE | escenas/chunks reales |
-| Terrain / sky | REAL_ASSET_PENDING | importadores reales |
-| Audio | REAL_ASSET_PENDING | catálogo y spatial audio |
-| EFT / lapisia | REAL_ASSET_PENDING | renderer VFX |
-| UI original | VISUAL_QA_PENDING | Canvas/UXML final |
-| Windows executable | build method listo | requiere activación Unity en CI o build local |
-| Android/iOS | arquitectura compartida | profiling físico |
-
-| Inventory / Warehouse | PORTED_CORE | conectar UI + catálogo real |
-| Stats / Buffs / Death-Rebirth | PORTED_CORE | conectar datos/protocolo real |
-| Skills / Cooldowns | PORTED_CORE | mapear skill tables y packets verificados |
+| Idle / Walk / Run | UNITY_ADAPTER | actor Unity + harness; calibrar velocidad con captura real |
+| Key repeat / focus loss | PORTED_CORE | no reinicia clip; focus loss limpia movimiento |
+| Salto / grounding | UNITY_ADAPTER | actor + CharacterController; validar mapas reales |
+| Cámara relativa | PORTED_CORE + UNITY_ADAPTER | +90° + W => -X fijado por contrato |
+| Cámara vs geometría | UNITY_ADAPTER | SphereCast; validar paredes/mapas reales |
+| One-hand + shield | PORTED_CORE + UNITY_ADAPTER | coexistencia permitida |
+| Two-hand / spear | PORTED_CORE + UNITY_ADAPTER | offhand eliminado; run_spear semántico |
+| Wings equipadas | PORTED_CORE | equipar alas NO inicia vuelo |
+| Takeoff / hover / flight | PORTED_CORE | transición determinista y estados explícitos |
+| Descenso de combate | PORTED_CORE | ventana recuperada de ~0,165 s |
+| Reanudar vuelo tras combate | PORTED_CORE | conserva intención y espera fin de guardia |
+| Mount idle/walk/run | PORTED_CORE + UNITY_ADAPTER | asiento no acumulativo |
+| Target lock de ataque | PORTED_CORE | el golpe queda ligado al target original |
+| Multi-target HP | PORTED_CORE | salud independiente |
+| Combat guard | PORTED_CORE | 8 s desde último hit |
+| Inventory / Warehouse | PORTED_CORE | conectar UI + datos/protocolo |
+| Stats / Buffs / Death-Rebirth | PORTED_CORE | conectar actor y protocolo |
+| Skills / Cooldowns | PORTED_CORE | conectar skill tables/opcodes confirmados |
 | Quests | PORTED_CORE | contenido real + UI/protocolo |
-| Shops | PORTED_CORE | catálogo/NPC/protocolo real |
-| Gatekeepers | PORTED_CORE | destinos reales + world transition |
-| Blacksmith | PORTED_CORE | alimentar costes/probabilidades desde datos confirmados |
-| Friends | PORTED_CORE | PROTOCOL_PENDING + UI |
-| Guild | PORTED_CORE | PROTOCOL_PENDING + UI |
-| Loot | PORTED_CORE | world entities + protocol |
-| NPC services | PORTED_CORE | NPC metadata + UI |
-| Weather | PORTED_CORE | renderer/audio + packets/world state |
-| Login / server / character / world flow | PORTED_CORE | protocol packets + UI scenes |
+| Shops | PORTED_CORE | catálogo/NPC/protocolo |
+| Gatekeepers | PORTED_CORE | destinos reales + transición de mundo |
+| Blacksmith | PORTED_CORE | alimentar reglas desde datos confirmados |
+| Friends | PORTED_CORE | conectar protocolo/UI |
+| Party / Raid | PORTED_CORE | conectar protocolo/UI |
+| Trade | PORTED_CORE | conectar protocolo/UI |
+| Duel | PORTED_CORE | conectar reglas PvP/protocolo |
+| Guild | PORTED_CORE | conectar protocolo/UI |
+| Loot | PORTED_CORE | entidades de mundo + protocolo |
+| NPC services | PORTED_CORE | metadata + UI |
+| Weather | PORTED_CORE | renderer/audio + estado de mundo |
+| Login → server → character → world | PORTED_CORE | conectar escenas UI + protocolo |
+| World sector streaming | PORTED_CORE | conectar escenas/chunks reales |
+| Terrain / sky | REAL_ASSET_PENDING | migrar pipeline visual del cliente Flutter |
+| Personajes / sets / armas reales | REAL_ASSET_PENDING | prefabs, rigs, materiales, sockets |
+| ANI reales | REAL_ASSET_PENDING | Animator/PlayableGraph + catálogo por clase/arma |
+| EFT / lapisia / VFX | REAL_ASSET_PENDING | VFX Graph/Particle System/URP |
+| UI completa | VISUAL_QA_PENDING | reconstrucción Canvas/UI Toolkit y capturas |
+| Audio | REAL_ASSET_PENDING | AudioMixer + spatial audio |
+| Networking cliente | PROTOCOL_PENDING | adaptar contratos confirmados, IO fuera Main Thread |
+| game.exe reference | PORTED_CORE tooling | huellas conocidas + inspector PE; no igualdad binaria |
+| Windows Parity Lab | build pipeline listo | CI compila si hay activación Unity |
+| Windows Client Release | bloqueado deliberadamente | exige escenas reales; nunca usa placeholders |
+| Android/iOS | arquitectura compartida | después del cierre funcional Windows + profiling físico |
+
+## Criterio de progreso
+
+La paridad no se medirá por similitud binaria entre ejecutables. Unity y el cliente clásico usan toolchains diferentes.  
+Cada sistema debe cerrar cuatro gates cuando apliquen:
+
+1. **Contrato determinista** reproducible.
+2. **Adapter Unity** funcional.
+3. **Assets/protocolo reales** conectados.
+4. **Comparación game.exe ↔ Unity** por capturas, timing, movimiento, animación y resultado observable.
+
+Un dominio no se marcará como completo solo porque exista un script o una escena sintética.
