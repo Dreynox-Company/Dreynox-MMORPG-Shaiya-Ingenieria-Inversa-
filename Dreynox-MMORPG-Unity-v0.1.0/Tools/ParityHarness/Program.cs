@@ -246,6 +246,31 @@ namespace Dreynox.Mmorpg.ParityHarness
             Check(flightTransition.Phase == ClientFlightPhase.Flight,
                 "resumed flight returns to moving flight state");
 
+            byte[] identicalFrame =
+            {
+                0, 0, 0,
+                255, 255, 255,
+                64, 128, 192,
+                12, 34, 56
+            };
+            VisualMetricResult identicalMetrics = VisualMetricCore.CompareRgb24(
+                identicalFrame,
+                identicalFrame);
+            Check(identicalMetrics.IsExact &&
+                  double.IsPositiveInfinity(identicalMetrics.Psnr) &&
+                  Math.Abs(identicalMetrics.Ssim - 1.0) < 0.0000001,
+                "identical visual frames produce exact parity metrics");
+
+            byte[] referenceFrame = { 0, 0, 0, 255, 255, 255 };
+            byte[] changedFrame = { 255, 255, 255, 255, 255, 255 };
+            VisualMetricResult changedMetrics = VisualMetricCore.CompareRgb24(
+                referenceFrame,
+                changedFrame);
+            Check(changedMetrics.Mae > 0.0 &&
+                  changedMetrics.Rmse > 0.0 &&
+                  changedMetrics.Ssim < 1.0,
+                "visual metrics detect changed frames");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
