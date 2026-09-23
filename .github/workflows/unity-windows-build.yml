@@ -86,17 +86,21 @@ jobs:
           normalized="$RAW_UNITY_LICENSE"
           mode="ulf-raw"
 
+          is_xml_like() {
+            printf '%s' "$1" | grep -q '^[[:space:]]*<'
+          }
+
           # GitHub secrets are often stored as base64 to preserve multiline ULF XML.
           # Decode automatically when the raw value is not XML-like.
-          if [[ "$normalized" != <* ]]; then
+          if ! is_xml_like "$normalized"; then
             decoded="$(printf '%s' "$normalized" | base64 --decode 2>/dev/null || true)"
-            if [[ "$decoded" == <* ]]; then
+            if is_xml_like "$decoded"; then
               normalized="$decoded"
               mode="ulf-base64"
             fi
           fi
 
-          if [[ "$normalized" != <* ]]; then
+          if ! is_xml_like "$normalized"; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "mode=invalid" >> "$GITHUB_OUTPUT"
             echo "UNITY_LICENSE exists but is neither raw ULF XML nor base64-encoded ULF XML."
