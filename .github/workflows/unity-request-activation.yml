@@ -1,0 +1,27 @@
+name: Get Unity Activation File
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unity-activation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Request activation file
+        uses: game-ci/unity-request-activation-file@v2
+        id: get-alf
+        with:
+          unityVersion: 6000.0.64f1
+
+      - name: Upload ALF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Unity6-Activation-File
+          path: ${{ steps.get-alf.outputs.filePath }}
+          if-no-files-found: error
+          retention-days: 7
