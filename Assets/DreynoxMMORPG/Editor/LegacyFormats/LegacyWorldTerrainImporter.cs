@@ -64,6 +64,29 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             LegacySvmapFile svmap =
                 LegacySvmapParser.Parse(svmapPath);
 
+            string monsterSDataPath =
+                ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/monster/monster.sdata");
+
+            string monsterMonPath =
+                ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/monster/monster.mon");
+
+            LegacyMonsterSDataFile monsterData =
+                LegacyMonsterSDataParser.ParseEncrypted(
+                    monsterSDataPath,
+                    validateChecksum: true);
+
+            LegacyMonFile monsterModels =
+                LegacyMonParser.Parse(monsterMonPath);
+
+            LegacyMonsterModelIndexMode monsterModelMode =
+                LegacyMonsterModelResolver.Detect(
+                    monsterData.Records,
+                    monsterModels.Records.Count);
+
             ValidateMapZeroBaseline(wld, svmap);
 
             EnsureFolder(OutputRoot);
@@ -186,6 +209,27 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 throw new InvalidOperationException(
                     "Canonical character prefab has no ShaiyaClientActor.");
 
+            int uniqueMonsterModels;
+            List<LegacyMonsterSpawnDefinition> monsterSpawns =
+                BuildMonsterSpawnDefinitions(
+                    corpus,
+                    svmap,
+                    terrain,
+                    monsterData,
+                    monsterModels,
+                    monsterModelMode,
+                    out uniqueMonsterModels);
+
+            GameObject monsterRuntime =
+                new GameObject("SVMAP_Monsters_Runtime");
+
+            LegacyMonsterSpawnStreamer monsterStreamer =
+                monsterRuntime.AddComponent<LegacyMonsterSpawnStreamer>();
+
+            monsterStreamer.Configure(
+                actor.transform,
+                monsterSpawns);
+
             GameObject cameraObject =
                 new GameObject("Main Camera");
 
@@ -238,6 +282,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 svmap.NpcPositionCount + " NPC positions, " +
                 svmap.MonsterAreas.Count + " monster areas / " +
                 svmap.MonsterInstanceCount + " monster instances, " +
+                uniqueMonsterModels + " unique monster models, " +
+                monsterSpawns.Count + " streamed monster definitions, " +
                 buildingInstances + " buildings, " +
                 shapeInstances + " shapes and " +
                 treeInstances + " trees.");
@@ -817,6 +863,248 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     size,
                     Vector3.zero);
             }
+        }
+
+        private static List<LegacyMonsterSpawnDefinition>
+            BuildMonsterSpawnDefinitions(
+                CanonicalClientCorpus corpus,
+                LegacySvmapFile svmap,
+                Terrain terrain,
+                LegacyMonsterSDataFile monsterData,
+                LegacyMonFile monsterModels,
+                LegacyMonsterModelIndexMode modelMode,
+                out int uniqueModelCount)
+        {
+            if (corpus == null)
+                throw new ArgumentNullException(nameof(corpus));
+            if (svmap == null)
+                throw new ArgumentNullException(nameof(svmap));
+            if (terrain == null)
+                throw new ArgumentNullException(nameof(terrain));
+            if (monsterData == null)
+                throw new ArgumentNullException(nameof(monsterData));
+            if (monsterModels == null)
+                throw new ArgumentNullException(nameof(monsterModels));
+
+            var prefabs =
+                new Dictionary<int, GameObject>();
+
+            var definitions =
+                new List<LegacyMonsterSpawnDefinition>(
+                    (int)Math.Min(
+                        int.MaxValue,
+                        svmap.MonsterInstanceCount));
+
+            int ordinal = 0;
+
+            for (int areaIndex = 0;
+                 areaIndex < svmap.MonsterAreas.Count;
+                 areaIndex++)
+            {
+                LegacySvmapMonsterArea area =
+                    svmap.MonsterAreas[areaIndex];
+
+                float minX =
+                    Mathf.Min(
+                        area.Area.Lower.x,
+                        area.Area.Upper.x);
+
+                float maxX =
+                    Mathf.Max(
+                        area.Area.Lower.x,
+                        area.Area.Upper.x);
+
+                float minZ =
+                    Mathf.Min(
+                        area.Area.Lower.z,
+                        area.Area.Upper.z);
+
+                float maxZ =
+                    Mathf.Max(
+                        area.Area.Lower.z,
+                        area.Area.Upper.z);
+
+                for (int spawnTypeIndex = 0;
+                     spawnTypeIndex < area.Monsters.Count;
+                     spawnTypeIndex++)
+                {
+                    LegacySvmapMonsterSpawn spawn =
+                        area.Monsters[spawnTypeIndex];
+
+                    LegacyMonsterRecord monster;
+                    if (!monsterData.TryGet(
+                            spawn.MobId,
+                            out monster))
+                    {
+                        throw new InvalidDataException(
+                            "Map 0 area " + areaIndex +
+                            " references missing MobId " +
+                            spawn.MobId + ".");
+                    }
+
+                    int modelIndex =
+                        LegacyMonsterModelResolver.Resolve(
+                            monster,
+                            modelMode,
+                            monsterModels.Records.Count);
+
+                    GameObject prefab;
+                    if (!prefabs.TryGetValue(
+                            modelIndex,
+                            out prefab))
+                    {
+                        prefab =
+                            LegacyMonPrefabImporter.Import(
+                                LegacyMonCatalogKind.Monster,
+                                modelIndex);
+
+                        if (prefab == null)
+                        {
+                            throw new InvalidDataException(
+                                "MON importer returned null for model " +
+                                modelIndex +
+                                " used by MobId " +
+                                spawn.MobId + ".");
+                        }
+
+                        prefabs.Add(
+                            modelIndex,
+                            prefab);
+                    }
+
+                    for (uint instanceIndex = 0;
+                         instanceIndex < spawn.Count;
+                         instanceIndex++)
+                    {
+                        ordinal++;
+
+                        float u =
+                            (float)Halton(
+                                ordinal,
+                                2);
+
+                        float v =
+                            (float)Halton(
+                                ordinal,
+                                3);
+
+                        float yaw =
+                            (float)(
+                                Halton(
+                                    ordinal,
+                                    5) *
+                                360.0);
+
+                        float x =
+                            Mathf.Lerp(
+                                minX,
+                                maxX,
+                                u);
+
+                        float z =
+                            Mathf.Lerp(
+                                minZ,
+                                maxZ,
+                                v);
+
+                        Vector3 position =
+                            new Vector3(
+                                x,
+                                0f,
+                                z);
+
+                        position.y =
+                            terrain.SampleHeight(position) +
+                            terrain.transform.position.y +
+                            0.02f;
+
+                        definitions.Add(
+                            new LegacyMonsterSpawnDefinition
+                            {
+                                mobId = spawn.MobId,
+                                modelIndex = modelIndex,
+                                targetId =
+                                    1_000_000 + ordinal,
+                                mobName =
+                                    monster.MobName,
+                                level =
+                                    monster.Level,
+                                maxHealth =
+                                    Math.Max(
+                                        1,
+                                        monster.Hp),
+                                ai =
+                                    monster.Ai,
+                                element =
+                                    monster.Element,
+                                rawSize =
+                                    monster.Size,
+                                scale =
+                                    ResolveMonsterScale(
+                                        monster.Size),
+                                position =
+                                    position,
+                                yawDegrees =
+                                    yaw,
+                                prefab =
+                                    prefab
+                            });
+                    }
+                }
+            }
+
+            if (definitions.Count !=
+                svmap.MonsterInstanceCount)
+            {
+                throw new InvalidDataException(
+                    "Map 0 monster definition count mismatch. Expected " +
+                    svmap.MonsterInstanceCount +
+                    ", generated " +
+                    definitions.Count + ".");
+            }
+
+            uniqueModelCount = prefabs.Count;
+            return definitions;
+        }
+
+        private static float ResolveMonsterScale(byte rawSize)
+        {
+            // Shaiya's monster Size field uses 100 as the normal-size baseline
+            // in the classic data table. Keep the raw byte on the spawn for
+            // parity audits and clamp only pathological values.
+            if (rawSize == 0)
+                return 1f;
+
+            return Mathf.Clamp(
+                rawSize / 100f,
+                0.1f,
+                4f);
+        }
+
+        private static double Halton(
+            int index,
+            int radix)
+        {
+            if (index <= 0)
+                throw new ArgumentOutOfRangeException(nameof(index));
+            if (radix < 2)
+                throw new ArgumentOutOfRangeException(nameof(radix));
+
+            double fraction = 1.0;
+            double result = 0.0;
+            int value = index;
+
+            while (value > 0)
+            {
+                fraction /= radix;
+                result +=
+                    fraction *
+                    (value % radix);
+
+                value /= radix;
+            }
+
+            return result;
         }
 
         private static Vector3 ResolveAllianceSpawn(
