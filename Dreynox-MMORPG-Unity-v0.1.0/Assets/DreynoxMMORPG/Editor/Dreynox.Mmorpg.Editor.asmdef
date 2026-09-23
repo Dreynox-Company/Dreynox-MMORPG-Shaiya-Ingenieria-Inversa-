@@ -1,0 +1,14 @@
+{
+  "name": "Dreynox.Mmorpg.Editor",
+  "rootNamespace": "Dreynox.Mmorpg.Editor",
+  "references": ["Dreynox.Mmorpg.Runtime"],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
