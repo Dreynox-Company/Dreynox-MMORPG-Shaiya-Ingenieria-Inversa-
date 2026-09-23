@@ -11,6 +11,7 @@ namespace Dreynox.Mmorpg.World
         [SerializeField] private int maximumLevel;
         [SerializeField] private int targetMapId;
         [SerializeField] private Vector3 targetPosition;
+        [SerializeField] private bool isOpen;
 
         public int SourceMapId => sourceMapId;
         public int PortalId => portalId;
@@ -18,6 +19,8 @@ namespace Dreynox.Mmorpg.World
         public int MaximumLevel => maximumLevel;
         public int TargetMapId => targetMapId;
         public Vector3 TargetPosition => targetPosition;
+        public bool IsOpen => isOpen;
+        public bool IsBossActivatedPortal => portalId > 2;
 
         public void Configure(
             int sourceMap,
@@ -53,23 +56,46 @@ namespace Dreynox.Mmorpg.World
                     (float)core.TargetX,
                     (float)core.TargetY,
                     (float)core.TargetZ);
+
+            isOpen =
+                core.IsOpenByDefault;
         }
 
-        public bool CanUse(int playerLevel)
+        public bool CanUse(
+            int playerLevel,
+            int playerFaction)
         {
             var core =
-                new PortalTravelCore(
-                    sourceMapId,
-                    portalId,
-                    minimumLevel,
-                    maximumLevel,
-                    targetMapId,
-                    targetPosition.x,
-                    targetPosition.y,
-                    targetPosition.z);
+                ToCore();
 
             return core.CanEnter(
-                playerLevel);
+                playerLevel,
+                playerFaction,
+                isOpen);
+        }
+
+        public void SetOpen(bool value)
+        {
+            if (!IsBossActivatedPortal)
+            {
+                isOpen = true;
+                return;
+            }
+
+            isOpen = value;
+        }
+
+        private PortalTravelCore ToCore()
+        {
+            return new PortalTravelCore(
+                sourceMapId,
+                portalId,
+                minimumLevel,
+                maximumLevel,
+                targetMapId,
+                targetPosition.x,
+                targetPosition.y,
+                targetPosition.z);
         }
     }
 }
