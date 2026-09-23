@@ -14,7 +14,7 @@ permissions:
   checks: write
 
 env:
-  UNITY_PROJECT_PATH: "." # Modificado: Tu proyecto está en la raíz directamente
+  UNITY_PROJECT_PATH: "."
 
 jobs:
   parity-core:
@@ -38,66 +38,58 @@ jobs:
 
   unity-windows:
     needs: parity-core
-    runs-on: ubuntu-latest
+
+    # SECURITY: this repository is public. Never execute fork PR code on the
+    # self-hosted Windows machine that contains the Unity Personal entitlement.
+    if: github.event_name != 'pull_request'
+
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+
+    timeout-minutes: 60
+
+    concurrency:
+      group: unity-personal-${{ github.repository }}
+      cancel-in-progress: false
+
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: Detect Unity activation
-        id: unity-license
-        shell: bash
-        env:
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        run: |
-          if [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Unity activation credentials detected. Proceeding with Unity workflows."
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Unity activation not configured; deterministic C# parity gate still ran."
-          fi
-
-      - name: Cache Unity Library
-        if: steps.unity-license.outputs.ready == 'true'
+      - name: Restore Unity Library cache
         uses: actions/cache@v4
         with:
           path: ${{ env.UNITY_PROJECT_PATH }}/Library
-          key: Library-${{ runner.os }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          key: unity-library-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/manifest.json', 'Packages/packages-lock.json', 'Assets/**') }}
           restore-keys: |
-            Library-${{ runner.os }}-
+            unity-library-${{ runner.os }}-
+
+      - name: Unity Personal entitlement and CLI preflight
+        shell: pwsh
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task preflight
 
       - name: Unity EditMode tests
-        if: steps.unity-license.outputs.ready == 'true'
-        uses: game-ci/unity-test-runner@v4
-        env:
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        shell: pwsh
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task test
+
+      - name: Upload Unity test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          projectPath: ${{ env.UNITY_PROJECT_PATH }}
-          testMode: EditMode
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          artifactsPath: ${{ env.UNITY_PROJECT_PATH }}/TestResults
+          name: Dreynox-Mmorpg-Unity-TestResults
+          path: |
+            ${{ env.UNITY_PROJECT_PATH }}/TestResults/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Build StandaloneWindows64
-        if: steps.unity-license.outputs.ready == 'true'
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          projectPath: ${{ env.UNITY_PROJECT_PATH }}
-          unityVersion: auto
-          targetPlatform: StandaloneWindows64
-          buildMethod: Dreynox.Mmorpg.Editor.Build.DreynoxWindowsBuild.BuildParityBatch
-          allowDirtyBuild: true
+        shell: pwsh
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task build
 
       - name: Upload Windows player
-        if: steps.unity-license.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Dreynox-Mmorpg-Parity-Windows-x64
@@ -105,11 +97,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload Unity test evidence
-        if: always() && steps.unity-license.outputs.ready == 'true'
+      - name: Upload Unity build log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Dreynox-Mmorpg-Unity-TestResults
-          path: ${{ env.UNITY_PROJECT_PATH }}/TestResults/
+          name: Dreynox-Mmorpg-Unity-BuildLogs
+          path: ${{ env.UNITY_PROJECT_PATH }}/BuildLogs/
           if-no-files-found: warn
           retention-days: 14
