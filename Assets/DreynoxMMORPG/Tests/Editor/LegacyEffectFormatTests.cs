@@ -145,13 +145,39 @@ namespace Dreynox.Mmorpg.Tests.Editor
 
             Assert.AreEqual("spark_effect", effect.Name);
             Assert.AreEqual(0, effect.MeshIndex);
+            Assert.IsTrue(effect.VelocityRandomX);
+            Assert.IsFalse(effect.VelocityRandomY);
+            Assert.IsTrue(effect.VelocityRandomZ);
+            Assert.IsTrue(effect.Loop);
+            Assert.AreEqual(2, effect.DestinationBlend);
+            Assert.AreEqual(1, effect.VelocityMode);
+            Assert.AreEqual(5, effect.SourceBlend);
+            Assert.IsTrue(effect.TextureLoop);
+            Assert.AreEqual(0, effect.MeshIndex);
+            Assert.IsFalse(effect.MotionPathEnabled);
+            Assert.AreEqual(20f, effect.EmitRateMax, 0.000001f);
+            Assert.AreEqual(10f, effect.EmitRateMin, 0.000001f);
+            Assert.AreEqual(2f, effect.LifeMax, 0.000001f);
+            Assert.AreEqual(1f, effect.LifeMin, 0.000001f);
             Assert.AreEqual(
                 new Vector3(1f, 2f, 3f),
-                effect.Position);
-            Assert.AreEqual(1, effect.Rotations.Count);
-            Assert.AreEqual(0.5f, effect.Rotations[0].Time, 0.000001f);
-            Assert.AreEqual(2, effect.OpacityFrames.Count);
-            Assert.AreEqual(1, effect.Sub3.Count);
+                effect.EmitOrigin);
+            Assert.AreEqual(2, effect.BaseAxis);
+            Assert.IsTrue(effect.GravityEnabled);
+            Assert.IsTrue(effect.AttractEnabled);
+            Assert.AreEqual(4f, effect.AttractStrength, 0.000001f);
+            Assert.IsTrue(effect.AngularVelocityRandom);
+            Assert.IsTrue(effect.RotationEnabled);
+            Assert.AreEqual(3, effect.RotationAxis);
+            Assert.AreEqual(27, effect.Ef3Unused);
+            Assert.AreEqual(2, effect.DistanceScaleMode);
+            Assert.AreEqual(2, effect.ColorFrames.Count);
+            Assert.AreEqual(1, effect.VelocityScaleFrames.Count);
+            Assert.AreEqual(1, effect.ScaleFrames.Count);
+            Assert.IsTrue(effect.MirrorTexture);
+            Assert.AreEqual(2, effect.InitialRotationAxis);
+            Assert.AreEqual(10, effect.InitialRotationMinDegrees);
+            Assert.AreEqual(350, effect.InitialRotationMaxDegrees);
             CollectionAssert.AreEqual(
                 new[] { 0 },
                 effect.TextureIds);
@@ -173,59 +199,73 @@ namespace Dreynox.Mmorpg.Tests.Editor
         {
             WriteString(writer, "spark_effect");
 
-            for (int i = 1; i <= 8; i++)
-                writer.Write(i);
+            writer.Write(1); // velocity random X
+            writer.Write(0); // velocity random Y
+            writer.Write(1); // velocity random Z
+            writer.Write(1); // loop
+            writer.Write(2); // destination blend
+            writer.Write(1); // velocity mode
+            writer.Write(5); // source blend
+            writer.Write(1); // texture loop
+            writer.Write(0); // mesh index
+            writer.Write(0); // motion path
 
-            writer.Write(0);  // MeshIndex
-            writer.Write(10);
-
-            for (int i = 11; i <= 18; i++)
-                writer.Write((float)i);
+            writer.Write(0.1f); // delay/frame
+            writer.Write(20f);  // emit rate max
+            writer.Write(2f);   // life max
+            writer.Write(10f);  // emit rate min
+            writer.Write(1f);   // life min
+            writer.Write(3f);   // emitter duration
+            writer.Write(0.5f); // swirl speed
+            writer.Write(0f);   // unknown18
 
             WriteVector3(writer, new Vector3(0.1f, 0.2f, 0.3f));
-            WriteVector3(writer, new Vector3(0.4f, 0.5f, 0.6f));
+            WriteVector3(writer, new Vector3(0f, -9.8f, 0f));
             WriteVector3(writer, new Vector3(1f, 2f, 3f));
-            WriteVector3(writer, new Vector3(0.7f, 0.8f, 0.9f));
-            WriteVector3(writer, new Vector3(1.1f, 1.2f, 1.3f));
+            WriteVector3(writer, new Vector3(-1f, 0f, -1f));
+            WriteVector3(writer, new Vector3(1f, 2f, 1f));
 
-            writer.Write(19);
-            writer.Write(20);
-            writer.Write(21);
+            writer.Write(2); // base axis
+            writer.Write(1); // gravity enabled
+            writer.Write(1); // attract enabled
+            WriteVector3(writer, new Vector3(0f, 1f, 0f));
+            writer.Write(4f); // attract strength
 
-            WriteVector3(writer, new Vector3(1.4f, 1.5f, 1.6f));
-
-            writer.Write(22f);
-            writer.Write(23);
-            writer.Write(24);
-            writer.Write(25f);
-            writer.Write(26);
-
-            writer.Write(27f);
-            writer.Write(28f);
-
-            writer.Write(1);
-            WriteQuaternion(
-                writer,
-                Quaternion.identity);
-            writer.Write(0.5f);
-
-            writer.Write(2);
-            writer.Write(1f);
-            writer.Write(0f);
-            writer.Write(0f);
-            writer.Write(1f);
-
-            writer.Write(1);
-            writer.Write(3f);
-            writer.Write(4f);
+            writer.Write(1);    // angular velocity random
+            writer.Write(1);    // rotation enabled
             writer.Write(0.75f);
+            writer.Write(3);    // rotation axis
 
-            writer.Write(29);
-            writer.Write(30);
-            writer.Write(31);
-            writer.Write(32);
+            writer.Write(27);   // EF3 unused
+            writer.Write(2);    // distance scale mode
 
-            writer.Write(1);
+            writer.Write(2);    // color frames
+            writer.Write(1f);
+            writer.Write(0.5f);
+            writer.Write(0.25f);
+            writer.Write(1f);
+            writer.Write(0f);
+            writer.Write(0.25f);
+            writer.Write(0.5f);
+            writer.Write(1f);
+            writer.Write(0f);
+            writer.Write(1f);
+
+            writer.Write(1);    // velocity scale frames
+            writer.Write(1.5f);
+            writer.Write(0.4f);
+
+            writer.Write(1);    // scale frames
+            writer.Write(0.5f);
+            writer.Write(2f);
+            writer.Write(0.6f);
+
+            writer.Write(1);    // mirror texture
+            writer.Write(2);    // initial rotation axis
+            writer.Write(10);   // initial min degrees
+            writer.Write(350);  // initial max degrees
+
+            writer.Write(1);    // texture IDs
             writer.Write(0);
         }
 
