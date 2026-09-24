@@ -15,6 +15,9 @@ namespace Dreynox.Mmorpg.Editor.Corpus
         public const string InnerZipSha256 =
             "78136f45ee45d3b0c6e03b829412189cab4d32ae5670a8d8b65892154673cfd5";
 
+        public const string CorpusRootEnvironmentVariable =
+            "DREYNOX_CORPUS_ROOT";
+
         private const string EditorPrefsKey =
             "Dreynox.Mmorpg.CanonicalCorpusRoot";
 
@@ -29,7 +32,23 @@ namespace Dreynox.Mmorpg.Editor.Corpus
 
         public static string StoredRoot
         {
-            get => EditorPrefs.GetString(EditorPrefsKey, string.Empty);
+            get
+            {
+                string environment =
+                    Environment.GetEnvironmentVariable(
+                        CorpusRootEnvironmentVariable);
+
+                if (!string.IsNullOrWhiteSpace(
+                        environment))
+                {
+                    return Path.GetFullPath(
+                        environment);
+                }
+
+                return EditorPrefs.GetString(
+                    EditorPrefsKey,
+                    string.Empty);
+            }
             set
             {
                 if (string.IsNullOrWhiteSpace(value))
