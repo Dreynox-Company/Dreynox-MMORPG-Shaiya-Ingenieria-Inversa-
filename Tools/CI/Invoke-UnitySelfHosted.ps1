@@ -183,7 +183,49 @@ Después abre una nueva terminal y verifica:
         }
 
         Invoke-Checked -Executable $UnityCli.Source -Arguments @("--version") -Description "Unity CLI version"
-        Invoke-Checked -Executable $UnityCli.Source -Arguments @("license", "status") -Description "Unity license status"
+
+        $licenseStatusSucceeded = $false
+        $licenseStatusOutput = @()
+        $licenseStatusExitCode = 0
+
+        for ($licenseAttempt = 1;
+             $licenseAttempt -le 3;
+             $licenseAttempt++)
+        {
+            Write-Host "::group::Unity license status (attempt $licenseAttempt/3)"
+
+            try {
+                $licenseStatusOutput =
+                    @(
+                        & $UnityCli.Source license status 2>&1
+                    )
+
+                $licenseStatusExitCode =
+                    $LASTEXITCODE
+
+                $licenseStatusOutput |
+                    ForEach-Object {
+                        Write-Host $_
+                    }
+            }
+            finally {
+                Write-Host "::endgroup::"
+            }
+
+            if ($licenseStatusExitCode -eq 0) {
+                $licenseStatusSucceeded = $true
+                break
+            }
+
+            if ($licenseAttempt -lt 3) {
+                Write-Warning "Unity CLI license status devolvió $licenseStatusExitCode; reintentando. El entitlement local ya fue validado en disco."
+                Start-Sleep -Seconds (2 * $licenseAttempt)
+            }
+        }
+
+        if (-not $licenseStatusSucceeded) {
+            Write-Warning "Unity CLI license status siguió fallando con código $licenseStatusExitCode, pero existe un UnityEntitlementLicense.xml local válido para este usuario. Se continúa hasta unity doctor y, finalmente, Editor tests/build como gates definitivos."
+        }
 
         # unity doctor --ci also checks cloud reachability. A transient failure of
         # services.api.unity.com must not invalidate a cached named-user
