@@ -1,0 +1,19 @@
+# Unity generated folders
+Library/
+Temp/
+Logs/
+UserSettings/
+obj/
+Build/
+Builds/
+TestResults/
+
+# Canonical Shaiya resources are local-only and must never be committed.
+Assets/DreynoxMMORPG/LocalLegacyGenerated/
+Assets/DreynoxMMORPG/Game/Scenes/Generated/
+
+# IDE / OS
+.vs/
+.idea/
+.DS_Store
+Thumbs.db

@@ -208,6 +208,36 @@ namespace Dreynox.Mmorpg.ParityHarness
             npc.Register(90, NpcServiceKind.Shop | NpcServiceKind.Blacksmith);
             Check(npc.Open(90) && npc.Supports(NpcServiceKind.Shop) && !npc.Supports(NpcServiceKind.Warehouse), "NPC exposes only registered services");
 
+            Check(NpcServiceResolverCore.Resolve(1, false) == NpcServiceKind.Shop,
+                "NpcQuest Merchant group maps to shop service");
+            Check(NpcServiceResolverCore.Resolve(2, false) == NpcServiceKind.Gatekeeper,
+                "NpcQuest GateKeeper group maps to gatekeeper service");
+            Check(NpcServiceResolverCore.Resolve(3, true) ==
+                  (NpcServiceKind.Blacksmith | NpcServiceKind.Quest),
+                "blacksmith keeps quest service when quest links exist");
+            Check(NpcServiceResolverCore.Resolve(6, true) ==
+                  (NpcServiceKind.Warehouse | NpcServiceKind.Quest),
+                "warehouse keeps quest service when quest links exist");
+
+            var lightPortal = new PortalTravelCore(
+                0, 1, 20, 30, 18, 100, 10, 200);
+            Check(lightPortal.IsOpenByDefault &&
+                  lightPortal.CanEnter(20, 1, false) &&
+                  lightPortal.CanEnter(30, 1, false) &&
+                  !lightPortal.CanEnter(19, 1, false) &&
+                  !lightPortal.CanEnter(31, 1, false) &&
+                  !lightPortal.CanEnter(25, 2, false),
+                "light portal enforces inclusive level and faction rules");
+
+            var bossPortal = new PortalTravelCore(
+                0, 7, 1, 80, 42, 500, 20, 500);
+            Check(bossPortal.IsBossActivatedPortal &&
+                  !bossPortal.IsOpenByDefault &&
+                  !bossPortal.CanEnter(50, 1, false) &&
+                  bossPortal.CanEnter(50, 1, true) &&
+                  bossPortal.CanEnter(50, 2, true),
+                "boss portal stays closed until activated and then permits both factions");
+
             var weather = new WeatherCore();
             weather.TransitionTo(WeatherKindCore.Rain, 2.0);
             weather.Tick(1.0);
@@ -357,6 +387,77 @@ namespace Dreynox.Mmorpg.ParityHarness
                   offlineMap0.Mobs == 1330 &&
                   offlineMap0.Obelisks == 1,
                 "offline map 0 population matches both captured sessions");
+
+            Check(Math.Abs(LegacyTerrainHeightCore.Decode(11268) - 25.36) < 0.000001,
+                "WLD raw height 11268 resolves to observed map0 world Y 25.36");
+            Check(Math.Abs(LegacyTerrainHeightCore.Decode(10689) - 13.78) < 0.000001,
+                "WLD raw height 10689 resolves to observed map0 world Y 13.78");
+            Check(Math.Abs(LegacyTerrainHeightCore.Decode(11197) - 23.94) < 0.000001,
+                "WLD raw height 11197 resolves to observed map0 world Y 23.94");
+            Check(LegacyTerrainHeightCore.ResolutionForMapSize(2048) == 1025,
+                "map 2048 uses canonical 1025x1025 terrain samples");
+            Check(LegacyTerrainHeightCore.WorldToSampleIndex(184.4588165283203, 2048) == 92,
+                "world X maps to the same terrain sample used by canonical NPC evidence");
+
+            var characterFlow = new ClientFlowCore();
+            characterFlow.ReadyForLogin();
+            characterFlow.BeginConnect();
+            characterFlow.LoginAccepted();
+            characterFlow.SelectServer(1);
+            characterFlow.SetCharacterList(
+                new[]
+                {
+                    new CharacterSummaryCore(
+                        900,
+                        "Existing",
+                        40,
+                        0,
+                        0,
+                        1,
+                        1,
+                        2,
+                        3,
+                        0,
+                        CharacterDifficultyMode.Basic)
+                });
+
+            Check(characterFlow.BeginCharacterCreate(1) &&
+                  characterFlow.State == ClientFlowState.CharacterCreate &&
+                  characterFlow.CharacterCreateSlot == 1,
+                "character select opens an empty creation slot");
+
+            var createRequest = new CharacterCreationRequestCore(
+                "NewHero",
+                1,
+                3,
+                5,
+                0,
+                2,
+                1,
+                CharacterDifficultyMode.Ultimate);
+
+            var createdCharacter = new CharacterSummaryCore(
+                901,
+                createRequest.Name,
+                1,
+                createRequest.Slot,
+                createRequest.Family,
+                createRequest.Job,
+                createRequest.Sex,
+                createRequest.Face,
+                createRequest.Hair,
+                0,
+                createRequest.Mode);
+
+            Check(characterFlow.CharacterCreated(createdCharacter) &&
+                  characterFlow.State == ClientFlowState.CharacterSelect &&
+                  characterFlow.Characters.Count == 2,
+                "character creation returns to select with preserved appearance");
+
+            Check(characterFlow.CharacterDeleted(900) &&
+                  characterFlow.Characters.Count == 1 &&
+                  characterFlow.Characters[0].CharacterId == 901,
+                "character deletion updates deterministic character slots");
 
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }

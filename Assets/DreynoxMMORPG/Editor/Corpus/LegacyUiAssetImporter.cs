@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -13,6 +14,12 @@ namespace Dreynox.Mmorpg.Editor.Corpus
         public const string LoginRoot =
             LocalRoot + "/Interface/Login";
 
+        public const string CharacterSelectRoot =
+            LocalRoot + "/Interface/CharacterSelect";
+
+        public const string CharacterMakeRoot =
+            LocalRoot + "/Interface/CharacterMake";
+
         private static readonly string[] LoginKeys =
         {
             "login.background",
@@ -20,90 +27,101 @@ namespace Dreynox.Mmorpg.Editor.Corpus
             "login.check"
         };
 
+        private static readonly string[] CharacterSelectKeys =
+        {
+            "character.select.background",
+            "character.select.buttons",
+            "character.select.start",
+            "character.select.restore"
+        };
+
+        private static readonly string[] CharacterMakeKeys =
+        {
+            "character.make.background",
+            "character.make.modeBackground",
+            "character.make.basicInfo",
+            "character.make.appearance",
+            "character.make.tab",
+            "character.make.nav.left",
+            "character.make.nav.right",
+            "character.make.nav.play",
+            "character.make.nav.stop",
+            "character.make.nav.zoomIn",
+            "character.make.nav.zoomOut",
+            "character.make.name",
+            "character.make.sex.male",
+            "character.make.sex.female",
+            "character.make.mode.basic",
+            "character.make.mode.ultimate"
+        };
+
         [MenuItem("Dreynox MMORPG/Client Parity/Import Canonical Login UI")]
         public static void ImportCanonicalLoginUi()
         {
-            CanonicalClientCorpus corpus =
-                CanonicalClientCorpus.FromStoredRoot();
+            ImportGroup(LoginRoot, LoginKeys);
+        }
 
-            if (corpus == null)
-                throw new InvalidOperationException(
-                    "No canonical corpus selected. Use Client Parity > " +
-                    "Canonical ps0032 Corpus first.");
+        [MenuItem("Dreynox MMORPG/Client Parity/Import Canonical Character Select UI")]
+        public static void ImportCanonicalCharacterSelectUi()
+        {
+            ImportGroup(CharacterSelectRoot, CharacterSelectKeys);
+        }
 
-            CorpusValidationResult validation = corpus.Validate();
-            if (!validation.IsCanonical)
-                throw new InvalidOperationException(
-                    "The selected corpus is not the canonical ps0032 baseline.");
-
-            EnsureAssetFolder(LoginRoot);
-
-            for (int i = 0; i < LoginKeys.Length; i++)
-            {
-                string key = LoginKeys[i];
-                string relative = LegacyUiReferenceManifest.Paths[key];
-                string source = ResolveCaseInsensitive(corpus.RootPath, relative);
-
-                if (!File.Exists(source))
-                    throw new FileNotFoundException(
-                        "Canonical UI asset missing: " + relative,
-                        source);
-
-                string fileName =
-                    Path.GetFileName(source).ToLowerInvariant();
-
-                string destination =
-                    LoginRoot + "/" + fileName;
-
-                string absoluteDestination =
-                    Path.GetFullPath(destination);
-
-                Directory.CreateDirectory(
-                    Path.GetDirectoryName(absoluteDestination));
-
-                File.Copy(
-                    source,
-                    absoluteDestination,
-                    true);
-
-                AssetDatabase.ImportAsset(
-                    destination,
-                    ImportAssetOptions.ForceSynchronousImport);
-
-                ConfigureSprite(destination);
-            }
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-
-            Debug.Log(
-                "Dreynox MMORPG: canonical Login UI imported locally from " +
-                CanonicalClientCorpus.BaselineId + ".");
+        [MenuItem("Dreynox MMORPG/Client Parity/Import Canonical Character Make UI")]
+        public static void ImportCanonicalCharacterMakeUi()
+        {
+            ImportGroup(CharacterMakeRoot, CharacterMakeKeys);
         }
 
         public static Sprite LoadLoginSprite(string fileName)
         {
-            string assetPath =
-                LoginRoot + "/" + fileName.ToLowerInvariant();
-
-            return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            return LoadSprite(LoginRoot, fileName);
         }
 
-        private static string ResolveCaseInsensitive(
+        public static Sprite LoadCharacterSelectSprite(string fileName)
+        {
+            return LoadSprite(CharacterSelectRoot, fileName);
+        }
+
+        public static Sprite LoadCharacterMakeSprite(string fileName)
+        {
+            return LoadSprite(CharacterMakeRoot, fileName);
+        }
+
+        public static Texture2D LoadLoginTexture(string fileName)
+        {
+            return LoadTexture(LoginRoot, fileName);
+        }
+
+        public static Texture2D LoadCharacterSelectTexture(string fileName)
+        {
+            return LoadTexture(CharacterSelectRoot, fileName);
+        }
+
+        public static Texture2D LoadCharacterMakeTexture(string fileName)
+        {
+            return LoadTexture(CharacterMakeRoot, fileName);
+        }
+
+        public static string ResolveCaseInsensitive(
             string root,
             string relativePath)
         {
             string current = root;
             string[] parts = relativePath
                 .Replace('\\', '/')
-                .Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+                .Split(
+                    new[] { '/' },
+                    StringSplitOptions.RemoveEmptyEntries);
 
             for (int i = 0; i < parts.Length; i++)
             {
                 if (!Directory.Exists(current))
                     return Path.Combine(current, parts[i]);
 
-                string[] entries = Directory.GetFileSystemEntries(current);
+                string[] entries =
+                    Directory.GetFileSystemEntries(current);
+
                 string match = null;
 
                 for (int j = 0; j < entries.Length; j++)
@@ -118,32 +136,139 @@ namespace Dreynox.Mmorpg.Editor.Corpus
                     }
                 }
 
-                current = match ?? Path.Combine(current, parts[i]);
+                current =
+                    match ?? Path.Combine(current, parts[i]);
             }
 
             return current;
         }
 
-        private static void ConfigureSprite(string assetPath)
+        private static void ImportGroup(
+            string destinationRoot,
+            IReadOnlyList<string> keys)
+        {
+            CanonicalClientCorpus corpus =
+                CanonicalClientCorpus.FromStoredRoot();
+
+            if (corpus == null)
+                throw new InvalidOperationException(
+                    "No canonical corpus selected. Use Client Parity > " +
+                    "Canonical ps0032 Corpus first.");
+
+            CorpusValidationResult validation =
+                corpus.Validate();
+
+            if (!validation.IsCanonical)
+                throw new InvalidOperationException(
+                    "The selected corpus is not the canonical ps0032 baseline.");
+
+            EnsureAssetFolder(destinationRoot);
+
+            for (int i = 0; i < keys.Count; i++)
+            {
+                string key = keys[i];
+
+                string relative;
+                if (!LegacyUiReferenceManifest.Paths.TryGetValue(
+                        key,
+                        out relative))
+                {
+                    throw new KeyNotFoundException(
+                        "UI manifest key not found: " + key);
+                }
+
+                string source =
+                    ResolveCaseInsensitive(
+                        corpus.RootPath,
+                        relative);
+
+                if (!File.Exists(source))
+                    throw new FileNotFoundException(
+                        "Canonical UI asset missing: " + relative,
+                        source);
+
+                string fileName =
+                    Path.GetFileName(source).ToLowerInvariant();
+
+                string destination =
+                    destinationRoot + "/" + fileName;
+
+                string absoluteDestination =
+                    Path.GetFullPath(destination);
+
+                string directory =
+                    Path.GetDirectoryName(absoluteDestination);
+
+                if (!string.IsNullOrWhiteSpace(directory))
+                    Directory.CreateDirectory(directory);
+
+                File.Copy(
+                    source,
+                    absoluteDestination,
+                    true);
+
+                AssetDatabase.ImportAsset(
+                    destination,
+                    ImportAssetOptions.ForceSynchronousImport);
+
+                ConfigureTexture(destination);
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            Debug.Log(
+                "Dreynox MMORPG: canonical UI group imported locally to " +
+                destinationRoot + ".");
+        }
+
+        private static Sprite LoadSprite(
+            string root,
+            string fileName)
+        {
+            string assetPath =
+                root + "/" + fileName.ToLowerInvariant();
+
+            return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+        }
+
+        private static Texture2D LoadTexture(
+            string root,
+            string fileName)
+        {
+            string assetPath =
+                root + "/" + fileName.ToLowerInvariant();
+
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+        }
+
+        private static void ConfigureTexture(string assetPath)
         {
             TextureImporter importer =
-                AssetImporter.GetAtPath(assetPath) as TextureImporter;
+                AssetImporter.GetAtPath(assetPath)
+                    as TextureImporter;
 
             if (importer == null)
                 return;
 
-            importer.textureType = TextureImporterType.Sprite;
-            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.textureType =
+                TextureImporterType.Sprite;
+
+            importer.spriteImportMode =
+                SpriteImportMode.Single;
+
             importer.alphaIsTransparency = true;
             importer.mipmapEnabled = false;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.filterMode = FilterMode.Bilinear;
             importer.textureCompression =
                 TextureImporterCompression.Uncompressed;
+
             importer.SaveAndReimport();
         }
 
-        private static void EnsureAssetFolder(string assetPath)
+        private static void EnsureAssetFolder(
+            string assetPath)
         {
             string[] parts =
                 assetPath.Split(
@@ -154,10 +279,13 @@ namespace Dreynox.Mmorpg.Editor.Corpus
 
             for (int i = 1; i < parts.Length; i++)
             {
-                string next = current + "/" + parts[i];
+                string next =
+                    current + "/" + parts[i];
 
                 if (!AssetDatabase.IsValidFolder(next))
-                    AssetDatabase.CreateFolder(current, parts[i]);
+                    AssetDatabase.CreateFolder(
+                        current,
+                        parts[i]);
 
                 current = next;
             }

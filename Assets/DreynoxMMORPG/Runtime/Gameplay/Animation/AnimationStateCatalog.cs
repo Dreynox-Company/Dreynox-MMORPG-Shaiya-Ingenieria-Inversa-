@@ -39,6 +39,14 @@ namespace Dreynox.Mmorpg.Gameplay.AnimationSystem
 
         public IReadOnlyList<Entry> Entries => entries;
 
+        public void ReplaceEntries(IEnumerable<Entry> source)
+        {
+            entries.Clear();
+            if (source != null)
+                entries.AddRange(source);
+            RebuildLookup();
+        }
+
         private void OnEnable()
         {
             RebuildLookup();
