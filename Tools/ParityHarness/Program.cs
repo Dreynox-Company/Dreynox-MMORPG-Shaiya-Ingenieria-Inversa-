@@ -459,6 +459,39 @@ namespace Dreynox.Mmorpg.ParityHarness
                   characterFlow.Characters[0].CharacterId == 901,
                 "character deletion updates deterministic character slots");
 
+            Check(
+                NativeVisualReferenceCore.All.Count == 8,
+                "native visual reference suite contains eight verified scenarios");
+
+            NativeVisualReference nativeCharacterEditor =
+                NativeVisualReferenceCore.Get(
+                    "character-editor");
+
+            Check(
+                nativeCharacterEditor.Width == 1024 &&
+                nativeCharacterEditor.Height == 768 &&
+                nativeCharacterEditor.Sha256 ==
+                    "2fd2807d305f5ae589f30232ac31c52a12f9caef66ed1b674ca6405a607f5549",
+                "native character editor visual reference is pinned");
+
+            NativeVisualReference nativeWorldLoaded =
+                NativeVisualReferenceCore.Get(
+                    "world-loaded");
+
+            Check(
+                nativeWorldLoaded.Width == 1024 &&
+                nativeWorldLoaded.Height == 768 &&
+                nativeWorldLoaded.Sha256 ==
+                    "c19cb5f06154bf6eacb029b08be7f6762bd9a002c044ff170363a9dfeadee6a0",
+                "native world-loaded visual reference is pinned");
+
+            Check(
+                NativeVisualReferenceCore.OriginalClientSha256 ==
+                    "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d" &&
+                NativeVisualReferenceCore.DiagnosticCaptureClientSha256 ==
+                    "32232a8e3e176c32ac75ad357d1f70ccf8ccadc7f223384866afdd2c9e6282df",
+                "native visual suite records original and diagnostic client identities");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
