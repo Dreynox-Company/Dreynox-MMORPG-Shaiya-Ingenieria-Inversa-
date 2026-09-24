@@ -64,18 +64,50 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)]
         [string[]]$Arguments,
         [Parameter(Mandatory = $true)]
-        [string]$Description
+        [string]$Description,
+        [int]$TimeoutSeconds = 1800
     )
+
+    if ($TimeoutSeconds -lt 1) {
+        throw "TimeoutSeconds debe ser mayor que cero."
+    }
 
     Write-Host "::group::$Description"
 
     $process = $null
 
     try {
-        $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
+        $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru -NoNewWindow
 
         if ($null -eq $process) {
             throw "No se pudo iniciar $Executable."
+        }
+
+        $finished =
+            $process.WaitForExit(
+                $TimeoutSeconds * 1000)
+
+        if (-not $finished) {
+            Write-Error "$Description excedió el timeout de $TimeoutSeconds segundos. Finalizando PID $($process.Id) y procesos hijos."
+
+            $taskkill = Get-Command taskkill.exe -ErrorAction SilentlyContinue
+
+            if ($null -ne $taskkill) {
+                & $taskkill.Source /PID $process.Id /T /F 2>&1 |
+                    ForEach-Object { Write-Host $_ }
+            }
+            elseif (-not $process.HasExited) {
+                $process.Kill()
+            }
+
+            try {
+                $process.WaitForExit(10000) | Out-Null
+            }
+            catch {
+                Write-Warning "No se pudo esperar el cierre del proceso Unity después del timeout."
+            }
+
+            throw "$Description excedió el timeout de $TimeoutSeconds segundos."
         }
 
         $exitCode = $process.ExitCode
@@ -231,7 +263,7 @@ Después abre una nueva terminal y verifica:
                     "-testPlatform", "editmode",
                     "-testResults", $TestResult,
                     "-logFile", $TestLog
-                ) -Description "Unity EditMode tests"
+                ) -Description "Unity EditMode tests" -TimeoutSeconds 1200
             }
             catch {
                 $packageRenameLock = $false
