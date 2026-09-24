@@ -151,22 +151,18 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                     anchor +
                     new Vector3(
                         0f,
-                        1.55f,
-                        -6.4f),
+                        1.50f,
+                        -4.10f),
                     anchor +
                     new Vector3(
-                        0.75f,
-                        1.0f,
+                        0f,
+                        0.92f,
                         0f),
                     34f);
 
             GameObject actor =
                 InstantiateCanonicalActor(
-                    anchor +
-                    new Vector3(
-                        0.85f,
-                        0f,
-                        0f),
+                    anchor,
                     Quaternion.Euler(
                         0f,
                         180f,
@@ -230,6 +226,8 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 environment.Dungeon.Source.LightmapCount +
                 " · login EFT placements=" +
                 loginEffects +
+                " · preview anchor=" +
+                environment.PreviewAnchorSource +
                 ".");
         }
 
