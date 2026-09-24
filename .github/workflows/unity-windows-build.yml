@@ -299,7 +299,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Detect local canonical ps0032 corpus
+      - name: Detect or prepare local ps0032 Character corpus
         id: canonical-corpus
         if: github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'build-only'
         run: |
@@ -339,33 +339,35 @@ jobs:
             return $candidate
           }
 
+          $resolved = $null
+          $source = "none"
+
           if (-not [string]::IsNullOrWhiteSpace($explicit)) {
             $resolved = Test-CanonicalCorpus $explicit
+
             if ([string]::IsNullOrWhiteSpace($resolved)) {
               throw "DREYNOX_CORPUS_ROOT está configurado pero no es el corpus ps0032 canónico: $explicit"
             }
+
+            $source = "explicit"
           }
           else {
             $candidates = New-Object System.Collections.Generic.List[string]
 
-            $homeRoots = @(
+            @(
               (Join-Path $env:USERPROFILE "Desktop"),
               (Join-Path $env:USERPROFILE "Downloads"),
               (Join-Path $env:USERPROFILE "Documents")
-            )
+            ) | ForEach-Object {
+              if (Test-Path -LiteralPath $_ -PathType Container) {
+                $candidates.Add($_)
 
-            foreach ($homeRoot in $homeRoots) {
-              if (-not (Test-Path -LiteralPath $homeRoot -PathType Container)) {
-                continue
-              }
-
-              $candidates.Add($homeRoot)
-
-              Get-ChildItem -LiteralPath $homeRoot -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-                $candidates.Add($_.FullName)
-
-                Get-ChildItem -LiteralPath $_.FullName -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+                Get-ChildItem -LiteralPath $_ -Directory -ErrorAction SilentlyContinue | ForEach-Object {
                   $candidates.Add($_.FullName)
+
+                  Get-ChildItem -LiteralPath $_.FullName -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+                    $candidates.Add($_.FullName)
+                  }
                 }
               }
             }
@@ -379,47 +381,91 @@ jobs:
               $candidates.Add($_)
             }
 
-            $resolved = $null
-
             foreach ($candidate in ($candidates | Select-Object -Unique)) {
               $match = Test-CanonicalCorpus $candidate
+
               if (-not [string]::IsNullOrWhiteSpace($match)) {
                 $resolved = $match
+                $source = "extracted"
                 break
+              }
+            }
+
+            if ([string]::IsNullOrWhiteSpace($resolved)) {
+              $prepared = @(
+                & ./Tools/CI/Prepare-CharacterParityCorpus.ps1
+              )
+
+              if ($LASTEXITCODE -eq 0 -and $prepared.Count -gt 0) {
+                $candidate = [string]$prepared[$prepared.Count - 1]
+                $resolved = Test-CanonicalCorpus $candidate
+
+                if (-not [string]::IsNullOrWhiteSpace($resolved)) {
+                  $source = "shzip-minimal"
+                }
+              }
+              elseif ($LASTEXITCODE -ne 2) {
+                throw "Prepare-CharacterParityCorpus.ps1 terminó con código $LASTEXITCODE."
               }
             }
           }
 
           if ([string]::IsNullOrWhiteSpace($resolved)) {
-            "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-            Write-Host "No se encontró corpus ps0032 extraído en rutas locales acotadas; canonical parity build se omite."
+            "character_available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            "world_available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            Write-Host "No se encontró corpus ps0032 ni Sh.zip canónico; los builds de paridad con assets se omiten."
             exit 0
           }
 
+          $requiredCharacter = @(
+            "DATA_Español\world\Login.wld",
+            "DATA_Español\world\dungeon\dun_login.dg",
+            "DATA_Español\character\human\3dc\co_humm_upper003.3dc",
+            "DATA_Español\character\human\ani6\humm_019_select.ani",
+            "DATA_Español\interface\CharacterMake\basicinfo_bg.tga",
+            "DATA_Español\interface\CharacterSelect\selectbg.tga"
+          )
+
+          foreach ($relative in $requiredCharacter) {
+            $path = Join-Path $resolved $relative
+
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Corpus ps0032 detectado, pero falta un recurso de Character parity: $relative"
+            }
+          }
+
+          $worldWld = Join-Path $resolved "DATA_Español\world\0.wld"
+          $worldSvmap = Join-Path $resolved "DATA_Español\world\0.svmap"
+          $worldAvailable = (Test-Path -LiteralPath $worldWld -PathType Leaf) -and
+                            (Test-Path -LiteralPath $worldSvmap -PathType Leaf)
+
           "DREYNOX_CORPUS_ROOT=$resolved" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "character_available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "world_available=$($worldAvailable.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "root=$resolved" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          Write-Host "Canonical ps0032 corpus OK: $resolved"
+          "source=$source" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-      - name: Build canonical ps0032 parity player
-        id: canonical-build
-        if: steps.canonical-corpus.outputs.available == 'true'
-        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task canonical-build
+          Write-Host "Character parity corpus OK: $resolved · source=$source · world=$worldAvailable"
 
-      - name: Verify canonical parity build
-        id: verify-canonical
-        if: steps.canonical-corpus.outputs.available == 'true'
+      - name: Build Character ps0032 parity player
+        id: character-build
+        if: steps.canonical-corpus.outputs.character_available == 'true'
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task character-build
+
+      - name: Verify Character parity build
+        id: verify-character
+        if: steps.canonical-corpus.outputs.character_available == 'true'
         run: |
-          $root = Join-Path $env:GITHUB_WORKSPACE "Builds\WindowsCanonicalParity"
-          $exePath = Join-Path $root "DreynoxMmorpg-CanonicalParity.exe"
+          $root = Join-Path $env:GITHUB_WORKSPACE "Builds\WindowsCharacterParity"
+          $exePath = Join-Path $root "DreynoxMmorpg-CharacterParity.exe"
           $manifestPath = Join-Path $root "dreynox-build-manifest.txt"
 
           if (-not (Test-Path $exePath)) {
-            throw "No existe canonical parity player: $exePath"
+            throw "No existe Character parity player: $exePath"
           }
 
           if (-not (Test-Path $manifestPath)) {
-            throw "No existe canonical manifest: $manifestPath"
+            throw "No existe Character parity manifest: $manifestPath"
           }
 
           $manifest = @{}
@@ -434,21 +480,21 @@ jobs:
           $expectedSha = [string]$manifest["sha256"]
 
           if ($actualSha -ne $expectedSha.ToLowerInvariant()) {
-            throw "Canonical SHA inconsistente. Manifest=$expectedSha Actual=$actualSha"
+            throw "Character parity SHA inconsistente. Manifest=$expectedSha Actual=$actualSha"
           }
 
           "sha256=$actualSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          Write-Host "Canonical parity build verificado: $actualSha"
+          Write-Host "Character parity build verificado: $actualSha"
 
-      - name: Capture canonical visual scenarios
-        if: steps.canonical-corpus.outputs.available == 'true'
+      - name: Capture Character visual scenarios
+        if: steps.canonical-corpus.outputs.character_available == 'true'
         run: |
-          $exe = Join-Path $env:GITHUB_WORKSPACE "Builds\WindowsCanonicalParity\DreynoxMmorpg-CanonicalParity.exe"
-          $captureRoot = Join-Path $env:GITHUB_WORKSPACE "Artifacts\Parity\Canonical"
+          $exe = Join-Path $env:GITHUB_WORKSPACE "Builds\WindowsCharacterParity\DreynoxMmorpg-CharacterParity.exe"
+          $captureRoot = Join-Path $env:GITHUB_WORKSPACE "Artifacts\Parity\Character"
           New-Item -ItemType Directory -Force -Path $captureRoot | Out-Null
 
           $scenarios = @(
-            @{ Id = "character-editor"; Delay = "1.0" },
+            @{ Id = "character-editor"; Delay = "1.5" },
             @{ Id = "character-selection"; Delay = "1.0" }
           )
 
@@ -464,7 +510,7 @@ jobs:
               "--parity-scene", $scenario.Id,
               "--parity-capture", $scenario.Id,
               "--parity-output", $capture,
-              "--parity-settle-frames", "12",
+              "--parity-settle-frames", "16",
               "--parity-delay", $scenario.Delay,
               "--parity-exit"
             )
@@ -473,15 +519,15 @@ jobs:
 
             if (-not $process.WaitForExit(90000)) {
               Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-              throw "Canonical scenario '$($scenario.Id)' excedió 90 segundos."
+              throw "Character scenario '$($scenario.Id)' excedió 90 segundos."
             }
 
             if ($process.ExitCode -ne 0) {
-              throw "Canonical scenario '$($scenario.Id)' terminó con código $($process.ExitCode)."
+              throw "Character scenario '$($scenario.Id)' terminó con código $($process.ExitCode)."
             }
 
             if (-not (Test-Path $capture)) {
-              throw "No se generó captura canonical '$($scenario.Id)'."
+              throw "No se generó captura Character '$($scenario.Id)'."
             }
 
             $sha = (Get-FileHash -Path $capture -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -490,7 +536,7 @@ jobs:
 
       - name: Detect native game.exe reference screenshots
         id: native-reference
-        if: steps.canonical-corpus.outputs.available == 'true'
+        if: steps.canonical-corpus.outputs.character_available == 'true'
         run: |
           $explicit = $env:DREYNOX_NATIVE_REFERENCE_ROOT
 
@@ -522,6 +568,7 @@ jobs:
 
           if (-not [string]::IsNullOrWhiteSpace($explicit)) {
             $resolved = Test-NativeReference $explicit
+
             if ([string]::IsNullOrWhiteSpace($resolved)) {
               throw "DREYNOX_NATIVE_REFERENCE_ROOT está configurado pero no contiene la suite nativa esperada: $explicit"
             }
@@ -551,6 +598,7 @@ jobs:
 
             foreach ($candidate in ($candidates | Select-Object -Unique)) {
               $match = Test-NativeReference $candidate
+
               if (-not [string]::IsNullOrWhiteSpace($match)) {
                 $resolved = $match
                 break
@@ -569,23 +617,80 @@ jobs:
           "root=$resolved" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host "Native game.exe screenshot suite encontrada: $resolved"
 
-      - name: Compare canonical Unity captures against native game.exe
-        if: steps.canonical-corpus.outputs.available == 'true' && steps.native-reference.outputs.available == 'true'
+      - name: Compare Character Unity captures against native game.exe
+        if: steps.canonical-corpus.outputs.character_available == 'true' && steps.native-reference.outputs.available == 'true'
         run: |
-          $env:DREYNOX_UNITY_CAPTURE_ROOT = Join-Path $env:GITHUB_WORKSPACE "Artifacts\Parity\Canonical"
+          $env:DREYNOX_UNITY_CAPTURE_ROOT = Join-Path $env:GITHUB_WORKSPACE "Artifacts\Parity\Character"
           ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task visual-compare
 
-      - name: Upload native-vs-Unity visual parity report
-        if: steps.canonical-corpus.outputs.available == 'true' && steps.native-reference.outputs.available == 'true'
+      - name: Upload Character native-vs-Unity visual parity report
+        if: steps.canonical-corpus.outputs.character_available == 'true' && steps.native-reference.outputs.available == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Dreynox-Mmorpg-Native-vs-Unity-Parity
+          name: Dreynox-Mmorpg-Character-Native-vs-Unity-Parity
           path: ${{ env.UNITY_PROJECT_PATH }}/Artifacts/Parity/Reports/
           if-no-files-found: error
           retention-days: 14
 
+      - name: Upload Character parity Windows player
+        if: steps.canonical-corpus.outputs.character_available == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Dreynox-Mmorpg-CharacterParity-Windows-x64
+          path: ${{ env.UNITY_PROJECT_PATH }}/Builds/WindowsCharacterParity/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Character parity captures
+        if: steps.canonical-corpus.outputs.character_available == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Dreynox-Mmorpg-CharacterParity-Captures
+          path: ${{ env.UNITY_PROJECT_PATH }}/Artifacts/Parity/Character/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Build full canonical ps0032 parity player
+        id: canonical-build
+        if: steps.canonical-corpus.outputs.world_available == 'true'
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task canonical-build
+
+      - name: Verify full canonical parity build
+        id: verify-canonical
+        if: steps.canonical-corpus.outputs.world_available == 'true'
+        run: |
+          $root = Join-Path $env:GITHUB_WORKSPACE "Builds\WindowsCanonicalParity"
+          $exePath = Join-Path $root "DreynoxMmorpg-CanonicalParity.exe"
+          $manifestPath = Join-Path $root "dreynox-build-manifest.txt"
+
+          if (-not (Test-Path $exePath)) {
+            throw "No existe canonical parity player: $exePath"
+          }
+
+          if (-not (Test-Path $manifestPath)) {
+            throw "No existe canonical manifest: $manifestPath"
+          }
+
+          $manifest = @{}
+          Get-Content $manifestPath | ForEach-Object {
+            $parts = $_ -split "=", 2
+            if ($parts.Count -eq 2) {
+              $manifest[$parts[0]] = $parts[1]
+            }
+          }
+
+          $actualSha = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expectedSha = [string]$manifest["sha256"]
+
+          if ($actualSha -ne $expectedSha.ToLowerInvariant()) {
+            throw "Canonical SHA inconsistente. Manifest=$expectedSha Actual=$actualSha"
+          }
+
+          "sha256=$actualSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Full canonical parity build verificado: $actualSha"
+
       - name: Upload canonical parity Windows player
-        if: steps.canonical-corpus.outputs.available == 'true'
+        if: steps.canonical-corpus.outputs.world_available == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Dreynox-Mmorpg-CanonicalParity-Windows-x64
