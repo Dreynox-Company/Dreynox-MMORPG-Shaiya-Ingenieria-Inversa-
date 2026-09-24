@@ -14,6 +14,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Rendering;
 
 namespace Dreynox.Mmorpg.Editor.LegacyFormats
 {
@@ -153,6 +154,9 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             EnsureFolder(OutputRoot + "/Textures");
             EnsureFolder(OutputRoot + "/TerrainLayers");
             EnsureFolder(OutputRoot + "/TerrainData");
+            EnsureFolder(OutputRoot + "/Water");
+            EnsureFolder(OutputRoot + "/Water/Frames");
+            EnsureFolder(OutputRoot + "/Water/Materials");
             EnsureFolder(
                 "Assets/DreynoxMMORPG/Game/Scenes/Generated");
 
@@ -200,6 +204,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             terrain.drawInstanced = true;
             terrain.heightmapPixelError = 3f;
             terrain.basemapDistance = 1200f;
+
+            LegacyWaterSurface waterSurface =
+                CreateCanonicalWaterSurface(
+                    corpus,
+                    wld);
 
             LegacySmodPrefabImporter.ClearSessionCache();
 
@@ -329,6 +338,12 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 actor.transform,
                 npcSpawns);
 
+            int worldEffectPlacements =
+                CreateWorldEffectStreaming(
+                    corpus,
+                    wld,
+                    actor.transform);
+
             GameObject cameraObject =
                 new GameObject("Main Camera");
 
@@ -387,8 +402,14 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 npcSpawns.Count + " NPC positions / " +
                 uniqueNpcModels + " NPC models, " +
                 buildingInstances + " buildings, " +
-                shapeInstances + " shapes and " +
-                treeInstances + " trees.");
+                shapeInstances + " shapes, " +
+                treeInstances + " trees, " +
+                worldEffectPlacements + " WLD effect placements, water=" +
+                (waterSurface != null
+                    ? waterSurface.FrameCount + " WTR frames / tile " +
+                      waterSurface.TileSize
+                    : "none") +
+                ", sky='" + wld.SkyName + "'.");
         }
 
         private static TerrainData BuildTerrainData(
@@ -580,6 +601,449 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             return layers;
         }
 
+        private static LegacyWaterSurface CreateCanonicalWaterSurface(
+            CanonicalClientCorpus corpus,
+            LegacyWldTerrainFile wld)
+        {
+            if (corpus == null)
+                throw new ArgumentNullException(nameof(corpus));
+            if (wld == null)
+                throw new ArgumentNullException(nameof(wld));
+
+            if (string.IsNullOrWhiteSpace(wld.InnerLayout) ||
+                !string.Equals(
+                    Path.GetExtension(wld.InnerLayout),
+                    ".wtr",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            string waterRoot =
+                ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/entity/water");
+
+            if (!Directory.Exists(waterRoot))
+            {
+                throw new DirectoryNotFoundException(
+                    "Canonical water directory not found: " +
+                    waterRoot);
+            }
+
+            string wtrPath =
+                ResolveCaseInsensitive(
+                    waterRoot,
+                    Path.GetFileName(wld.InnerLayout));
+
+            if (!File.Exists(wtrPath))
+            {
+                throw new FileNotFoundException(
+                    "WLD water layout not found: " +
+                    wld.InnerLayout,
+                    wtrPath);
+            }
+
+            LegacyWtrFile water =
+                LegacyWtrParser.Parse(wtrPath);
+
+            var frames =
+                new List<Texture2D>();
+
+            var seenSources =
+                new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0;
+                 i < water.FrameNames.Count;
+                 i++)
+            {
+                string authored =
+                    water.FrameNames[i];
+
+                string ddsName =
+                    Path.GetFileNameWithoutExtension(
+                        authored) +
+                    ".dds";
+
+                string source =
+                    ResolveCaseInsensitive(
+                        waterRoot,
+                        ddsName);
+
+                if (!File.Exists(source))
+                {
+                    source =
+                        ResolveCaseInsensitive(
+                            waterRoot,
+                            Path.GetFileName(authored));
+                }
+
+                if (!File.Exists(source))
+                {
+                    throw new FileNotFoundException(
+                        "WTR frame '" +
+                        authored +
+                        "' could not be resolved as '" +
+                        ddsName +
+                        "' or its authored file.",
+                        source);
+                }
+
+                string normalized =
+                    Path.GetFullPath(source);
+
+                if (!seenSources.Add(normalized))
+                    continue;
+
+                string assetPath =
+                    OutputRoot +
+                    "/Water/Frames/" +
+                    frames.Count.ToString("D3") +
+                    "_" +
+                    Path.GetFileName(source)
+                        .ToLowerInvariant();
+
+                string destination =
+                    Path.GetFullPath(assetPath);
+
+                Directory.CreateDirectory(
+                    Path.GetDirectoryName(destination));
+
+                File.Copy(
+                    source,
+                    destination,
+                    true);
+
+                AssetDatabase.ImportAsset(
+                    assetPath,
+                    ImportAssetOptions.ForceSynchronousImport);
+
+                TextureImporter importer =
+                    AssetImporter.GetAtPath(assetPath)
+                    as TextureImporter;
+
+                if (importer != null)
+                {
+                    importer.textureType =
+                        TextureImporterType.Default;
+                    importer.sRGBTexture = true;
+                    importer.mipmapEnabled = true;
+                    importer.alphaIsTransparency = true;
+                    importer.wrapMode =
+                        TextureWrapMode.Repeat;
+                    importer.filterMode =
+                        FilterMode.Bilinear;
+                    importer.textureCompression =
+                        TextureImporterCompression.CompressedHQ;
+                    importer.SaveAndReimport();
+                }
+
+                Texture2D frame =
+                    AssetDatabase.LoadAssetAtPath<Texture2D>(
+                        assetPath);
+
+                if (frame == null)
+                {
+                    throw new InvalidDataException(
+                        "Unity did not import WTR frame '" +
+                        assetPath + "'.");
+                }
+
+                frames.Add(frame);
+            }
+
+            if (frames.Count == 0)
+            {
+                throw new InvalidDataException(
+                    "Canonical WTR contains no resolvable water frames.");
+            }
+
+            Shader shader =
+                Shader.Find(
+                    "Universal Render Pipeline/Unlit");
+
+            if (shader == null)
+                shader =
+                    Shader.Find("Unlit/Transparent");
+
+            if (shader == null)
+                throw new InvalidOperationException(
+                    "No Unity shader is available for WTR water.");
+
+            Material material =
+                new Material(shader)
+                {
+                    name = "Map000_Water_Material",
+                    renderQueue = 3000
+                };
+
+            if (material.HasProperty("_BaseMap"))
+                material.SetTexture(
+                    "_BaseMap",
+                    frames[0]);
+
+            if (material.HasProperty("_MainTex"))
+                material.SetTexture(
+                    "_MainTex",
+                    frames[0]);
+
+            if (material.HasProperty("_Surface"))
+                material.SetFloat("_Surface", 1f);
+
+            if (material.HasProperty("_ZWrite"))
+                material.SetFloat("_ZWrite", 0f);
+
+            if (material.HasProperty("_SrcBlend"))
+            {
+                material.SetFloat(
+                    "_SrcBlend",
+                    (float)BlendMode.SrcAlpha);
+            }
+
+            if (material.HasProperty("_DstBlend"))
+            {
+                material.SetFloat(
+                    "_DstBlend",
+                    (float)BlendMode.OneMinusSrcAlpha);
+            }
+
+            material.SetOverrideTag(
+                "RenderType",
+                "Transparent");
+
+            material.EnableKeyword(
+                "_SURFACE_TYPE_TRANSPARENT");
+
+            string materialPath =
+                OutputRoot +
+                "/Water/Materials/Map000_Water.mat";
+
+            AssetDatabase.DeleteAsset(
+                materialPath);
+
+            AssetDatabase.CreateAsset(
+                material,
+                materialPath);
+
+            GameObject waterObject =
+                GameObject.CreatePrimitive(
+                    PrimitiveType.Plane);
+
+            waterObject.name =
+                "WLD_Water_" +
+                Path.GetFileNameWithoutExtension(
+                    wld.InnerLayout);
+
+            Collider collider =
+                waterObject.GetComponent<Collider>();
+
+            if (collider != null)
+            {
+                UnityEngine.Object.DestroyImmediate(
+                    collider);
+            }
+
+            waterObject.transform.position =
+                new Vector3(
+                    wld.MapSize * 0.5f,
+                    0f,
+                    wld.MapSize * 0.5f);
+
+            waterObject.transform.localScale =
+                new Vector3(
+                    wld.MapSize / 10f,
+                    1f,
+                    wld.MapSize / 10f);
+
+            MeshRenderer renderer =
+                waterObject.GetComponent<MeshRenderer>();
+
+            renderer.sharedMaterial =
+                material;
+
+            renderer.shadowCastingMode =
+                ShadowCastingMode.Off;
+
+            renderer.receiveShadows =
+                false;
+
+            LegacyWaterSurface surface =
+                waterObject.AddComponent<
+                    LegacyWaterSurface>();
+
+            // WTR contains no verified playback frequency. Keep frame 0 until
+            // parity capture against game.exe provides an observed cadence.
+            surface.Configure(
+                renderer,
+                frames.ToArray(),
+                water.TileSize,
+                framesPerSecond: 0f,
+                isTimingCalibrated: false);
+
+            return surface;
+        }
+
+        private static int CreateWorldEffectStreaming(
+            CanonicalClientCorpus corpus,
+            LegacyWldTerrainFile wld,
+            Transform observer)
+        {
+            if (corpus == null)
+                throw new ArgumentNullException(nameof(corpus));
+            if (wld == null)
+                throw new ArgumentNullException(nameof(wld));
+            if (observer == null)
+                throw new ArgumentNullException(nameof(observer));
+
+            if (wld.Effects.Count == 0)
+                return 0;
+
+            if (string.IsNullOrWhiteSpace(wld.EffectName))
+            {
+                throw new InvalidDataException(
+                    "WLD declares environmental effects but EffectName is empty.");
+            }
+
+            LegacyEftFile library =
+                LegacyEftPrefabImporter.ParseCanonical(
+                    corpus,
+                    wld.EffectName);
+
+            if (library == null)
+            {
+                throw new FileNotFoundException(
+                    "WLD effect library could not be resolved: " +
+                    wld.EffectName);
+            }
+
+            GameObject prefab =
+                LegacyEftPrefabImporter.Import(
+                    corpus,
+                    wld.EffectName);
+
+            if (prefab == null)
+            {
+                throw new InvalidDataException(
+                    "WLD EFT importer returned null for '" +
+                    wld.EffectName + "'.");
+            }
+
+            var placements =
+                new List<LegacyWorldEffectPlacement>(
+                    wld.Effects.Count);
+
+            for (int i = 0;
+                 i < wld.Effects.Count;
+                 i++)
+            {
+                LegacyWldEffectPlacement source =
+                    wld.Effects[i];
+
+                if (source.EffectId < 0 ||
+                    source.EffectId >=
+                    library.Sequences.Count)
+                {
+                    throw new InvalidDataException(
+                        "WLD effect placement " +
+                        i +
+                        " references sequence " +
+                        source.EffectId +
+                        " but library '" +
+                        wld.EffectName +
+                        "' contains " +
+                        library.Sequences.Count +
+                        " sequences.");
+                }
+
+                placements.Add(
+                    new LegacyWorldEffectPlacement
+                    {
+                        sequenceIndex =
+                            source.EffectId,
+                        position =
+                            source.Position,
+                        rotation =
+                            RotationFromBasis(
+                                source.Forward,
+                                source.Up,
+                                "WLD effect placement",
+                                i),
+                        effectPrefab =
+                            prefab
+                    });
+            }
+
+            GameObject runtime =
+                new GameObject(
+                    "WLD_Effects_Runtime");
+
+            LegacyWorldEffectStreamer streamer =
+                runtime.AddComponent<
+                    LegacyWorldEffectStreamer>();
+
+            streamer.Configure(
+                observer,
+                placements);
+
+            return placements.Count;
+        }
+
+        private static Quaternion RotationFromBasis(
+            Vector3 forward,
+            Vector3 up,
+            string label,
+            int ordinal)
+        {
+            if (forward.sqrMagnitude <
+                    0.000001f ||
+                up.sqrMagnitude <
+                    0.000001f)
+            {
+                throw new InvalidDataException(
+                    label +
+                    " " +
+                    ordinal +
+                    " has a degenerate orientation basis.");
+            }
+
+            forward.Normalize();
+            up.Normalize();
+
+            if (Mathf.Abs(
+                    Vector3.Dot(
+                        forward,
+                        up)) >
+                0.01f)
+            {
+                Vector3 right =
+                    Vector3.Cross(
+                        up,
+                        forward)
+                    .normalized;
+
+                if (right.sqrMagnitude <
+                    0.999f)
+                {
+                    throw new InvalidDataException(
+                        label +
+                        " " +
+                        ordinal +
+                        " has an unusable orientation basis.");
+                }
+
+                up =
+                    Vector3.Cross(
+                        forward,
+                        right)
+                    .normalized;
+            }
+
+            return Quaternion.LookRotation(
+                forward,
+                up);
+        }
+
         private static void ValidateMapZeroBaseline(
             LegacyWldTerrainFile wld,
             LegacySvmapFile svmap)
@@ -594,6 +1058,34 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             if (wld.Textures.Count != 7)
                 throw new InvalidDataException(
                     "Canonical Map 0 must declare 7 terrain textures.");
+
+            if (!string.Equals(
+                    wld.InnerLayout,
+                    "World.wtr",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException(
+                    "Canonical Map 0 WTR changed. Expected World.wtr, got '" +
+                    wld.InnerLayout + "'.");
+            }
+
+            if (!string.Equals(
+                    wld.SkyName,
+                    "sky_A2.bmp",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException(
+                    "Canonical Map 0 sky changed. Expected sky_A2.bmp, got '" +
+                    wld.SkyName + "'.");
+            }
+
+            if (wld.UnparsedTailBytes != 0)
+            {
+                throw new InvalidDataException(
+                    "Canonical Map 0 WLD parser left " +
+                    wld.UnparsedTailBytes +
+                    " unknown trailing bytes.");
+            }
 
             LegacyWorldPopulation expected =
                 LegacyWorldPopulationCore.Get(MapId);
