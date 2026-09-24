@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("preflight", "test", "build", "canonical-build", "visual-compare")]
+    [ValidateSet("preflight", "test", "build", "character-build", "canonical-build", "visual-compare")]
     [string]$Task
 )
 
@@ -290,6 +290,44 @@ Después abre una nueva terminal y verifica:
 
         Write-Host "Visual parity report: OK"
         Get-Content $ReportPath | ForEach-Object { Write-Host $_ }
+        break
+    }
+
+    "character-build" {
+        $BuildLogDir = Join-Path $RepoRoot "BuildLogs"
+        New-Item -ItemType Directory -Force -Path $BuildLogDir | Out-Null
+        $BuildLog = Join-Path $BuildLogDir "windows-character-parity-editor.log"
+
+        if ([string]::IsNullOrWhiteSpace($env:DREYNOX_CORPUS_ROOT)) {
+            throw "DREYNOX_CORPUS_ROOT no está configurado en el runner."
+        }
+
+        if (-not (Test-Path $env:DREYNOX_CORPUS_ROOT)) {
+            throw "DREYNOX_CORPUS_ROOT no existe: $env:DREYNOX_CORPUS_ROOT"
+        }
+
+        Invoke-Checked -Executable $UnityEditor -Arguments @(
+            "-batchmode",
+            "-nographics",
+            "-projectPath", $RepoRoot,
+            "-executeMethod", "Dreynox.Mmorpg.Editor.Build.DreynoxWindowsBuild.BuildCharacterParityBatch",
+            "-logFile", $BuildLog,
+            "-quit"
+        ) -Description "Unity Windows x64 Character parity build"
+
+        $ExePath = Join-Path $RepoRoot "Builds\WindowsCharacterParity\DreynoxMmorpg-CharacterParity.exe"
+        $ManifestPath = Join-Path $RepoRoot "Builds\WindowsCharacterParity\dreynox-build-manifest.txt"
+
+        if (-not (Test-Path $ExePath)) {
+            throw "El Character parity build terminó sin generar $ExePath."
+        }
+
+        if (-not (Test-Path $ManifestPath)) {
+            throw "El Character parity build terminó sin generar $ManifestPath."
+        }
+
+        Write-Host "Character parity Windows x64: OK"
+        Get-Content $ManifestPath | ForEach-Object { Write-Host $_ }
         break
     }
 
