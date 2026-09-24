@@ -35,14 +35,24 @@ function Find-ShZip {
             return $direct
         }
 
-        Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-            $candidate = Join-Path $_.FullName "Sh.zip"
+        $levelOne = @(
+            Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue
+        )
+
+        foreach ($directory in $levelOne) {
+            $candidate = Join-Path $directory.FullName "Sh.zip"
+
             if (Test-Path -LiteralPath $candidate -PathType Leaf) {
                 return $candidate
             }
 
-            Get-ChildItem -LiteralPath $_.FullName -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-                $nested = Join-Path $_.FullName "Sh.zip"
+            $levelTwo = @(
+                Get-ChildItem -LiteralPath $directory.FullName -Directory -ErrorAction SilentlyContinue
+            )
+
+            foreach ($nestedDirectory in $levelTwo) {
+                $nested = Join-Path $nestedDirectory.FullName "Sh.zip"
+
                 if (Test-Path -LiteralPath $nested -PathType Leaf) {
                     return $nested
                 }
@@ -142,7 +152,9 @@ $exactPaths = @(
     "DATA_Español/effect/dds/shangd00.dds",
     "DATA_Español/effect/dds/blueball00.dds",
     "DATA_Español/effect/dds/vetical031.dds",
-    "DATA_Español/effect/dds/vetical033.dds"
+    "DATA_Español/effect/dds/vetical033.dds",
+    "DATA_Español/effect/dds/v02.dds",
+    "DATA_Español/effect/dds/blucore001.dds"
 )
 
 $dgTextures = @(
