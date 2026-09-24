@@ -411,20 +411,20 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             LegacyCharacterMakeScreenController controller)
         {
             Texture2D infoFrame =
-                RequireCharacterMakeTexture(
-                    "info.tga");
+                RequireCharacterMakeTextureByKey(
+                    "character.make.infoFrame");
 
             Texture2D basicInfo =
                 RequireCharacterMakeTexture(
                     "basicinfo_bg.tga");
 
             Texture2D classInfoBackground =
-                RequireCharacterMakeTexture(
-                    "bg.tga");
+                RequireCharacterMakeTextureByKey(
+                    "character.make.classInfo.background");
 
             Texture2D classFigure =
-                RequireCharacterMakeTexture(
-                    "fighter_worrior.tga");
+                RequireCharacterMakeTextureByKey(
+                    "character.make.classInfo.fighterBars");
 
             CreateLegacyTextureLayer(
                 "ExplanationFrame",
@@ -570,14 +570,14 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 new Color(1f, 0.86f, 0.12f, 1f),
                 TextAnchor.MiddleCenter);
 
-            string[] classTextures =
+            string[] classTextureKeys =
             {
-                "fighter_worrior.tga",
-                "defender_guardian.tga",
-                "priest_oracle.tga",
-                "ranger_assassin.tga",
-                "archer_hunter.tga",
-                "mage_pagan.tga"
+                "character.make.class.fighter",
+                "character.make.class.defender",
+                "character.make.class.priest",
+                "character.make.class.ranger",
+                "character.make.class.archer",
+                "character.make.class.mage"
             };
 
             string[] classLabels =
@@ -601,12 +601,12 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             };
 
             for (int job = 0;
-                 job < classTextures.Length;
+                 job < classTextureKeys.Length;
                  job++)
             {
                 Texture2D atlas =
-                    RequireCharacterMakeTexture(
-                        classTextures[job]);
+                    RequireCharacterMakeTextureByKey(
+                        classTextureKeys[job]);
 
                 int state =
                     job == 0
@@ -661,12 +661,12 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 TextAnchor.MiddleCenter);
 
             Texture2D maleAtlas =
-                RequireCharacterMakeTexture(
-                    "sexm.tga");
+                RequireCharacterMakeTextureByKey(
+                    "character.make.sex.maleAtlas");
 
             Texture2D femaleAtlas =
-                RequireCharacterMakeTexture(
-                    "sexw.tga");
+                RequireCharacterMakeTextureByKey(
+                    "character.make.sex.femaleAtlas");
 
             CreateLegacyAtlasLayer(
                 "MaleVisual",
@@ -780,26 +780,26 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 new Color(1f, 0.86f, 0.12f, 1f),
                 TextAnchor.MiddleCenter);
 
-            string[] iconFiles =
+            string[] iconKeys =
             {
-                "icon_onehandedsword.tga",
-                "icon_twohandedsword.tga",
-                "icon_dualwieldsword.tga",
-                "icon_spear.tga",
-                "icon_onehandedblunt.tga",
-                "icon_twohandedblunt.tga",
-                "icon_shield.tga"
+                "character.make.weapon.oneHandSword.icon",
+                "character.make.weapon.twoHandSword.icon",
+                "character.make.weapon.dualSword.icon",
+                "character.make.weapon.spear.icon",
+                "character.make.weapon.oneHandBlunt.icon",
+                "character.make.weapon.twoHandBlunt.icon",
+                "character.make.weapon.shield.icon"
             };
 
-            string[] labelFiles =
+            string[] labelKeys =
             {
-                "icon_onehandedsword_usa.tga",
-                "icon_twohandedsword_usa.tga",
-                "icon_dualwieldsword_usa.tga",
-                "icon_spear_usa.tga",
-                "icon_onehandedblunt_usa.tga",
-                "icon_twohandedblunt_usa.tga",
-                "icon_shield_usa.tga"
+                "character.make.weapon.oneHandSword.text",
+                "character.make.weapon.twoHandSword.text",
+                "character.make.weapon.dualSword.text",
+                "character.make.weapon.spear.text",
+                "character.make.weapon.oneHandBlunt.text",
+                "character.make.weapon.twoHandBlunt.text",
+                "character.make.weapon.shield.text"
             };
 
             Vector2[] iconPositions =
@@ -814,16 +814,16 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             };
 
             for (int i = 0;
-                 i < iconFiles.Length;
+                 i < iconKeys.Length;
                  i++)
             {
                 Texture2D icon =
-                    RequireCharacterMakeTexture(
-                        iconFiles[i]);
+                    RequireCharacterMakeTextureByKey(
+                        iconKeys[i]);
 
                 Texture2D label =
-                    RequireCharacterMakeTexture(
-                        labelFiles[i]);
+                    RequireCharacterMakeTextureByKey(
+                        labelKeys[i]);
 
                 CreateLegacyTextureLayer(
                     "WeaponIcon_" + i,
@@ -874,12 +874,12 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                     fighterBars.height));
 
             Texture2D soloParty =
-                RequireCharacterMakeTexture(
-                    "info_bg01_usa.tga");
+                RequireCharacterMakeTextureByKey(
+                    "character.make.classInfo.soloPartyText");
 
             Texture2D atkDef =
-                RequireCharacterMakeTexture(
-                    "info_bg02_usa.tga");
+                RequireCharacterMakeTextureByKey(
+                    "character.make.classInfo.atkDefText");
 
             CreateLegacyTextureLayer(
                 "SoloPartyText",
@@ -904,6 +904,24 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                     0f,
                     atkDef.width,
                     atkDef.height));
+        }
+
+        private static Texture2D RequireCharacterMakeTextureByKey(
+            string key)
+        {
+            Texture2D texture =
+                LegacyUiAssetImporter
+                    .LoadCharacterMakeTextureByKey(
+                        key);
+
+            if (texture == null)
+            {
+                throw new InvalidOperationException(
+                    "Canonical CharacterMake texture is missing for key: " +
+                    key);
+            }
+
+            return texture;
         }
 
         private static Texture2D RequireCharacterMakeTexture(
