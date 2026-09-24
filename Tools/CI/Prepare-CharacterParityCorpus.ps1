@@ -318,6 +318,41 @@ $exactPaths = @(
     "DATA_Español/effect/dds/blucore001.dds"
 )
 
+$previewRigs = @(
+    @{ Folder = "human"; Prefix = "humf"; TexturePrefix = "hum" },
+    @{ Folder = "human"; Prefix = "humm"; TexturePrefix = "hum" },
+    @{ Folder = "human"; Prefix = "huwf"; TexturePrefix = "huw" },
+    @{ Folder = "human"; Prefix = "huwm"; TexturePrefix = "huw" },
+
+    @{ Folder = "elf"; Prefix = "elmr"; TexturePrefix = "elm" },
+    @{ Folder = "elf"; Prefix = "elmm"; TexturePrefix = "elm" },
+    @{ Folder = "elf"; Prefix = "elwr"; TexturePrefix = "elw" },
+    @{ Folder = "elf"; Prefix = "elwm"; TexturePrefix = "elw" },
+
+    @{ Folder = "deatheater"; Prefix = "demf"; TexturePrefix = "dem" },
+    @{ Folder = "deatheater"; Prefix = "demr"; TexturePrefix = "dem" },
+    @{ Folder = "deatheater"; Prefix = "dewf"; TexturePrefix = "dew" },
+    @{ Folder = "deatheater"; Prefix = "dewr"; TexturePrefix = "dew" },
+
+    @{ Folder = "vile"; Prefix = "vimr"; TexturePrefix = "vim" },
+    @{ Folder = "vile"; Prefix = "vimm"; TexturePrefix = "vim" },
+    @{ Folder = "vile"; Prefix = "viwr"; TexturePrefix = "viw" },
+    @{ Folder = "vile"; Prefix = "viwm"; TexturePrefix = "viw" }
+)
+
+foreach ($rig in $previewRigs) {
+    foreach ($part in @("upper", "lower", "hand", "foot")) {
+        $exactPaths += "DATA_Español/character/$($rig.Folder)/3dc/co_$($rig.Prefix)_$($part)003.3dc"
+        $exactPaths += "DATA_Español/character/$($rig.Folder)/dds/co_$($rig.Prefix)_$($part)003.dds"
+    }
+
+    $exactPaths += "DATA_Español/character/$($rig.Folder)/3dc/$($rig.Prefix)_face001.3dc"
+    $exactPaths += "DATA_Español/character/$($rig.Folder)/3dc/$($rig.Prefix)_hair001.3dc"
+    $exactPaths += "DATA_Español/character/$($rig.Folder)/dds/$($rig.TexturePrefix)_face001.dds"
+    $exactPaths += "DATA_Español/character/$($rig.Folder)/dds/$($rig.TexturePrefix)_hair001.dds"
+    $exactPaths += "DATA_Español/character/$($rig.Folder)/ani6/$($rig.Prefix)_019_select.ani"
+}
+
 $dgTextures = @(
     "L_Dun1_Top_005","L_Dun1_Wall_034","L_Dun1_Under_011","L_R1_DUN2_019",
     "L_A1_DUN2_005","DUN_LOGIN01","L_Dun1_Under_026","DUN_LOGIN03",
@@ -405,8 +440,8 @@ if ($gameSha -ne $ExpectedGameSha) {
 $required = @(
     "DATA_Español\world\Login.wld",
     "DATA_Español\world\dungeon\dun_login.dg",
-    "DATA_Español\character\human\3dc\co_humm_upper003.3dc",
-    "DATA_Español\character\human\ani6\humm_019_select.ani",
+    "DATA_Español\character\human\3dc\co_humf_upper003.3dc",
+    "DATA_Español\character\human\ani6\humf_019_select.ani",
     "DATA_Español\interface\CharacterMake\basicinfo_bg.tga",
     "DATA_Español\interface\CharacterSelect\selectbg.tga"
 )

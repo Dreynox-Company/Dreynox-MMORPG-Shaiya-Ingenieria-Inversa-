@@ -125,11 +125,14 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
         public static void BuildCharacterMake()
         {
             LegacyUiAssetImporter.ImportCanonicalCharacterMakeUi();
-            LegacyCharacterImporter.ImportCanonicalHumanMale003();
             EnsureGeneratedSceneFolder();
 
             CanonicalClientCorpus corpus =
                 RequireCanonicalCorpus();
+
+            GameObject[] previewPrefabs =
+                LegacyCharacterPreviewImporter
+                    .ImportAllCanonicalRigs();
 
             Scene scene =
                 EditorSceneManager.NewScene(
@@ -160,39 +163,40 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                         0f),
                     34f);
 
-            GameObject actor =
-                InstantiateCanonicalActor(
-                    anchor,
-                    Quaternion.Euler(
-                        0f,
-                        180f,
-                        0f));
+            GameObject previewRoot =
+                new GameObject(
+                    "CharacterPreviewRoot");
 
-            ShaiyaClientActor clientActor =
-                actor.GetComponent<ShaiyaClientActor>();
+            previewRoot.transform.position =
+                anchor;
 
-            if (clientActor != null)
-                clientActor.enabled = false;
+            LegacyCharacterPreviewSwitcher previewSwitcher =
+                previewRoot.AddComponent<
+                    LegacyCharacterPreviewSwitcher>();
 
-            CharacterController characterController =
-                actor.GetComponent<CharacterController>();
-
-            if (characterController != null)
-                characterController.enabled = false;
-
-            SemanticAnimationPlayer animation =
-                actor.GetComponent<SemanticAnimationPlayer>();
+            previewSwitcher.Configure(
+                previewPrefabs,
+                Vector3.zero,
+                new Vector3(
+                    0f,
+                    180f,
+                    0f),
+                0,
+                0,
+                0);
 
             int loginEffects =
                 LegacyDungeonPreviewEnvironmentImporter
                     .AttachRuntimeEffects(
                         corpus,
                         environment,
-                        actor.transform);
+                        previewRoot.transform);
 
             AddSelectionLighting();
 
-            Canvas canvas = CreateCanvas("CharacterMakeCanvas");
+            Canvas canvas =
+                CreateCanvas(
+                    "CharacterMakeCanvas");
 
             LegacyCharacterMakeScreenController controller =
                 canvas.gameObject.AddComponent<
@@ -208,14 +212,14 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             fixture.Bind(
                 controller,
-                clientActor,
-                animation);
+                previewSwitcher);
 
             EditorSceneManager.SaveScene(
                 scene,
                 CharacterMakeScenePath);
 
-            Selection.activeObject = actor;
+            Selection.activeObject =
+                previewRoot;
 
             Debug.Log(
                 "Dreynox MMORPG: canonical CharacterMake scene generated at " +
@@ -226,6 +230,8 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 environment.Dungeon.Source.LightmapCount +
                 " · login EFT placements=" +
                 loginEffects +
+                " · native preview rigs=" +
+                previewPrefabs.Length +
                 " · preview anchor=" +
                 environment.PreviewAnchorSource +
                 ".");

@@ -92,17 +92,14 @@ namespace Dreynox.Mmorpg.Parity
     public sealed class LegacyCharacterMakeParityFixture : MonoBehaviour
     {
         [SerializeField] private LegacyCharacterMakeScreenController screen;
-        [SerializeField] private ShaiyaClientActor actor;
-        [SerializeField] private SemanticAnimationPlayer previewAnimation;
+        [SerializeField] private LegacyCharacterPreviewSwitcher previewSwitcher;
 
         public void Bind(
             LegacyCharacterMakeScreenController controller,
-            ShaiyaClientActor previewActor,
-            SemanticAnimationPlayer animation)
+            LegacyCharacterPreviewSwitcher switcher)
         {
             screen = controller;
-            actor = previewActor;
-            previewAnimation = animation;
+            previewSwitcher = switcher;
         }
 
         private void Start()
@@ -124,9 +121,6 @@ namespace Dreynox.Mmorpg.Parity
             screen.CancelRequested += OnCancel;
 
             ApplyAppearance();
-
-            if (previewAnimation != null)
-                previewAnimation.PlaySemantic("idle");
         }
 
         private void OnDestroy()
@@ -141,9 +135,9 @@ namespace Dreynox.Mmorpg.Parity
 
         private void ApplyAppearance()
         {
-            if (actor != null)
+            if (previewSwitcher != null)
             {
-                actor.ConfigureLegacyIdentity(
+                previewSwitcher.Apply(
                     screen.Family,
                     screen.Job,
                     screen.Sex);

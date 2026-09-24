@@ -904,5 +904,74 @@ namespace Dreynox.Mmorpg.Tests
                     5));
         }
 
+        [Test]
+        public void CharacterPreviewAssetPathsCoverNativeRigTable()
+        {
+            for (int nativeRigIndex = 0;
+                 nativeRigIndex < 16;
+                 nativeRigIndex++)
+            {
+                LegacyCharacterRigSelection rig =
+                    LegacyCharacterRigCore
+                        .ResolveNativeRigIndex(
+                            nativeRigIndex);
+
+                Assert.AreEqual(
+                    nativeRigIndex,
+                    rig.NativeRigIndex);
+
+                LegacyCharacterPreviewAssetPaths paths =
+                    LegacyCharacterAssetCore
+                        .ResolvePreview(
+                            rig.Family,
+                            rig.Job,
+                            rig.Sex);
+
+                Assert.AreEqual(
+                    rig.Prefix,
+                    paths.Rig.Prefix);
+
+                StringAssert.Contains(
+                    "/3dc/co_" +
+                    rig.Prefix +
+                    "_upper003.3dc",
+                    paths.UpperMesh);
+
+                StringAssert.Contains(
+                    "/ani6/" +
+                    rig.Prefix +
+                    "_019_select.ani",
+                    paths.SelectAnimation);
+            }
+
+            LegacyCharacterPreviewAssetPaths humanFighterMale =
+                LegacyCharacterAssetCore.ResolvePreview(
+                    0,
+                    0,
+                    0);
+
+            Assert.AreEqual(
+                "humf",
+                humanFighterMale.Rig.Prefix);
+
+            Assert.AreEqual(
+                "DATA_Español/character/human/dds/hum_face001.dds",
+                humanFighterMale.FaceTexture);
+
+            LegacyCharacterPreviewAssetPaths vileOracleFemale =
+                LegacyCharacterAssetCore.ResolvePreview(
+                    3,
+                    5,
+                    1);
+
+            Assert.AreEqual(
+                "viwm",
+                vileOracleFemale.Rig.Prefix);
+
+            Assert.AreEqual(
+                "DATA_Español/character/vile/dds/viw_hair001.dds",
+                vileOracleFemale.HairTexture);
+        }
+
     }
 }

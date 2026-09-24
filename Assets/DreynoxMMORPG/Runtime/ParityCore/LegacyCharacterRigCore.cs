@@ -159,6 +159,88 @@ namespace Dreynox.Mmorpg.ParityCore
             }
         }
 
+        public static LegacyCharacterRigSelection ResolveNativeRigIndex(
+            int nativeRigIndex)
+        {
+            if (nativeRigIndex < 0 ||
+                nativeRigIndex > 15)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(nativeRigIndex));
+            }
+
+            int family =
+                nativeRigIndex / 4;
+
+            int local =
+                nativeRigIndex % 4;
+
+            int sex =
+                local / 2;
+
+            int archetype =
+                local % 2;
+
+            int job =
+                ResolveRepresentativeJob(
+                    family,
+                    archetype);
+
+            LegacyCharacterRigSelection result =
+                Resolve(
+                    family,
+                    job,
+                    sex);
+
+            if (result.NativeRigIndex !=
+                nativeRigIndex)
+            {
+                throw new InvalidOperationException(
+                    "Recovered native rig index did not round-trip.");
+            }
+
+            return result;
+        }
+
+        public static int ResolveRepresentativeJob(
+            int family,
+            int archetype)
+        {
+            if (archetype < 0 ||
+                archetype > 1)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(archetype));
+            }
+
+            switch (family)
+            {
+                case (int)LegacyCharacterFamily.Human:
+                    return archetype == 0
+                        ? (int)LegacyCharacterJob.Fighter
+                        : (int)LegacyCharacterJob.Priest;
+
+                case (int)LegacyCharacterFamily.Elf:
+                    return archetype == 0
+                        ? (int)LegacyCharacterJob.Ranger
+                        : (int)LegacyCharacterJob.Mage;
+
+                case (int)LegacyCharacterFamily.DeathEater:
+                    return archetype == 0
+                        ? (int)LegacyCharacterJob.Fighter
+                        : (int)LegacyCharacterJob.Archer;
+
+                case (int)LegacyCharacterFamily.Vile:
+                    return archetype == 0
+                        ? (int)LegacyCharacterJob.Ranger
+                        : (int)LegacyCharacterJob.Mage;
+
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(family));
+            }
+        }
+
         public static int ResolveArchetype(
             int family,
             int job)

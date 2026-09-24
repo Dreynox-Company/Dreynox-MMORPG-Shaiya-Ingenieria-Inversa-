@@ -571,6 +571,44 @@ namespace Dreynox.Mmorpg.ParityHarness
                 LegacyCharacterRigCore.ResolveGlobalJobName(5) == "Priest",
                 "character make maps class choice to native race and canonical SData job order");
 
+            bool nativePreviewRoutesValid = true;
+            for (int nativeRigIndex = 0;
+                 nativeRigIndex < 16;
+                 nativeRigIndex++)
+            {
+                LegacyCharacterRigSelection rig =
+                    LegacyCharacterRigCore.ResolveNativeRigIndex(
+                        nativeRigIndex);
+
+                LegacyCharacterPreviewAssetPaths paths =
+                    LegacyCharacterAssetCore.ResolvePreview(
+                        rig.Family,
+                        rig.Job,
+                        rig.Sex);
+
+                if (rig.NativeRigIndex != nativeRigIndex ||
+                    paths.Rig.Prefix != rig.Prefix ||
+                    !paths.UpperMesh.EndsWith(
+                        "/3dc/co_" + rig.Prefix + "_upper003.3dc",
+                        StringComparison.Ordinal) ||
+                    !paths.SelectAnimation.EndsWith(
+                        "/ani6/" + rig.Prefix + "_019_select.ani",
+                        StringComparison.Ordinal))
+                {
+                    nativePreviewRoutesValid = false;
+                    break;
+                }
+            }
+
+            Check(
+                nativePreviewRoutesValid,
+                "all sixteen native rigs resolve deterministic preview mesh and select ANI paths");
+
+            Check(
+                LegacyCharacterAssetCore.ResolvePreview(0, 0, 0).Rig.Prefix == "humf" &&
+                LegacyCharacterAssetCore.ResolvePreview(3, 5, 1).Rig.Prefix == "viwm",
+                "preview asset resolver uses recovered Fighter and female Oracle rig prefixes");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
