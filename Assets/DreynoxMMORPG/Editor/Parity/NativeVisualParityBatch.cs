@@ -330,55 +330,76 @@ namespace Dreynox.Mmorpg.Editor.Parity
                     }
 
                     native =
-                        NormalizeNativeClient(
+                        CropTopLeft(
                             nativeFull,
-                            reference);
+                            reference.NativeCropX,
+                            reference.NativeCropY,
+                            reference.NativeCropWidth,
+                            reference.NativeCropHeight);
 
-                    Color32[] nativePixels =
-                        native.GetPixels32();
+                    Texture2D unityVisible =
+                        CropTopLeft(
+                            unity,
+                            0,
+                            0,
+                            reference.NativeCropWidth,
+                            reference.NativeCropHeight);
 
-                    Color32[] unityPixels =
-                        unity.GetPixels32();
+                    try
+                    {
+                        Color32[] nativePixels =
+                            native.GetPixels32();
 
-                    VisualMetricResult metrics =
-                        VisualMetricCore.CompareRgb24(
-                            ToRgb24(
-                                nativePixels),
-                            ToRgb24(
-                                unityPixels));
+                        Color32[] unityPixels =
+                            unityVisible.GetPixels32();
 
-                    scenario.mae =
-                        metrics.Mae;
+                        VisualMetricResult metrics =
+                            VisualMetricCore.CompareRgb24(
+                                ToRgb24(
+                                    nativePixels),
+                                ToRgb24(
+                                    unityPixels));
 
-                    scenario.rmse =
-                        metrics.Rmse;
+                        scenario.mae =
+                            metrics.Mae;
 
-                    scenario.psnr =
-                        metrics.Psnr;
+                        scenario.rmse =
+                            metrics.Rmse;
 
-                    scenario.ssim =
-                        metrics.Ssim;
+                        scenario.psnr =
+                            metrics.Psnr;
 
-                    string diffPath =
-                        Path.Combine(
-                            diffRoot,
-                            reference.ScenarioId +
-                            ".png");
+                        scenario.ssim =
+                            metrics.Ssim;
 
-                    WriteDiff(
-                        native.width,
-                        native.height,
-                        nativePixels,
-                        unityPixels,
-                        diffPath);
+                        string diffPath =
+                            Path.Combine(
+                                diffRoot,
+                                reference.ScenarioId +
+                                ".png");
 
-                    scenario.diffFile =
-                        diffPath;
+                        WriteDiff(
+                            reference.NativeCropWidth,
+                            reference.NativeCropHeight,
+                            nativePixels,
+                            unityPixels,
+                            diffPath);
 
-                    scenario.status =
-                        "compared";
+                        scenario.diffFile =
+                            diffPath;
 
-                    report.compared++;
+                        scenario.status =
+                            "compared";
+
+                        report.compared++;
+                    }
+                    finally
+                    {
+                        UnityEngine.Object
+                            .DestroyImmediate(
+                                unityVisible);
+                    }
+
                 }
                 finally
                 {
@@ -444,9 +465,12 @@ namespace Dreynox.Mmorpg.Editor.Parity
             return null;
         }
 
-        private static Texture2D NormalizeNativeClient(
+        private static Texture2D CropTopLeft(
             Texture2D source,
-            NativeVisualReference reference)
+            int topLeftX,
+            int topLeftY,
+            int width,
+            int height)
         {
             if (source == null)
                 throw new ArgumentNullException(
@@ -454,100 +478,46 @@ namespace Dreynox.Mmorpg.Editor.Parity
 
             int sourceY =
                 source.height -
-                reference.NativeCropY -
-                reference.NativeCropHeight;
+                topLeftY -
+                height;
 
-            if (reference.NativeCropX < 0 ||
+            if (topLeftX < 0 ||
+                topLeftY < 0 ||
+                width <= 0 ||
+                height <= 0 ||
                 sourceY < 0 ||
-                reference.NativeCropX +
-                    reference.NativeCropWidth >
+                topLeftX + width >
                     source.width ||
-                sourceY +
-                    reference.NativeCropHeight >
+                sourceY + height >
                     source.height)
             {
                 throw new InvalidDataException(
-                    "Native client crop is outside the verified screenshot.");
+                    "Requested top-left crop is outside the image.");
             }
 
-            Color[] cropPixels =
+            Color[] pixels =
                 source.GetPixels(
-                    reference.NativeCropX,
+                    topLeftX,
                     sourceY,
-                    reference.NativeCropWidth,
-                    reference.NativeCropHeight);
+                    width,
+                    height);
 
-            Texture2D crop =
+            Texture2D result =
                 new Texture2D(
-                    reference.NativeCropWidth,
-                    reference.NativeCropHeight,
+                    width,
+                    height,
                     TextureFormat.RGBA32,
                     false,
                     true);
 
-            crop.SetPixels(
-                cropPixels);
+            result.SetPixels(
+                pixels);
 
-            crop.Apply(
+            result.Apply(
                 false,
                 false);
 
-            RenderTexture temporary =
-                RenderTexture.GetTemporary(
-                    reference.Width,
-                    reference.Height,
-                    0,
-                    RenderTextureFormat.ARGB32,
-                    RenderTextureReadWrite.Linear);
-
-            RenderTexture previous =
-                RenderTexture.active;
-
-            try
-            {
-                Graphics.Blit(
-                    crop,
-                    temporary);
-
-                RenderTexture.active =
-                    temporary;
-
-                Texture2D normalized =
-                    new Texture2D(
-                        reference.Width,
-                        reference.Height,
-                        TextureFormat.RGBA32,
-                        false,
-                        true);
-
-                normalized.ReadPixels(
-                    new Rect(
-                        0f,
-                        0f,
-                        reference.Width,
-                        reference.Height),
-                    0,
-                    0,
-                    false);
-
-                normalized.Apply(
-                    false,
-                    false);
-
-                return normalized;
-            }
-            finally
-            {
-                RenderTexture.active =
-                    previous;
-
-                RenderTexture.ReleaseTemporary(
-                    temporary);
-
-                UnityEngine.Object
-                    .DestroyImmediate(
-                        crop);
-            }
+            return result;
         }
 
         private static Texture2D LoadPng(
