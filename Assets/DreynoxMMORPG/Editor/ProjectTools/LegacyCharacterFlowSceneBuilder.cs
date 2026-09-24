@@ -4,6 +4,7 @@ using Dreynox.Mmorpg.Editor.LegacyFormats;
 using Dreynox.Mmorpg.Gameplay.AnimationSystem;
 using Dreynox.Mmorpg.Gameplay.Client;
 using Dreynox.Mmorpg.Parity;
+using Dreynox.Mmorpg.ParityCore;
 using Dreynox.Mmorpg.UI;
 using UnityEditor;
 using UnityEditor.Events;
