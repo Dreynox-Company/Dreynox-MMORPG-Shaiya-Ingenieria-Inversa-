@@ -164,6 +164,26 @@ namespace Dreynox.Mmorpg.UI
             SelectMode(CharacterDifficultyMode.Ultimate);
         }
 
+        public void SelectFace(int face)
+        {
+            if (face < 0 || face > 4)
+                return;
+
+            _face = face;
+            RefreshSelection();
+            AppearanceChanged?.Invoke();
+        }
+
+        public void SelectHair(int hair)
+        {
+            if (hair < 0 || hair > 4)
+                return;
+
+            _hair = hair;
+            RefreshSelection();
+            AppearanceChanged?.Invoke();
+        }
+
         public void NextFace()
         {
             _face = (_face + 1) % 5;

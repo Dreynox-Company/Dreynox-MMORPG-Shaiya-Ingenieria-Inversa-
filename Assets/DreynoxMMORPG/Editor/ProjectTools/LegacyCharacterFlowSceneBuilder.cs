@@ -824,6 +824,125 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             status.raycastTarget =
                 false;
 
+            RectTransform appearancePanel =
+                CreateRect(
+                    "AppearancePanel",
+                    root,
+                    new Vector2(0f, 1f),
+                    new Vector2(0f, 1f),
+                    new Vector2(334f, 466f),
+                    new Vector2(5f, -302f),
+                    new Vector2(0f, 1f));
+
+            Texture2D appearanceBackground =
+                RequireCharacterMakeTexture(
+                    "appearance_bg.tga");
+
+            CreateLegacyTextureLayer(
+                "AppearanceFrame",
+                appearancePanel,
+                appearanceBackground,
+                Vector2.zero,
+                new Vector2(334f, 466f),
+                new Rect(0f, 0f, 334f, 466f));
+
+            CreateLegacyTopLeftText(
+                "FaceLabel",
+                appearancePanel,
+                "Face",
+                new Vector2(22f, 18f),
+                new Vector2(80f, 18f),
+                10,
+                new Color(1f, 0.86f, 0.12f, 1f),
+                TextAnchor.MiddleLeft);
+
+            CreateLegacyTopLeftText(
+                "HairLabel",
+                appearancePanel,
+                "Hair",
+                new Vector2(22f, 122f),
+                new Vector2(80f, 18f),
+                10,
+                new Color(1f, 0.86f, 0.12f, 1f),
+                TextAnchor.MiddleLeft);
+
+            float[] appearanceColumns =
+            {
+                18f,
+                78f,
+                137f,
+                197f,
+                254f
+            };
+
+            for (int variant = 0;
+                 variant < 5;
+                 variant++)
+            {
+                Button faceButton =
+                    CreateTransparentButton(
+                        "FaceVariant_" + variant,
+                        appearancePanel,
+                        new Vector2(
+                            appearanceColumns[variant],
+                            48f),
+                        new Vector2(
+                            56f,
+                            84f));
+
+                UnityEventTools
+                    .AddIntPersistentListener(
+                        faceButton.onClick,
+                        controller.SelectFace,
+                        variant);
+
+                Button hairButton =
+                    CreateTransparentButton(
+                        "HairVariant_" + variant,
+                        appearancePanel,
+                        new Vector2(
+                            appearanceColumns[variant],
+                            152f),
+                        new Vector2(
+                            56f,
+                            84f));
+
+                UnityEventTools
+                    .AddIntPersistentListener(
+                        hairButton.onClick,
+                        controller.SelectHair,
+                        variant);
+            }
+
+            LegacyCharacterMakeTabController tabs =
+                root.gameObject.AddComponent<
+                    LegacyCharacterMakeTabController>();
+
+            tabs.Bind(
+                appearancePanel.gameObject);
+
+            Button basicTabHit =
+                CreateTransparentButton(
+                    "BasicTabHit",
+                    root,
+                    new Vector2(35f, 278f),
+                    new Vector2(92f, 32f));
+
+            Button appearanceTabHit =
+                CreateTransparentButton(
+                    "AppearanceTabHit",
+                    root,
+                    new Vector2(128f, 286f),
+                    new Vector2(92f, 32f));
+
+            UnityEventTools.AddPersistentListener(
+                basicTabHit.onClick,
+                tabs.ShowBasic);
+
+            UnityEventTools.AddPersistentListener(
+                appearanceTabHit.onClick,
+                tabs.ShowAppearance);
+
             controller.Bind(
                 name,
                 status,
