@@ -135,6 +135,23 @@ namespace Dreynox.Mmorpg.Tests.Editor
             Assert.IsTrue(
                 string.IsNullOrEmpty(
                     wld.SkyName));
+
+            Assert.AreEqual(
+                new Vector3(
+                    128f,
+                    128f,
+                    128f),
+                wld.Point3);
+
+            Assert.AreEqual(
+                150f,
+                wld.Unknown5,
+                0.000001f);
+
+            Assert.AreEqual(
+                200f,
+                wld.Unknown6,
+                0.000001f);
         }
 
         private static byte[] BuildSyntheticDun()
