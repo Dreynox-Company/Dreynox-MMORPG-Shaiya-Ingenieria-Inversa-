@@ -192,9 +192,57 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     0);
             }
 
-            Assert.IsNotNull(wld.SkyName);
-            Assert.IsNotNull(wld.CloudsName1);
-            Assert.IsNotNull(wld.CloudsName2);
+            Assert.AreEqual(
+                "World.wtr",
+                wld.InnerLayout);
+
+            Assert.AreEqual(
+                "world_r1.EFT",
+                wld.EffectName);
+
+            Assert.AreEqual(
+                "sky_A2.bmp",
+                wld.SkyName);
+
+            Assert.AreEqual(
+                "clouds01_B1.tga",
+                wld.CloudsName1);
+
+            Assert.AreEqual(
+                "clouds02_B1.tga",
+                wld.CloudsName2);
+
+            CollectionAssert.Contains(
+                wld.MusicNames,
+                "bgm_town06.wav");
+
+            CollectionAssert.Contains(
+                wld.MusicNames,
+                "bgm_title.wav");
+
+            CollectionAssert.Contains(
+                wld.MusicNames,
+                "bgm_frt01.wav");
+
+            CollectionAssert.Contains(
+                wld.MusicNames,
+                "bgm_frt02.wav");
+
+            CollectionAssert.Contains(
+                wld.MusicNames,
+                "bgm_town07.wav");
+
+            CollectionAssert.Contains(
+                wld.SoundEffectNames,
+                "bg_wind0001.wav");
+
+            CollectionAssert.Contains(
+                wld.SoundEffectNames,
+                "bg_stream01.wav");
+
+            CollectionAssert.Contains(
+                wld.SoundEffectNames,
+                "bg_wolf0001.wav");
         }
 
         [Test]
