@@ -63,13 +63,174 @@ function Find-ShZip {
     return $null
 }
 
+function Find-ShMultipart {
+    $roots = @(
+        (Join-Path $env:USERPROFILE "Desktop"),
+        (Join-Path $env:USERPROFILE "Downloads"),
+        (Join-Path $env:USERPROFILE "Documents")
+    )
+
+    $directories = New-Object System.Collections.Generic.List[string]
+
+    foreach ($root in $roots) {
+        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+            continue
+        }
+
+        $directories.Add($root)
+
+        Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            $directories.Add($_.FullName)
+
+            Get-ChildItem -LiteralPath $_.FullName -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+                $directories.Add($_.FullName)
+            }
+        }
+    }
+
+    foreach ($directory in ($directories | Select-Object -Unique)) {
+        $part1 = Join-Path $directory "Sh.part1.rar"
+
+        if (-not (Test-Path -LiteralPath $part1 -PathType Leaf)) {
+            continue
+        }
+
+        $complete = $true
+
+        for ($part = 2; $part -le 7; $part++) {
+            $candidate = Join-Path $directory ("Sh.part{0}.rar" -f $part)
+
+            if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+                $complete = $false
+                break
+            }
+        }
+
+        if ($complete) {
+            return [System.IO.Path]::GetFullPath($part1)
+        }
+    }
+
+    return $null
+}
+
+function Resolve-7Zip {
+    if (-not [string]::IsNullOrWhiteSpace($env:DREYNOX_7ZIP) -and
+        (Test-Path -LiteralPath $env:DREYNOX_7ZIP -PathType Leaf)) {
+        return [System.IO.Path]::GetFullPath($env:DREYNOX_7ZIP)
+    }
+
+    $candidates = New-Object System.Collections.Generic.List[string]
+
+    if (-not [string]::IsNullOrWhiteSpace($env:ProgramFiles)) {
+        $candidates.Add((Join-Path $env:ProgramFiles "7-Zip\7z.exe"))
+    }
+
+    $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+    if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) {
+        $candidates.Add((Join-Path $programFilesX86 "7-Zip\7z.exe"))
+    }
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [System.IO.Path]::GetFullPath($candidate)
+        }
+    }
+
+    $command = Get-Command 7z.exe -ErrorAction SilentlyContinue
+    if ($null -ne $command) {
+        return $command.Source
+    }
+
+    $command = Get-Command 7zz.exe -ErrorAction SilentlyContinue
+    if ($null -ne $command) {
+        return $command.Source
+    }
+
+    return $null
+}
+
+function Prepare-ShZipFromMultipart {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Part1Path
+    )
+
+    $sourceCache = Join-Path $env:LOCALAPPDATA "DreynoxMmorpg\ps0032-source"
+    $cachedZip = Join-Path $sourceCache "Sh.zip"
+
+    if (Test-Path -LiteralPath $cachedZip -PathType Leaf) {
+        $cachedSha = (Get-FileHash -LiteralPath $cachedZip -Algorithm SHA256).Hash.ToLowerInvariant()
+
+        if ($cachedSha -eq $ExpectedZipSha) {
+            Write-Host "Sh.zip canónico reutilizado desde caché: $cachedZip"
+            return $cachedZip
+        }
+
+        Remove-Item -LiteralPath $cachedZip -Force
+    }
+
+    $sevenZip = Resolve-7Zip
+
+    if ([string]::IsNullOrWhiteSpace($sevenZip)) {
+        Write-Host "Multipart Sh encontrado, pero 7-Zip no está disponible en el runner."
+        return $null
+    }
+
+    New-Item -ItemType Directory -Force -Path $sourceCache | Out-Null
+
+    Write-Host "Extrayendo Sh.zip desde multipart: $Part1Path"
+    Write-Host "7-Zip: $sevenZip"
+
+    $arguments = @(
+        "x",
+        "-y",
+        "-bd",
+        "-bso1",
+        "-bsp0",
+        ("-o{0}" -f $sourceCache),
+        $Part1Path,
+        "Sh.zip"
+    )
+
+    $process = Start-Process -FilePath $sevenZip -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+
+    if ($null -eq $process -or $process.ExitCode -ne 0) {
+        $code = if ($null -eq $process) { "null" } else { [string]$process.ExitCode }
+        throw "7-Zip no pudo extraer Sh.zip desde multipart. ExitCode=$code"
+    }
+
+    if (-not (Test-Path -LiteralPath $cachedZip -PathType Leaf)) {
+        throw "7-Zip finalizó sin generar Sh.zip: $cachedZip"
+    }
+
+    $sha = (Get-FileHash -LiteralPath $cachedZip -Algorithm SHA256).Hash.ToLowerInvariant()
+
+    if ($sha -ne $ExpectedZipSha) {
+        Remove-Item -LiteralPath $cachedZip -Force -ErrorAction SilentlyContinue
+        throw "Sh.zip extraído del multipart no coincide con el corpus ps0032 canónico. Actual=$sha Esperado=$ExpectedZipSha"
+    }
+
+    Write-Host "Sh.zip canónico reconstruido desde multipart: $cachedZip"
+    return $cachedZip
+}
+
 if ([string]::IsNullOrWhiteSpace($ShZipPath)) {
     $ShZipPath = Find-ShZip
 }
 
 if ([string]::IsNullOrWhiteSpace($ShZipPath) -or
     -not (Test-Path -LiteralPath $ShZipPath -PathType Leaf)) {
-    Write-Host "Sh.zip no fue encontrado en rutas locales acotadas."
+    $part1 = Find-ShMultipart
+
+    if (-not [string]::IsNullOrWhiteSpace($part1)) {
+        $ShZipPath = Prepare-ShZipFromMultipart -Part1Path $part1
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($ShZipPath) -or
+    -not (Test-Path -LiteralPath $ShZipPath -PathType Leaf)) {
+    Write-Host "Sh.zip ni el multipart Sh.part1.rar..Sh.part7.rar fueron encontrados/preparados en rutas locales acotadas."
     return
 }
 
