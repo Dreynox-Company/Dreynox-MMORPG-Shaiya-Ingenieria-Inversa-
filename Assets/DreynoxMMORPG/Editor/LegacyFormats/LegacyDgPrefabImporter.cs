@@ -417,15 +417,13 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     source.Vertices[i];
 
                 positions[i] =
-                    LegacyCoordinateBridge
-                        .Position(
-                            vertex.Position);
+                    vertex.Position;
 
                 normals[i] =
-                    LegacyCoordinateBridge
-                        .Direction(
-                            vertex.Normal)
-                        .normalized;
+                    vertex.Normal.sqrMagnitude >
+                    0.000001f
+                        ? vertex.Normal.normalized
+                        : Vector3.up;
 
                 uv[i] =
                     vertex.UV;
@@ -446,15 +444,15 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 LegacyTriangle face =
                     source.Faces[i];
 
-                // Z reflection changes handedness.
+                // DG is world-space geometry, same convention as WLD/SMOD.
                 triangles[i * 3] =
                     face.A;
 
                 triangles[i * 3 + 1] =
-                    face.C;
+                    face.B;
 
                 triangles[i * 3 + 2] =
-                    face.B;
+                    face.C;
             }
 
             Mesh mesh =
@@ -509,9 +507,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                  i++)
             {
                 positions[i] =
-                    LegacyCoordinateBridge
-                        .Position(
-                            source.Vertices[i]);
+                    source.Vertices[i];
             }
 
             int[] triangles =
@@ -530,10 +526,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     face.A;
 
                 triangles[i * 3 + 1] =
-                    face.C;
+                    face.B;
 
                 triangles[i * 3 + 2] =
-                    face.B;
+                    face.C;
             }
 
             Mesh mesh =
