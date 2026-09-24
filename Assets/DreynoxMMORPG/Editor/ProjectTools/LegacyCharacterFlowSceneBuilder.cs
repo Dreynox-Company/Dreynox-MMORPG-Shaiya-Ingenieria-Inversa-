@@ -254,130 +254,205 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
         {
             const int slotCount = 5;
 
-            Button[] buttons = new Button[slotCount];
-            Text[] names = new Text[slotCount];
-            Text[] metas = new Text[slotCount];
+            Texture2D slotAtlas =
+                LegacyUiAssetImporter
+                    .LoadCharacterSelectTexture(
+                        "selectbtn_us.tga");
 
-            for (int i = 0; i < slotCount; i++)
+            Texture2D startAtlas =
+                LegacyUiAssetImporter
+                    .LoadCharacterSelectTexture(
+                        "select_start_usa.tga");
+
+            if (slotAtlas == null)
+                throw new InvalidOperationException(
+                    "Canonical CharacterSelect slot atlas is missing.");
+
+            if (startAtlas == null)
+                throw new InvalidOperationException(
+                    "Canonical CharacterSelect Game Start atlas is missing.");
+
+            Button[] buttons =
+                new Button[slotCount];
+
+            Text[] names =
+                new Text[slotCount];
+
+            Text[] metas =
+                new Text[slotCount];
+
+            for (int i = 0;
+                 i < slotCount;
+                 i++)
             {
-                RectTransform panel =
-                    CreateRect(
-                        "CharacterSlot_" + (i + 1),
-                        root,
-                        new Vector2(0f, 1f),
-                        new Vector2(0f, 1f),
-                        new Vector2(390f, 80f),
-                        new Vector2(235f, -235f - i * 92f),
-                        new Vector2(0.5f, 0.5f));
+                float y =
+                    22f +
+                    i * 132f;
 
-                Image background =
-                    panel.gameObject.AddComponent<Image>();
-
-                background.color =
-                    new Color(0.16f, 0.10f, 0.04f, 0.84f);
+                CreateLegacyAtlasLayer(
+                    "CharacterSlotVisual_" + i,
+                    root,
+                    slotAtlas,
+                    new Vector2(
+                        45f,
+                        y),
+                    new Vector2(
+                        334f,
+                        118f),
+                    new Rect(
+                        0f,
+                        0f,
+                        334f,
+                        118f));
 
                 Button button =
-                    panel.gameObject.AddComponent<Button>();
+                    CreateTransparentButton(
+                        "CharacterSlot_" + i,
+                        root,
+                        new Vector2(
+                            45f,
+                            y),
+                        new Vector2(
+                            334f,
+                            118f));
 
-                button.targetGraphic = background;
-                buttons[i] = button;
+                buttons[i] =
+                    button;
 
                 Text name =
-                    CreateText(
-                        "Name",
-                        panel,
-                        "Create Character",
-                        22,
+                    CreateLegacyTopLeftText(
+                        "Name_" + i,
+                        root,
+                        string.Empty,
+                        new Vector2(
+                            116f,
+                            y + 8f),
+                        new Vector2(
+                            130f,
+                            16f),
+                        10,
+                        new Color(
+                            0.35f,
+                            0.86f,
+                            1f,
+                            1f),
                         TextAnchor.MiddleLeft);
 
-                name.fontStyle = FontStyle.Bold;
-                SetOffsets(
-                    name.rectTransform,
-                    18f,
-                    34f,
-                    -18f,
-                    -6f);
+                name.raycastTarget =
+                    false;
 
-                names[i] = name;
+                names[i] =
+                    name;
 
                 Text meta =
-                    CreateText(
-                        "Meta",
-                        panel,
-                        "Empty slot",
-                        15,
-                        TextAnchor.LowerLeft);
+                    CreateLegacyTopLeftText(
+                        "Meta_" + i,
+                        root,
+                        "Please create a character.",
+                        new Vector2(
+                            64f,
+                            y + 8f),
+                        new Vector2(
+                            292f,
+                            99f),
+                        10,
+                        Color.white,
+                        TextAnchor.MiddleCenter);
 
-                meta.color =
-                    new Color(0.88f, 0.78f, 0.58f, 1f);
+                meta.raycastTarget =
+                    false;
 
-                SetOffsets(
-                    meta.rectTransform,
-                    18f,
-                    7f,
-                    -18f,
-                    -42f);
-
-                metas[i] = meta;
+                metas[i] =
+                    meta;
             }
 
-            Button start =
-                CreateButton(
+            CreateLegacyAtlasLayer(
+                "GameStartVisual",
+                root,
+                startAtlas,
+                new Vector2(
+                    596f,
+                    675f),
+                new Vector2(
+                    246f,
+                    60f),
+                new Rect(
+                    4f,
+                    2f,
+                    246f,
+                    60f));
+
+            Button startButton =
+                CreateTransparentButton(
                     "StartButton",
                     root,
-                    "START",
-                    new Vector2(1f, 0f),
-                    new Vector2(-165f, 75f),
-                    new Vector2(220f, 58f));
+                    new Vector2(
+                        596f,
+                        675f),
+                    new Vector2(
+                        246f,
+                        60f));
 
-            Button create =
-                CreateButton(
+            Button createButton =
+                CreateLegacyRedButton(
                     "CreateButton",
                     root,
-                    "CREATE",
-                    new Vector2(0f, 0f),
-                    new Vector2(130f, 75f),
-                    new Vector2(180f, 50f));
+                    "Create Character",
+                    new Vector2(
+                        92f,
+                        666f),
+                    new Vector2(
+                        114f,
+                        36f));
 
-            Button delete =
-                CreateButton(
+            Button deleteButton =
+                CreateLegacyRedButton(
                     "DeleteButton",
                     root,
-                    "DELETE",
-                    new Vector2(0f, 0f),
-                    new Vector2(325f, 75f),
-                    new Vector2(180f, 50f));
+                    "Delete Character",
+                    new Vector2(
+                        212f,
+                        666f),
+                    new Vector2(
+                        114f,
+                        36f));
+
+            Button optionButton =
+                CreateLegacyRedButton(
+                    "OptionButton",
+                    root,
+                    "Option Setting",
+                    new Vector2(
+                        212f,
+                        708f),
+                    new Vector2(
+                        114f,
+                        36f));
+
+            optionButton.interactable =
+                true;
 
             Text status =
                 CreateText(
                     "Status",
                     root,
                     string.Empty,
-                    16,
+                    1,
                     TextAnchor.MiddleCenter);
 
-            status.rectTransform.anchorMin =
-                new Vector2(0.5f, 0f);
+            status.color =
+                Color.clear;
 
-            status.rectTransform.anchorMax =
-                new Vector2(0.5f, 0f);
-
-            status.rectTransform.pivot =
-                new Vector2(0.5f, 0f);
-
-            status.rectTransform.sizeDelta =
-                new Vector2(760f, 44f);
-
-            status.rectTransform.anchoredPosition =
-                new Vector2(0f, 24f);
+            status.raycastTarget =
+                false;
 
             controller.Bind(
                 buttons,
                 names,
                 metas,
-                start,
-                create,
-                delete,
+                startButton,
+                createButton,
+                deleteButton,
                 status);
         }
 
