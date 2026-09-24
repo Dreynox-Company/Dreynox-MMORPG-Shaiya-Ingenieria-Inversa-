@@ -102,6 +102,17 @@ namespace Dreynox.Mmorpg.UI
                 return;
 
             _family = family;
+
+            if (!LegacyCharacterRigCore.IsJobAllowed(
+                    _family,
+                    _job))
+            {
+                _job =
+                    LegacyCharacterRigCore
+                        .ResolveDefaultJob(
+                            _family);
+            }
+
             RefreshSelection();
             AppearanceChanged?.Invoke();
         }
@@ -110,6 +121,16 @@ namespace Dreynox.Mmorpg.UI
         {
             if (job < 0 || job > 5)
                 return;
+
+            // CharacterMake exposes six class choices inside the currently
+            // selected faction. The race/family is derived locally exactly as
+            // the native client does: Human/Elf for Light, DeathEater/Vile
+            // for Fury.
+            _family =
+                LegacyCharacterRigCore
+                    .ResolveFamilyForJob(
+                        _family,
+                        job);
 
             _job = job;
             RefreshSelection();
@@ -221,10 +242,18 @@ namespace Dreynox.Mmorpg.UI
             if (selectionText == null)
                 return;
 
+            LegacyCharacterRigSelection rig =
+                LegacyCharacterRigCore.Resolve(
+                    _family,
+                    _job,
+                    _sex);
+
             selectionText.text =
-                "Family " + _family +
-                " · Job " + _job +
-                " · " + (_sex == 0 ? "Male" : "Female") +
+                rig.DisplayJob +
+                " · " +
+                (_sex == 0 ? "Male" : "Female") +
+                " · " +
+                rig.Prefix +
                 " · Face " + (_face + 1) +
                 " · Hair " + (_hair + 1) +
                 " · " + _mode;

@@ -100,6 +100,65 @@ namespace Dreynox.Mmorpg.ParityCore
             }
         }
 
+        public static int ResolveFamilyForJob(
+            int currentFamily,
+            int job)
+        {
+            if (currentFamily < 0 ||
+                currentFamily > 3)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(currentFamily));
+            }
+
+            if (job < 0 ||
+                job > 5)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(job));
+            }
+
+            bool fury =
+                currentFamily >=
+                (int)LegacyCharacterFamily.DeathEater;
+
+            if (!fury)
+            {
+                return
+                    job == 0 ||
+                    job == 1 ||
+                    job == 5
+                        ? (int)LegacyCharacterFamily.Human
+                        : (int)LegacyCharacterFamily.Elf;
+            }
+
+            return
+                job == 0 ||
+                job == 1 ||
+                job == 3
+                    ? (int)LegacyCharacterFamily.DeathEater
+                    : (int)LegacyCharacterFamily.Vile;
+        }
+
+        public static int ResolveDefaultJob(
+            int family)
+        {
+            switch (family)
+            {
+                case (int)LegacyCharacterFamily.Human:
+                case (int)LegacyCharacterFamily.DeathEater:
+                    return (int)LegacyCharacterJob.Fighter;
+
+                case (int)LegacyCharacterFamily.Elf:
+                case (int)LegacyCharacterFamily.Vile:
+                    return (int)LegacyCharacterJob.Ranger;
+
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(family));
+            }
+        }
+
         public static int ResolveArchetype(
             int family,
             int job)

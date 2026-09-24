@@ -532,6 +532,45 @@ namespace Dreynox.Mmorpg.ParityHarness
                     100) == 10,
                 "VANI observed 33/100 ms intervals map to expected frames");
 
+            string[] recoveredRigPrefixes =
+            {
+                LegacyCharacterRigCore.Resolve(0, 0, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(0, 5, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(0, 0, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(0, 5, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(1, 2, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(1, 4, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(1, 2, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(1, 4, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(2, 0, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(2, 3, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(2, 0, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(2, 3, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(3, 2, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(3, 4, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(3, 2, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(3, 4, 1).Prefix
+            };
+
+            Check(
+                string.Join(",", recoveredRigPrefixes) ==
+                    "humf,humm,huwf,huwm,elmr,elmm,elwr,elwm,demf,demr,dewf,dewr,vimr,vimm,viwr,viwm",
+                "ps0032 x86 rig selector resolves all sixteen canonical prefixes");
+
+            Check(
+                LegacyCharacterRigCore.Resolve(0, 0, 0).NativeRigIndex == 0 &&
+                LegacyCharacterRigCore.Resolve(0, 5, 0).NativeRigIndex == 1 &&
+                LegacyCharacterRigCore.Resolve(3, 2, 1).NativeRigIndex == 14 &&
+                LegacyCharacterRigCore.Resolve(3, 4, 1).NativeRigIndex == 15,
+                "ps0032 rig index follows archetype + 2*sex + 4*family");
+
+            Check(
+                LegacyCharacterRigCore.ResolveFamilyForJob(0, 2) == 1 &&
+                LegacyCharacterRigCore.ResolveFamilyForJob(2, 5) == 3 &&
+                LegacyCharacterRigCore.ResolveGlobalJobName(2) == "Ranger" &&
+                LegacyCharacterRigCore.ResolveGlobalJobName(5) == "Priest",
+                "character make maps class choice to native race and canonical SData job order");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }

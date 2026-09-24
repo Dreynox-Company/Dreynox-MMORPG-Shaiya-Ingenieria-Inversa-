@@ -242,7 +242,9 @@ namespace Dreynox.Mmorpg.UI
                         occupied
                             ? "Lv. " + character.Level +
                               "                                      " +
-                              JobLabel(character.Job) +
+                              JobLabel(
+                                  character.Family,
+                                  character.Job) +
                               "\n\nLast Location : " +
                               MapLabel(character.MapId) +
                               "\n\nMode : " +
@@ -285,18 +287,21 @@ namespace Dreynox.Mmorpg.UI
         }
 
         private static string JobLabel(
+            int family,
             int job)
         {
-            switch (job)
+            if (family < 0 ||
+                family > 3 ||
+                job < 0 ||
+                job > 5)
             {
-                case 0: return "Fighter";
-                case 1: return "Defender";
-                case 2: return "Priest";
-                case 3: return "Ranger";
-                case 4: return "Archer";
-                case 5: return "Mage";
-                default: return "Job " + job;
+                return "Job " + job;
             }
+
+            return LegacyCharacterRigCore
+                .ResolveDisplayJob(
+                    family,
+                    job);
         }
 
         private static string MapLabel(

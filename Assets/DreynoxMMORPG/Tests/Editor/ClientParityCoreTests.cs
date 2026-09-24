@@ -473,7 +473,7 @@ namespace Dreynox.Mmorpg.Tests
                         "Existing",
                         33,
                         0,
-                        0,
+                        1,
                         2,
                         1,
                         3,
@@ -753,6 +753,155 @@ namespace Dreynox.Mmorpg.Tests
                     1.0,
                     21,
                     100));
+        }
+
+        [Test]
+        public void Ps0032RigSelectionMatchesRecoveredX86Table()
+        {
+            LegacyCharacterRigSelection[] cases =
+            {
+                LegacyCharacterRigCore.Resolve(0, 0, 0),
+                LegacyCharacterRigCore.Resolve(0, 5, 0),
+                LegacyCharacterRigCore.Resolve(0, 0, 1),
+                LegacyCharacterRigCore.Resolve(0, 5, 1),
+
+                LegacyCharacterRigCore.Resolve(1, 2, 0),
+                LegacyCharacterRigCore.Resolve(1, 4, 0),
+                LegacyCharacterRigCore.Resolve(1, 2, 1),
+                LegacyCharacterRigCore.Resolve(1, 4, 1),
+
+                LegacyCharacterRigCore.Resolve(2, 0, 0),
+                LegacyCharacterRigCore.Resolve(2, 3, 0),
+                LegacyCharacterRigCore.Resolve(2, 0, 1),
+                LegacyCharacterRigCore.Resolve(2, 3, 1),
+
+                LegacyCharacterRigCore.Resolve(3, 2, 0),
+                LegacyCharacterRigCore.Resolve(3, 4, 0),
+                LegacyCharacterRigCore.Resolve(3, 2, 1),
+                LegacyCharacterRigCore.Resolve(3, 4, 1)
+            };
+
+            string[] expected =
+            {
+                "humf", "humm", "huwf", "huwm",
+                "elmr", "elmm", "elwr", "elwm",
+                "demf", "demr", "dewf", "dewr",
+                "vimr", "vimm", "viwr", "viwm"
+            };
+
+            for (int i = 0; i < cases.Length; i++)
+            {
+                Assert.AreEqual(
+                    i,
+                    cases[i].NativeRigIndex);
+
+                Assert.AreEqual(
+                    expected[i],
+                    cases[i].Prefix);
+            }
+
+            Assert.AreEqual(
+                0,
+                LegacyCharacterRigCore.ResolveFamilyForJob(
+                    0,
+                    0));
+
+            Assert.AreEqual(
+                1,
+                LegacyCharacterRigCore.ResolveFamilyForJob(
+                    0,
+                    2));
+
+            Assert.AreEqual(
+                2,
+                LegacyCharacterRigCore.ResolveFamilyForJob(
+                    2,
+                    3));
+
+            Assert.AreEqual(
+                3,
+                LegacyCharacterRigCore.ResolveFamilyForJob(
+                    2,
+                    5));
+
+            Assert.IsFalse(
+                LegacyCharacterRigCore.IsJobAllowed(
+                    0,
+                    2));
+
+            Assert.Throws<ArgumentException>(
+                () => new CharacterSummaryCore(
+                    777,
+                    "Invalid",
+                    1,
+                    0,
+                    0,
+                    2,
+                    0,
+                    0,
+                    0,
+                    0,
+                    CharacterDifficultyMode.Basic));
+        }
+
+        [Test]
+        public void CanonicalJobOrderMatchesPs0032SData()
+        {
+            string[] expected =
+            {
+                "Fighter",
+                "Defender",
+                "Ranger",
+                "Archer",
+                "Mage",
+                "Priest"
+            };
+
+            for (int job = 0;
+                 job < expected.Length;
+                 job++)
+            {
+                Assert.AreEqual(
+                    expected[job],
+                    LegacyCharacterRigCore.ResolveGlobalJobName(
+                        job));
+            }
+
+            Assert.AreEqual(
+                "Warrior",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    2,
+                    0));
+
+            Assert.AreEqual(
+                "Guardian",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    2,
+                    1));
+
+            Assert.AreEqual(
+                "Assassin",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    3,
+                    2));
+
+            Assert.AreEqual(
+                "Hunter",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    2,
+                    3));
+
+            Assert.AreEqual(
+                "Pagan",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    3,
+                    4));
+
+            Assert.AreEqual(
+                "Oracle",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    3,
+                    5));
         }
 
     }

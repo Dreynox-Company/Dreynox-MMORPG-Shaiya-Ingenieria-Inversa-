@@ -622,20 +622,20 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             {
                 "character.make.class.fighter",
                 "character.make.class.defender",
-                "character.make.class.priest",
                 "character.make.class.ranger",
                 "character.make.class.archer",
-                "character.make.class.mage"
+                "character.make.class.mage",
+                "character.make.class.priest"
             };
 
             string[] classLabels =
             {
                 "Fighter",
                 "Defender",
-                "Priest",
                 "Ranger",
                 "Archer",
-                "Mage"
+                "Mage",
+                "Priest"
             };
 
             Vector2[] classPositions =

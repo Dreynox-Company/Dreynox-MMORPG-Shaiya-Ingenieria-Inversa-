@@ -102,6 +102,16 @@ namespace Dreynox.Mmorpg.ParityCore
                 throw new ArgumentOutOfRangeException(nameof(family));
             if (job < 0 || job > 5)
                 throw new ArgumentOutOfRangeException(nameof(job));
+            if (!LegacyCharacterRigCore.IsJobAllowed(
+                    family,
+                    job))
+            {
+                throw new ArgumentException(
+                    "Job " + job +
+                    " is not available for family " +
+                    family + " in ps0032.",
+                    nameof(job));
+            }
             if (sex < 0 || sex > 1)
                 throw new ArgumentOutOfRangeException(nameof(sex));
             if (face < 0 || face > 4)
