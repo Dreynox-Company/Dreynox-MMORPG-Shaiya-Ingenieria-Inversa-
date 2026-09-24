@@ -59,8 +59,8 @@ namespace Dreynox.Mmorpg.ParityCore
         // different verified rectangle instead of silently changing metrics.
         public const int NativeCropX = 3;
         public const int NativeCropY = 26;
-        public const int NativeCropWidth = 1018;
-        public const int NativeCropHeight = 740;
+        public const int NativeCropWidth = 1021;
+        public const int NativeCropHeight = 739;
 
         private static readonly NativeVisualReference[] Items =
         {
