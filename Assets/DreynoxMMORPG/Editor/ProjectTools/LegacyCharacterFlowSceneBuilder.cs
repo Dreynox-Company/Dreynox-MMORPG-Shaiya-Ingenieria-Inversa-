@@ -101,6 +101,13 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             SemanticAnimationPlayer animation =
                 actor.GetComponent<SemanticAnimationPlayer>();
 
+            int loginEffects =
+                LegacyDungeonPreviewEnvironmentImporter
+                    .AttachRuntimeEffects(
+                        corpus,
+                        environment,
+                        actor.transform);
+
             AddSelectionLighting();
 
             Canvas canvas = CreateCanvas("CharacterSelectCanvas");
@@ -127,7 +134,14 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             Debug.Log(
                 "Dreynox MMORPG: canonical CharacterSelect scene generated at " +
-                CharacterSelectScenePath + ".");
+                CharacterSelectScenePath +
+                " · DG meshes=" +
+                environment.Dungeon.Source.MeshCount +
+                " · lightmaps=" +
+                environment.Dungeon.Source.LightmapCount +
+                " · login EFT placements=" +
+                loginEffects +
+                ".");
         }
 
         [MenuItem(
@@ -198,6 +212,13 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             SemanticAnimationPlayer animation =
                 actor.GetComponent<SemanticAnimationPlayer>();
 
+            int loginEffects =
+                LegacyDungeonPreviewEnvironmentImporter
+                    .AttachRuntimeEffects(
+                        corpus,
+                        environment,
+                        actor.transform);
+
             AddSelectionLighting();
 
             Canvas canvas = CreateCanvas("CharacterMakeCanvas");
@@ -227,7 +248,14 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             Debug.Log(
                 "Dreynox MMORPG: canonical CharacterMake scene generated at " +
-                CharacterMakeScenePath + ".");
+                CharacterMakeScenePath +
+                " · DG meshes=" +
+                environment.Dungeon.Source.MeshCount +
+                " · lightmaps=" +
+                environment.Dungeon.Source.LightmapCount +
+                " · login EFT placements=" +
+                loginEffects +
+                ".");
         }
 
         private static CanonicalClientCorpus RequireCanonicalCorpus()
