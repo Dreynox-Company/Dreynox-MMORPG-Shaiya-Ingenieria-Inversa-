@@ -11,18 +11,34 @@ namespace Dreynox.Mmorpg.ParityCore
         public readonly int Height;
         public readonly string Sha256;
 
+        // Native screenshots were captured externally and include the
+        // Windows non-client frame. These values describe the game client
+        // content rectangle inside the verified 1024x768 PNG.
+        public readonly int NativeCropX;
+        public readonly int NativeCropY;
+        public readonly int NativeCropWidth;
+        public readonly int NativeCropHeight;
+
         public NativeVisualReference(
             string scenarioId,
             string fileName,
             int width,
             int height,
-            string sha256)
+            string sha256,
+            int nativeCropX,
+            int nativeCropY,
+            int nativeCropWidth,
+            int nativeCropHeight)
         {
             ScenarioId = scenarioId ?? string.Empty;
             FileName = fileName ?? string.Empty;
             Width = width;
             Height = height;
             Sha256 = sha256 ?? string.Empty;
+            NativeCropX = nativeCropX;
+            NativeCropY = nativeCropY;
+            NativeCropWidth = nativeCropWidth;
+            NativeCropHeight = nativeCropHeight;
         }
     }
 
@@ -36,6 +52,15 @@ namespace Dreynox.Mmorpg.ParityCore
 
         public const string DiagnosticPatchOffset =
             "0x10A084";
+
+        // Initial Windows 11 native-capture calibration. The full PNG is
+        // 1024x768 and contains the title bar. The crop is intentionally
+        // explicit so future captures from another window style can use a
+        // different verified rectangle instead of silently changing metrics.
+        public const int NativeCropX = 3;
+        public const int NativeCropY = 26;
+        public const int NativeCropWidth = 1018;
+        public const int NativeCropHeight = 740;
 
         private static readonly NativeVisualReference[] Items =
         {
@@ -122,7 +147,11 @@ namespace Dreynox.Mmorpg.ParityCore
                 fileName,
                 1024,
                 768,
-                sha256);
+                sha256,
+                NativeCropX,
+                NativeCropY,
+                NativeCropWidth,
+                NativeCropHeight);
         }
 
         private static Dictionary<string, NativeVisualReference> BuildIndex()
@@ -142,7 +171,13 @@ namespace Dreynox.Mmorpg.ParityCore
                     string.IsNullOrWhiteSpace(item.FileName) ||
                     item.Width <= 0 ||
                     item.Height <= 0 ||
-                    item.Sha256.Length != 64)
+                    item.Sha256.Length != 64 ||
+                    item.NativeCropX < 0 ||
+                    item.NativeCropY < 0 ||
+                    item.NativeCropWidth <= 0 ||
+                    item.NativeCropHeight <= 0 ||
+                    item.NativeCropX + item.NativeCropWidth > item.Width ||
+                    item.NativeCropY + item.NativeCropHeight > item.Height)
                 {
                     throw new InvalidOperationException(
                         "Invalid native parity reference at index " +
