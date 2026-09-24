@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
+using Dreynox.Mmorpg.Editor.Corpus;
+using Dreynox.Mmorpg.Editor.LegacyFormats;
 using Dreynox.Mmorpg.Editor.ProjectTools;
 using Dreynox.Mmorpg.Editor.ReverseEngineering.Binary;
 using UnityEditor;
@@ -14,6 +16,8 @@ namespace Dreynox.Mmorpg.Editor.Build
     {
         private const string ParityOutput = "Builds/WindowsParity/DreynoxMmorpg-Parity.exe";
         private const string ReleaseOutput = "Builds/Windows/DreynoxMmorpg.exe";
+        private const string CanonicalParityOutput =
+            "Builds/WindowsCanonicalParity/DreynoxMmorpg-CanonicalParity.exe";
 
         private static readonly string[] ReleaseScenes =
         {
@@ -27,6 +31,17 @@ namespace Dreynox.Mmorpg.Editor.Build
         {
             BuildParityLab(ParityOutput);
             EditorUtility.RevealInFinder(Path.GetFullPath("Builds/WindowsParity"));
+        }
+
+        [MenuItem("Dreynox MMORPG/Build/Windows x64/Canonical Parity")]
+        public static void BuildCanonicalParityMenu()
+        {
+            BuildCanonicalParityLab(
+                CanonicalParityOutput);
+
+            EditorUtility.RevealInFinder(
+                Path.GetFullPath(
+                    "Builds/WindowsCanonicalParity"));
         }
 
         [MenuItem("Dreynox MMORPG/Build/Windows x64/Client Release")]
@@ -52,6 +67,12 @@ namespace Dreynox.Mmorpg.Editor.Build
             BuildClientRelease(ReleaseOutput);
         }
 
+        public static void BuildCanonicalParityBatch()
+        {
+            BuildCanonicalParityLab(
+                CanonicalParityOutput);
+        }
+
         public static void BuildParityLab(string outputPath)
         {
             ClientParitySceneBuilder.CreateSandbox();
@@ -61,6 +82,56 @@ namespace Dreynox.Mmorpg.Editor.Build
                 new[] { ClientParitySceneBuilder.ScenePath },
                 outputPath,
                 "parity-lab");
+        }
+
+        public static void BuildCanonicalParityLab(
+            string outputPath)
+        {
+            CanonicalClientCorpus corpus =
+                CanonicalClientCorpus.FromStoredRoot();
+
+            if (corpus == null)
+            {
+                throw new BuildFailedException(
+                    "Canonical parity build requires " +
+                    CanonicalClientCorpus.CorpusRootEnvironmentVariable +
+                    " or a local canonical corpus selection.");
+            }
+
+            CorpusValidationResult validation =
+                corpus.Validate();
+
+            if (!validation.IsCanonical)
+            {
+                throw new BuildFailedException(
+                    "Canonical ps0032 corpus validation failed: " +
+                    string.Join(
+                        " | ",
+                        validation.errors.Concat(
+                            validation.missingFiles)));
+            }
+
+            LegacyLoginSceneBuilder.Build();
+            LegacyCharacterFlowSceneBuilder.BuildCharacterSelect();
+            LegacyCharacterFlowSceneBuilder.BuildCharacterMake();
+            LegacyWorldTerrainImporter.BuildCanonicalMap0();
+
+            ConfigureIdentity();
+
+            PlayerSettings.SetScriptingBackend(
+                NamedBuildTarget.Standalone,
+                ScriptingImplementation.Mono2x);
+
+            Build(
+                new[]
+                {
+                    LegacyLoginSceneBuilder.ScenePath,
+                    LegacyCharacterFlowSceneBuilder.CharacterSelectScenePath,
+                    LegacyCharacterFlowSceneBuilder.CharacterMakeScenePath,
+                    LegacyWorldTerrainImporter.ScenePath
+                },
+                outputPath,
+                "canonical-parity");
         }
 
         public static void BuildClientRelease(string outputPath)
