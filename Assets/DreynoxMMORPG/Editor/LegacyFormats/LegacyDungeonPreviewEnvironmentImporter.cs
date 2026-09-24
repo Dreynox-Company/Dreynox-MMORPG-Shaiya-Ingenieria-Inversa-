@@ -14,6 +14,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         public LegacyWldTerrainFile World;
         public LegacyDgImportResult Dungeon;
         public Vector3 PreviewAnchor;
+        public string PreviewAnchorSource = string.Empty;
         public int BuildingInstances;
         public int ShapeInstances;
         public int TreeInstances;
@@ -159,7 +160,33 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             LegacyBounds bounds =
                 dg.Source.BoundingBox;
 
+            string anchorSource;
             Vector3 previewAnchor =
+                ResolvePreviewAnchor(
+                    wld,
+                    bounds,
+                    out anchorSource);
+
+            return new LegacyDungeonPreviewBuildResult
+            {
+                Root = root,
+                World = wld,
+                Dungeon = dg,
+                PreviewAnchor = previewAnchor,
+                PreviewAnchorSource = anchorSource,
+                BuildingInstances = buildings,
+                ShapeInstances = shapes,
+                TreeInstances = trees,
+                GrassInstances = grass
+            };
+        }
+
+        private static Vector3 ResolvePreviewAnchor(
+            LegacyWldTerrainFile wld,
+            LegacyBounds bounds,
+            out string source)
+        {
+            Vector3 center =
                 new Vector3(
                     (bounds.Lower.x +
                      bounds.Upper.x) *
@@ -169,17 +196,101 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                      bounds.Upper.z) *
                     0.5f);
 
-            return new LegacyDungeonPreviewBuildResult
+            LegacyWldEffectPlacement bestEffect =
+                null;
+
+            float bestEffectDistance =
+                float.PositiveInfinity;
+
+            for (int i = 0;
+                 i < wld.Effects.Count;
+                 i++)
             {
-                Root = root,
-                World = wld,
-                Dungeon = dg,
-                PreviewAnchor = previewAnchor,
-                BuildingInstances = buildings,
-                ShapeInstances = shapes,
-                TreeInstances = trees,
-                GrassInstances = grass
-            };
+                LegacyWldEffectPlacement effect =
+                    wld.Effects[i];
+
+                if (effect.EffectId != 0)
+                    continue;
+
+                Vector2 delta =
+                    new Vector2(
+                        effect.Position.x -
+                        center.x,
+                        effect.Position.z -
+                        center.z);
+
+                float distance =
+                    delta.sqrMagnitude;
+
+                if (distance <
+                    bestEffectDistance)
+                {
+                    bestEffectDistance =
+                        distance;
+
+                    bestEffect =
+                        effect;
+                }
+            }
+
+            if (bestEffect != null)
+            {
+                source =
+                    "Login.wld effect sequence 0";
+
+                return new Vector3(
+                    bestEffect.Position.x,
+                    bounds.Lower.y,
+                    bestEffect.Position.z);
+            }
+
+            int starNameIndex =
+                -1;
+
+            for (int i = 0;
+                 i < wld.Shapes.Names.Count;
+                 i++)
+            {
+                if (string.Equals(
+                        Path.GetFileName(
+                            wld.Shapes.Names[i]),
+                        "Starlighting.SMOD",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    starNameIndex =
+                        i;
+
+                    break;
+                }
+            }
+
+            if (starNameIndex >= 0)
+            {
+                for (int i = 0;
+                     i < wld.Shapes.Coordinates.Count;
+                     i++)
+                {
+                    LegacyWldCoordinate coordinate =
+                        wld.Shapes.Coordinates[i];
+
+                    if (coordinate.Id !=
+                        starNameIndex)
+                        continue;
+
+                    source =
+                        "Login.wld Starlighting.SMOD";
+
+                    return new Vector3(
+                        coordinate.Position.x,
+                        bounds.Lower.y,
+                        coordinate.Position.z);
+                }
+            }
+
+            source =
+                "DG bounding-box center";
+
+            return center;
         }
 
         public static int AttachRuntimeEffects(
