@@ -499,6 +499,39 @@ namespace Dreynox.Mmorpg.ParityHarness
                     "32232a8e3e176c32ac75ad357d1f70ccf8ccadc7f223384866afdd2c9e6282df",
                 "native visual suite records original and diagnostic client identities");
 
+            Check(
+                Math.Abs(
+                    LegacyVaniAnimationCore.FrameDurationSeconds(66) -
+                    0.066) <
+                0.0000001,
+                "VANI 66 timing field resolves to 66 ms per frame");
+
+            Check(
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.065,
+                    16,
+                    66) == 0 &&
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.066,
+                    16,
+                    66) == 1 &&
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.056,
+                    16,
+                    66) == 0,
+                "VANI frame selection is deterministic across cycle boundaries");
+
+            Check(
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.999,
+                    61,
+                    33) == 30 &&
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.0,
+                    21,
+                    100) == 10,
+                "VANI observed 33/100 ms intervals map to expected frames");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
