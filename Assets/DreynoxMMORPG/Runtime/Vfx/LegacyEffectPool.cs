@@ -10,6 +10,9 @@ namespace Dreynox.Mmorpg.Vfx
         [System.NonSerialized] internal bool pooled;
         [System.NonSerialized] internal uint leaseId;
 
+        public uint LeaseId => leaseId;
+        public bool IsPooled => pooled;
+
         private void OnDisable()
         {
             if (!returning &&
