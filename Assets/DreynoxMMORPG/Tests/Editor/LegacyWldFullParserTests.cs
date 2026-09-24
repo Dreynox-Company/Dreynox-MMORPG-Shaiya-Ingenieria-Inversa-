@@ -181,6 +181,14 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 2,
                 wld.Dungeons.Coordinates.Count);
 
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "L_R1_Fortress00.dg",
+                    "L_R1_Fortress00_inner.dg"
+                },
+                wld.Dungeons.Names);
+
             Assert.Greater(
                 wld.KnownBytesConsumed,
                 0);
