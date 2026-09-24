@@ -181,6 +181,12 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     NewSceneSetup.EmptyScene,
                     NewSceneMode.Single);
 
+            LightmapSettings.lightmapsMode =
+                LightmapsMode.NonDirectional;
+
+            LightmapSettings.lightmaps =
+                Array.Empty<LightmapData>();
+
             GameObject runtime =
                 new GameObject("DreynoxRuntime");
 
@@ -241,6 +247,12 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     "tree",
                     wld.Trees,
                     alphaClip: true);
+
+            int dungeonInstances =
+                CreateDungeonInstances(
+                    corpus,
+                    staticRoot.transform,
+                    wld.Dungeons);
 
             int rotatingManiInstances;
 
@@ -461,6 +473,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 buildingInstances + " buildings, " +
                 shapeInstances + " shapes, " +
                 treeInstances + " trees, " +
+                dungeonInstances + " DG dungeon placements, " +
                 maniInstances + " MAni placements / " +
                 rotatingManiInstances + " rotating, " +
                 grassInstances + " GPU-instanced grass placements, " +
@@ -1196,6 +1209,145 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 throw new InvalidDataException(
                     "Map 0 terrain height calibration mismatch.");
             }
+        }
+
+        private static int CreateDungeonInstances(
+            CanonicalClientCorpus corpus,
+            Transform worldRoot,
+            LegacyWldNameCoordinateGroup group)
+        {
+            if (group == null)
+                throw new ArgumentNullException(
+                    nameof(group));
+
+            if (group.Coordinates.Count == 0)
+                return 0;
+
+            GameObject container =
+                new GameObject(
+                    "Dungeons");
+
+            container.transform.SetParent(
+                worldRoot,
+                false);
+
+            LegacyDgImportResult[] resources =
+                new LegacyDgImportResult[
+                    group.Names.Count];
+
+            int[] lightmapOffsets =
+                new int[
+                    group.Names.Count];
+
+            for (int i = 0;
+                 i < group.Names.Count;
+                 i++)
+            {
+                resources[i] =
+                    LegacyDgPrefabImporter
+                        .ImportCanonical(
+                            corpus,
+                            group.Names[i],
+                            OutputRoot +
+                            "/Dungeons/Resource_" +
+                            i.ToString("D2"));
+
+                if (resources[i] == null ||
+                    resources[i].Prefab == null ||
+                    resources[i].Source == null)
+                {
+                    throw new InvalidDataException(
+                        "DG resource import failed: " +
+                        group.Names[i] +
+                        ".");
+                }
+
+                lightmapOffsets[i] =
+                    LegacyDgPrefabImporter
+                        .AppendSceneLightmaps(
+                            resources[i]
+                                .Lightmaps);
+            }
+
+            StaticEditorFlags flags =
+                StaticEditorFlags.BatchingStatic |
+                StaticEditorFlags.OccluderStatic |
+                StaticEditorFlags.OccludeeStatic |
+                StaticEditorFlags.NavigationStatic |
+                StaticEditorFlags.ReflectionProbeStatic;
+
+            for (int i = 0;
+                 i < group.Coordinates.Count;
+                 i++)
+            {
+                LegacyWldCoordinate coordinate =
+                    group.Coordinates[i];
+
+                if (coordinate.Id < 0 ||
+                    coordinate.Id >=
+                        resources.Length)
+                {
+                    throw new InvalidDataException(
+                        "DG coordinate " +
+                        i +
+                        " references invalid resource " +
+                        coordinate.Id +
+                        ".");
+                }
+
+                LegacyDgImportResult resource =
+                    resources[
+                        coordinate.Id];
+
+                GameObject instance =
+                    PrefabUtility.InstantiatePrefab(
+                        resource.Prefab)
+                    as GameObject;
+
+                if (instance == null)
+                {
+                    throw new InvalidOperationException(
+                        "Could not instantiate DG resource " +
+                        group.Names[
+                            coordinate.Id] +
+                        ".");
+                }
+
+                instance.name =
+                    Path.GetFileNameWithoutExtension(
+                        group.Names[
+                            coordinate.Id]) +
+                    "_" +
+                    i.ToString("D3");
+
+                instance.transform.SetParent(
+                    container.transform,
+                    false);
+
+                instance.transform.position =
+                    coordinate.Position;
+
+                instance.transform.rotation =
+                    RotationFromBasis(
+                        coordinate.Forward,
+                        coordinate.Up,
+                        "WLD dungeon",
+                        i);
+
+                LegacyDgPrefabImporter
+                    .OffsetInstanceLightmapIndices(
+                        instance,
+                        lightmapOffsets[
+                            coordinate.Id],
+                        resource.Source
+                            .LightmapCount);
+
+                ApplyStaticFlagsRecursively(
+                    instance,
+                    flags);
+            }
+
+            return group.Coordinates.Count;
         }
 
         private static int CreateManiInstances(
