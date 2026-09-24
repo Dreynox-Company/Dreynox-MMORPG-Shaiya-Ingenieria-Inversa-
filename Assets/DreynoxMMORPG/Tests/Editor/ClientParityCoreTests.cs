@@ -1,3 +1,4 @@
+using System;
 using Dreynox.Mmorpg.ParityCore;
 using NUnit.Framework;
 
