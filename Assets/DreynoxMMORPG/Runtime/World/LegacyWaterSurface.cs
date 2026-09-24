@@ -168,14 +168,18 @@ namespace Dreynox.Mmorpg.World
             if (targetRenderer == null)
                 return;
 
-            Vector3 scale =
-                transform.localScale;
+            Bounds bounds =
+                targetRenderer.bounds;
 
             float width =
-                Mathf.Abs(scale.x);
+                Mathf.Max(
+                    0.01f,
+                    Mathf.Abs(bounds.size.x));
 
             float depth =
-                Mathf.Abs(scale.z);
+                Mathf.Max(
+                    0.01f,
+                    Mathf.Abs(bounds.size.z));
 
             Vector4 st =
                 new Vector4(
