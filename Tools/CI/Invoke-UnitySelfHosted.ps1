@@ -114,6 +114,10 @@ function Invoke-Checked {
                 throw "$Description excedió el timeout de $TimeoutSeconds segundos."
             }
 
+            # Complete the non-timed wait after the bounded wait reports
+            # completion. This makes ExitCode reliable on Windows PowerShell
+            # 5.1 / .NET Framework Process objects.
+            $process.WaitForExit()
             $process.Refresh()
             $exitCode = $process.ExitCode
         }
