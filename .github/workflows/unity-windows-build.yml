@@ -698,15 +698,6 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload canonical parity captures
-        if: steps.canonical-corpus.outputs.available == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: Dreynox-Mmorpg-CanonicalParity-Captures
-          path: ${{ env.UNITY_PROJECT_PATH }}/Artifacts/Parity/Canonical/
-          if-no-files-found: error
-          retention-days: 14
-
       - name: Upload Unity build log
         if: always() && (github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'build-only')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
