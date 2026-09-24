@@ -32,7 +32,9 @@ namespace Dreynox.Mmorpg.Editor.Corpus
             "character.select.background",
             "character.select.buttons",
             "character.select.start",
-            "character.select.restore"
+            "character.select.restore",
+            "character.select.slotAtlas",
+            "character.select.startUsa"
         };
 
         private static readonly string[] CharacterMakeKeys =
