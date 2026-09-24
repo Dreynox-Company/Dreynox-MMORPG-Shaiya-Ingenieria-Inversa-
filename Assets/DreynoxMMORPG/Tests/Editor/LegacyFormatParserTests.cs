@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using Dreynox.Mmorpg.Editor.Corpus;
 using Dreynox.Mmorpg.Editor.LegacyFormats;
+using Dreynox.Mmorpg.ParityCore;
 using NUnit.Framework;
 using UnityEngine;
 
