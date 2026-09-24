@@ -224,17 +224,32 @@ namespace Dreynox.Mmorpg.UI
                     slotNameTexts[slot].text =
                         occupied
                             ? character.Name
-                            : "Create Character";
+                            : string.Empty;
                 }
 
                 if (slot < slotMetaTexts.Length &&
                     slotMetaTexts[slot] != null)
                 {
-                    slotMetaTexts[slot].text =
+                    Text meta =
+                        slotMetaTexts[slot];
+
+                    meta.alignment =
                         occupied
-                            ? "Lv." + character.Level +
-                              " · Slot " + (slot + 1)
-                            : "Empty slot";
+                            ? TextAnchor.UpperLeft
+                            : TextAnchor.MiddleCenter;
+
+                    meta.text =
+                        occupied
+                            ? "Lv. " + character.Level +
+                              "                                      " +
+                              JobLabel(character.Job) +
+                              "\n\nLast Location : " +
+                              MapLabel(character.MapId) +
+                              "\n\nMode : " +
+                              character.Mode
+                                  .ToString()
+                                  .ToUpperInvariant()
+                            : "Please create a character.";
                 }
 
                 if (slotButtons[slot] != null)
@@ -267,6 +282,32 @@ namespace Dreynox.Mmorpg.UI
 
             if (deleteButton != null)
                 deleteButton.interactable = occupied;
+        }
+
+        private static string JobLabel(
+            int job)
+        {
+            switch (job)
+            {
+                case 0: return "Fighter";
+                case 1: return "Defender";
+                case 2: return "Priest";
+                case 3: return "Ranger";
+                case 4: return "Archer";
+                case 5: return "Mage";
+                default: return "Job " + job;
+            }
+        }
+
+        private static string MapLabel(
+            int mapId)
+        {
+            switch (mapId)
+            {
+                case 0: return "Apulune";
+                case 1: return "Erina";
+                default: return "Map " + mapId;
+            }
         }
 
         private int FindFirstEmptySlot()
