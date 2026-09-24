@@ -609,6 +609,15 @@ namespace Dreynox.Mmorpg.ParityHarness
                 LegacyCharacterAssetCore.ResolvePreview(3, 5, 1).Rig.Prefix == "viwm",
                 "preview asset resolver uses recovered Fighter and female Oracle rig prefixes");
 
+            Check(
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(0) == 0 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(1) == 1 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(2) == 5 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(3) == 2 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(4) == 3 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(5) == 4,
+                "native CharacterMake visual order stays Fighter Defender Priest / Ranger Archer Mage");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }
