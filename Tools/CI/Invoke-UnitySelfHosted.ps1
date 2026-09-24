@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("preflight", "test", "build")]
+    [ValidateSet("preflight", "test", "build", "canonical-build")]
     [string]$Task
 )
 
@@ -262,6 +262,44 @@ Después abre una nueva terminal y verifica:
         }
 
         Write-Host "Unity EditMode tests: OK"
+        break
+    }
+
+    "canonical-build" {
+        $BuildLogDir = Join-Path $RepoRoot "BuildLogs"
+        New-Item -ItemType Directory -Force -Path $BuildLogDir | Out-Null
+        $BuildLog = Join-Path $BuildLogDir "windows-canonical-parity-editor.log"
+
+        if ([string]::IsNullOrWhiteSpace($env:DREYNOX_CORPUS_ROOT)) {
+            throw "DREYNOX_CORPUS_ROOT no está configurado en el runner."
+        }
+
+        if (-not (Test-Path $env:DREYNOX_CORPUS_ROOT)) {
+            throw "DREYNOX_CORPUS_ROOT no existe: $env:DREYNOX_CORPUS_ROOT"
+        }
+
+        Invoke-Checked -Executable $UnityEditor -Arguments @(
+            "-batchmode",
+            "-nographics",
+            "-projectPath", $RepoRoot,
+            "-executeMethod", "Dreynox.Mmorpg.Editor.Build.DreynoxWindowsBuild.BuildCanonicalParityBatch",
+            "-logFile", $BuildLog,
+            "-quit"
+        ) -Description "Unity Windows x64 canonical parity build"
+
+        $ExePath = Join-Path $RepoRoot "Builds\WindowsCanonicalParity\DreynoxMmorpg-CanonicalParity.exe"
+        $ManifestPath = Join-Path $RepoRoot "Builds\WindowsCanonicalParity\dreynox-build-manifest.txt"
+
+        if (-not (Test-Path $ExePath)) {
+            throw "El canonical build terminó sin generar $ExePath."
+        }
+
+        if (-not (Test-Path $ManifestPath)) {
+            throw "El canonical build terminó sin generar $ManifestPath."
+        }
+
+        Write-Host "Canonical parity Windows x64: OK"
+        Get-Content $ManifestPath | ForEach-Object { Write-Host $_ }
         break
     }
 
