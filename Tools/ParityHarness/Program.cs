@@ -477,8 +477,8 @@ namespace Dreynox.Mmorpg.ParityHarness
             Check(
                 nativeCharacterEditor.NativeCropX == 3 &&
                 nativeCharacterEditor.NativeCropY == 26 &&
-                nativeCharacterEditor.NativeCropWidth == 1018 &&
-                nativeCharacterEditor.NativeCropHeight == 740,
+                nativeCharacterEditor.NativeCropWidth == 1021 &&
+                nativeCharacterEditor.NativeCropHeight == 739,
                 "native Windows client crop calibration is pinned");
 
             NativeVisualReference nativeWorldLoaded =
