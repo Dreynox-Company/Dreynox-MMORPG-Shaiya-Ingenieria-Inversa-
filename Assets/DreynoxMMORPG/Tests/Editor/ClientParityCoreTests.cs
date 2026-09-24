@@ -630,5 +630,58 @@ namespace Dreynox.Mmorpg.Tests
             Assert.IsTrue(boss.CanEnter(50, 2, true));
         }
 
+        [Test]
+        public void NativeVisualReferenceSuiteIsCanonicalAndUnique()
+        {
+            Assert.AreEqual(
+                8,
+                NativeVisualReferenceCore.All.Count);
+
+            var ids =
+                new System.Collections.Generic.HashSet<string>(
+                    System.StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0;
+                 i < NativeVisualReferenceCore.All.Count;
+                 i++)
+            {
+                NativeVisualReference reference =
+                    NativeVisualReferenceCore.All[i];
+
+                Assert.AreEqual(
+                    1024,
+                    reference.Width);
+
+                Assert.AreEqual(
+                    768,
+                    reference.Height);
+
+                Assert.AreEqual(
+                    64,
+                    reference.Sha256.Length);
+
+                Assert.IsTrue(
+                    ids.Add(
+                        reference.ScenarioId));
+            }
+
+            Assert.AreEqual(
+                "2fd2807d305f5ae589f30232ac31c52a12f9caef66ed1b674ca6405a607f5549",
+                NativeVisualReferenceCore
+                    .Get("character-editor")
+                    .Sha256);
+
+            Assert.AreEqual(
+                "c19cb5f06154bf6eacb029b08be7f6762bd9a002c044ff170363a9dfeadee6a0",
+                NativeVisualReferenceCore
+                    .Get("world-loaded")
+                    .Sha256);
+
+            Assert.AreEqual(
+                CanonicalClientCorpus.GameExeSha256,
+                NativeVisualReferenceCore
+                    .OriginalClientSha256);
+        }
+
     }
 }
