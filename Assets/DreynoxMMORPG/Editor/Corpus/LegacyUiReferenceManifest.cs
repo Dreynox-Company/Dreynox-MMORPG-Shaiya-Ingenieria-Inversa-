@@ -25,6 +25,11 @@ namespace Dreynox.Mmorpg.Editor.Corpus
                 ["character.select.restore"] =
                     "DATA_Español/interface/CharacterSelect/restore.tga",
 
+                ["character.select.slotAtlas"] =
+                    "DATA_Español/interface/CharacterSelect/button/selectbtn_us.tga",
+                ["character.select.startUsa"] =
+                    "DATA_Español/interface/CharacterSelect/button/select_start_usa.tga",
+
                 ["character.make.background"] =
                     "DATA_Español/interface/CharacterMake/ta_2d_character_createbg.tga",
                 ["character.make.modeBackground"] =
