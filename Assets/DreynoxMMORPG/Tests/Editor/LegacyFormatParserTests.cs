@@ -397,8 +397,57 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 WriteFixedAscii256(writer, walkSound);
                 WriteFixedAscii256(writer, innerLayout);
 
+                WriteEmptyFullWldEnvironment(writer);
+
                 return stream.ToArray();
             }
+        }
+
+        private static void WriteEmptyFullWldEnvironment(
+            BinaryWriter writer)
+        {
+            // Buildings, Shapes, Trees, Grass, VAni1, VAni2, Dungeons.
+            for (int group = 0; group < 7; group++)
+            {
+                writer.Write(0); // resource-name count
+                writer.Write(0); // coordinate count
+            }
+
+            writer.Write(0); // MAni name count
+            writer.Write(0); // MAni coordinate count
+
+            WriteFixedAscii256(writer, string.Empty); // EffectName
+            writer.Write(0); // effect placement count
+
+            writer.Write(0); // Unknown1
+            writer.Write(0); // Unknown2
+            writer.Write(0); // Unknown3
+
+            writer.Write(0); // Object name count
+            writer.Write(0); // Object coordinate count
+
+            writer.Write(0); // music name count
+            writer.Write(0); // music zone count
+
+            writer.Write(0); // sound effect name count
+            writer.Write(0); // zone count
+            writer.Write(0); // positional sound count
+            writer.Write(0); // unknown bounding box count
+            writer.Write(0); // portal count
+            writer.Write(0); // spawn count
+            writer.Write(0); // named area count
+            writer.Write(0); // NPC logical entry count
+
+            WriteFixedAscii256(writer, string.Empty); // SkyName
+            WriteFixedAscii256(writer, string.Empty); // CloudsName1
+            WriteFixedAscii256(writer, string.Empty); // CloudsName2
+
+            // Point1, Point2 and Point3.
+            for (int component = 0; component < 9; component++)
+                writer.Write(0f);
+
+            writer.Write(0f); // Unknown5
+            writer.Write(0f); // Unknown6
         }
 
         private static void WriteFixedAscii256(
