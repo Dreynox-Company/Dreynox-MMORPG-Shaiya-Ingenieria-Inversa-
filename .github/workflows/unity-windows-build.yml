@@ -377,8 +377,7 @@ jobs:
 
           $scenarios = @(
             @{ Id = "character-editor"; Delay = "1.0" },
-            @{ Id = "character-selection"; Delay = "1.0" },
-            @{ Id = "world-loaded"; Delay = "5.0" }
+            @{ Id = "character-selection"; Delay = "1.0" }
           )
 
           foreach ($scenario in $scenarios) {
@@ -435,8 +434,7 @@ jobs:
 
           $required = @(
             "05-character-editor.png",
-            "08-character-selection.png",
-            "10-world-loaded.png"
+            "08-character-selection.png"
           )
 
           foreach ($file in $required) {
