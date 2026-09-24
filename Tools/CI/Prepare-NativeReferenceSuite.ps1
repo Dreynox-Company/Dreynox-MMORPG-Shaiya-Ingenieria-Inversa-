@@ -85,7 +85,7 @@ if ([string]::IsNullOrWhiteSpace($PackagePath)) {
 if ([string]::IsNullOrWhiteSpace($PackagePath) -or
     -not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) {
     Write-Host "Shaiya_Offline_Nativo.zip no fue encontrado en rutas locales acotadas."
-    exit 2
+    return
 }
 
 $PackagePath =
