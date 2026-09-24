@@ -453,6 +453,46 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             return null;
         }
 
+        private static string ResolveEffectTextureResource(
+            string effectRoot,
+            string fileName)
+        {
+            string direct =
+                ResolveEffectResource(
+                    effectRoot,
+                    "dds",
+                    fileName);
+
+            if (direct != null)
+                return direct;
+
+            string extension =
+                Path.GetExtension(
+                    fileName);
+
+            if (!string.Equals(
+                    extension,
+                    ".dds",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                string ddsName =
+                    Path.GetFileNameWithoutExtension(
+                        fileName) +
+                    ".dds";
+
+                direct =
+                    ResolveEffectResource(
+                        effectRoot,
+                        "dds",
+                        ddsName);
+
+                if (direct != null)
+                    return direct;
+            }
+
+            return null;
+        }
+
         private static string ResolveEffectResource(
             string effectRoot,
             string conventionalDirectory,
@@ -559,9 +599,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                  i++)
             {
                 string source =
-                    ResolveEffectResource(
+                    ResolveEffectTextureResource(
                         effectRoot,
-                        "dds",
                         textureNames[i]);
 
                 if (source == null)
