@@ -604,6 +604,20 @@ jobs:
                 break
               }
             }
+
+            if ([string]::IsNullOrWhiteSpace($resolved)) {
+              $prepared = @(
+                & ./Tools/CI/Prepare-NativeReferenceSuite.ps1
+              )
+
+              if ($LASTEXITCODE -eq 0 -and $prepared.Count -gt 0) {
+                $candidate = [string]$prepared[$prepared.Count - 1]
+                $resolved = Test-NativeReference $candidate
+              }
+              elseif ($LASTEXITCODE -ne 2) {
+                throw "Prepare-NativeReferenceSuite.ps1 terminó con código $LASTEXITCODE."
+              }
+            }
           }
 
           if ([string]::IsNullOrWhiteSpace($resolved)) {
