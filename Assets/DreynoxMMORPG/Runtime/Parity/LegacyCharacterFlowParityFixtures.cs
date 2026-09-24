@@ -37,7 +37,7 @@ namespace Dreynox.Mmorpg.Parity
                         0,
                         0,
                         0,
-                        0,
+                        1,
                         CharacterDifficultyMode.Basic)
                 });
 
