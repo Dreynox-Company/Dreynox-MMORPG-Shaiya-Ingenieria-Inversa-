@@ -65,52 +65,58 @@ function Invoke-Checked {
         [string[]]$Arguments,
         [Parameter(Mandatory = $true)]
         [string]$Description,
-        [int]$TimeoutSeconds = 1800
+        [int]$TimeoutSeconds = 0
     )
-
-    if ($TimeoutSeconds -lt 1) {
-        throw "TimeoutSeconds debe ser mayor que cero."
-    }
 
     Write-Host "::group::$Description"
 
     $process = $null
+    $exitCode = $null
 
     try {
-        $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru -NoNewWindow
+        if ($TimeoutSeconds -le 0) {
+            $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
 
-        if ($null -eq $process) {
-            throw "No se pudo iniciar $Executable."
+            if ($null -eq $process) {
+                throw "No se pudo iniciar $Executable."
+            }
+
+            $exitCode = $process.ExitCode
         }
+        else {
+            $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru -NoNewWindow
 
-        $finished =
-            $process.WaitForExit(
-                $TimeoutSeconds * 1000)
-
-        if (-not $finished) {
-            Write-Error "$Description excedió el timeout de $TimeoutSeconds segundos. Finalizando PID $($process.Id) y procesos hijos."
-
-            $taskkill = Get-Command taskkill.exe -ErrorAction SilentlyContinue
-
-            if ($null -ne $taskkill) {
-                & $taskkill.Source /PID $process.Id /T /F 2>&1 |
-                    ForEach-Object { Write-Host $_ }
-            }
-            elseif (-not $process.HasExited) {
-                $process.Kill()
+            if ($null -eq $process) {
+                throw "No se pudo iniciar $Executable."
             }
 
-            try {
-                $process.WaitForExit(10000) | Out-Null
-            }
-            catch {
-                Write-Warning "No se pudo esperar el cierre del proceso Unity después del timeout."
+            $finished = $process.WaitForExit($TimeoutSeconds * 1000)
+
+            if (-not $finished) {
+                Write-Error "$Description excedió el timeout de $TimeoutSeconds segundos. Finalizando PID $($process.Id) y procesos hijos."
+
+                $taskkill = Get-Command taskkill.exe -ErrorAction SilentlyContinue
+
+                if ($null -ne $taskkill) {
+                    & $taskkill.Source /PID $process.Id /T /F 2>&1 | ForEach-Object { Write-Host $_ }
+                }
+                elseif (-not $process.HasExited) {
+                    $process.Kill()
+                }
+
+                try {
+                    $process.WaitForExit(10000) | Out-Null
+                }
+                catch {
+                    Write-Warning "No se pudo esperar el cierre del proceso después del timeout."
+                }
+
+                throw "$Description excedió el timeout de $TimeoutSeconds segundos."
             }
 
-            throw "$Description excedió el timeout de $TimeoutSeconds segundos."
+            $process.Refresh()
+            $exitCode = $process.ExitCode
         }
-
-        $exitCode = $process.ExitCode
     }
     finally {
         if ($null -ne $process) {
@@ -118,6 +124,10 @@ function Invoke-Checked {
         }
 
         Write-Host "::endgroup::"
+    }
+
+    if ($null -eq $exitCode) {
+        throw "$Description terminó sin código de salida disponible."
     }
 
     if ($exitCode -ne 0) {
