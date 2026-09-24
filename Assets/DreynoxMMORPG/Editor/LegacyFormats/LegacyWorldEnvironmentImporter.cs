@@ -325,10 +325,18 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 if (importer != null)
                 {
                     importer.forceToMono = false;
-                    importer.preloadAudioData =
-                        !loadInBackground;
                     importer.loadInBackground =
                         loadInBackground;
+
+                    AudioImporterSampleSettings settings =
+                        importer.defaultSampleSettings;
+
+                    settings.preloadAudioData =
+                        !loadInBackground;
+
+                    importer.defaultSampleSettings =
+                        settings;
+
                     importer.SaveAndReimport();
                 }
 
