@@ -1001,5 +1001,34 @@ namespace Dreynox.Mmorpg.Tests
                 vileOracleFemale.HairTexture);
         }
 
+        [Test]
+        public void CharacterMakeNativeVisualSlotsMapToCanonicalJobs()
+        {
+            int[] expected =
+            {
+                0, 1, 5,
+                2, 3, 4
+            };
+
+            Assert.AreEqual(
+                expected.Length,
+                LegacyCharacterMakeLayoutCore.VisualSlotCount);
+
+            for (int slot = 0;
+                 slot < expected.Length;
+                 slot++)
+            {
+                Assert.AreEqual(
+                    expected[slot],
+                    LegacyCharacterMakeLayoutCore.JobForVisualSlot(
+                        slot));
+
+                Assert.AreEqual(
+                    slot,
+                    LegacyCharacterMakeLayoutCore.VisualSlotForJob(
+                        expected[slot]));
+            }
+        }
+
     }
 }
