@@ -1,5 +1,5 @@
-﻿namespace Parsec.Cryptography;
-
+namespace Parsec.Cryptography
+{
 /// <summary>
 /// Class that implements the methods needed to encrypt and decrypt files which use the KISA SEED encryption algorithm.
 /// For more information visit <a href="https://en.wikipedia.org/wiki/SEED">this link</a>.
@@ -129,4 +129,5 @@ public static class Seed
         UInt32ToByteArray(L0, output, 8);
         UInt32ToByteArray(L1, output, 12);
     }
+}
 }
