@@ -318,6 +318,10 @@ jobs:
               return $null
             }
 
+            if (-not (Test-Path -LiteralPath $candidate -PathType Container)) {
+              return $null
+            }
+
             $gameExe = Join-Path $candidate "game.exe"
             $dataRoot = Join-Path $candidate "DATA_Español"
 
