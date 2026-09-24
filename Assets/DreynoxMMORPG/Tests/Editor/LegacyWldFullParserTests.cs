@@ -114,6 +114,46 @@ namespace Dreynox.Mmorpg.Tests.Editor
             Assert.AreEqual(1025, wld.Resolution);
             Assert.AreEqual(7, wld.Textures.Count);
 
+            Assert.AreEqual(
+                17,
+                wld.Grass.Names.Count);
+
+            Assert.AreEqual(
+                6056,
+                wld.Grass.Coordinates.Count);
+
+            Assert.AreEqual(
+                5,
+                wld.VAni1.Names.Count);
+
+            Assert.AreEqual(
+                499,
+                wld.VAni1.Coordinates.Count);
+
+            Assert.AreEqual(
+                5,
+                wld.VAni2.Names.Count);
+
+            Assert.AreEqual(
+                3478,
+                wld.VAni2.Coordinates.Count);
+
+            Assert.AreEqual(
+                4,
+                wld.MAniNames.Count);
+
+            Assert.AreEqual(
+                6,
+                wld.MAniCoordinates.Count);
+
+            Assert.AreEqual(
+                2,
+                wld.Dungeons.Names.Count);
+
+            Assert.AreEqual(
+                2,
+                wld.Dungeons.Coordinates.Count);
+
             Assert.Greater(
                 wld.KnownBytesConsumed,
                 0);
