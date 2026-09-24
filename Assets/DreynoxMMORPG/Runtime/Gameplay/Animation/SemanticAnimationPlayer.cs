@@ -192,7 +192,7 @@ namespace Dreynox.Mmorpg.Gameplay.AnimationSystem
 
             _graph = PlayableGraph.Create(name + "_SemanticAnimationGraph");
             _graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
-            _mixer = AnimationMixerPlayable.Create(_graph, 2, true);
+            _mixer = AnimationMixerPlayable.Create(_graph, 2);
             _output = AnimationPlayableOutput.Create(_graph, "Animation", _animator);
             _output.SetSourcePlayable(_mixer);
             _currentSlot = 0;
