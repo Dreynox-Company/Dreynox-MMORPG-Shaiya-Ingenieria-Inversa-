@@ -298,5 +298,65 @@ namespace Dreynox.Mmorpg.Tests.Editor
 
             writer.Write(target);
         }
+        [Test]
+        public void CanonicalMapZeroFortressDgsMatchVerifiedStructureWhenCorpusIsConfigured()
+        {
+            CanonicalClientCorpus corpus =
+                CanonicalClientCorpus.FromStoredRoot();
+
+            if (corpus == null ||
+                !corpus.Validate().IsCanonical)
+            {
+                Assert.Ignore(
+                    "Canonical ps0032 corpus is not configured on this machine.");
+            }
+
+            string dungeonRoot =
+                LegacyUiAssetImporter.ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/world/dungeon");
+
+            string outerPath =
+                CanonicalResourceIndex.FindUnique(
+                    dungeonRoot,
+                    "L_R1_Fortress00.dg");
+
+            string innerPath =
+                CanonicalResourceIndex.FindUnique(
+                    dungeonRoot,
+                    "L_R1_Fortress00_inner.dg");
+
+            Assert.IsNotNull(outerPath);
+            Assert.IsNotNull(innerPath);
+
+            LegacyDgFile outer =
+                LegacyDgParser.Parse(
+                    outerPath);
+
+            LegacyDgFile inner =
+                LegacyDgParser.Parse(
+                    innerPath);
+
+            Assert.AreEqual(31, outer.TextureNames.Count);
+            Assert.AreEqual(5, outer.LightmapCount);
+            Assert.AreEqual(52, outer.NodeCount);
+            Assert.AreEqual(457, outer.MeshGroupCount);
+            Assert.AreEqual(460, outer.MeshCount);
+            Assert.AreEqual(89845, outer.VertexCount);
+            Assert.AreEqual(43839, outer.FaceCount);
+            Assert.AreEqual(2448, outer.CollisionVertexCount);
+            Assert.AreEqual(2448, outer.CollisionFaceCount);
+
+            Assert.AreEqual(32, inner.TextureNames.Count);
+            Assert.AreEqual(1, inner.LightmapCount);
+            Assert.AreEqual(1, inner.NodeCount);
+            Assert.AreEqual(32, inner.MeshGroupCount);
+            Assert.AreEqual(32, inner.MeshCount);
+            Assert.AreEqual(31553, inner.VertexCount);
+            Assert.AreEqual(15269, inner.FaceCount);
+            Assert.AreEqual(937, inner.CollisionVertexCount);
+            Assert.AreEqual(1092, inner.CollisionFaceCount);
+        }
+
     }
 }
