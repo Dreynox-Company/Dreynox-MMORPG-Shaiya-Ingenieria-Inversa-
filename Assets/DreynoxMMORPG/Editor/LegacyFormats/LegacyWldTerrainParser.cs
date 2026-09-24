@@ -305,144 +305,155 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 Encoding.ASCII.GetString(
                     reader.ReadBytes(4));
 
-            if (signature != "FLD\0")
-            {
-                if (signature == "DUN\0")
-                {
-                    throw new InvalidDataException(
-                        "Dungeon WLD requires the DG world importer; " +
-                        "this parser handles FLD field worlds.");
-                }
+            bool isField =
+                signature == "FLD\0";
 
+            bool isDungeon =
+                signature == "DUN\0";
+
+            if (!isField &&
+                !isDungeon)
+            {
                 throw new InvalidDataException(
                     "Unsupported WLD signature: " +
                     EscapeSignature(signature) +
                     ".");
             }
 
-            uint mapSizeRaw =
-                reader.ReadUInt32();
-
-            if (mapSizeRaw >
-                int.MaxValue)
-            {
-                throw new InvalidDataException(
-                    "WLD map size is too large.");
-            }
-
-            int mapSize =
-                (int)mapSizeRaw;
-
-            int resolution =
-                LegacyTerrainHeightCore
-                    .ResolutionForMapSize(
-                        mapSize);
-
-            int sampleCount =
-                checked(
-                    resolution *
-                    resolution);
-
-            long required =
-                checked(
-                    (long)sampleCount *
-                    3L +
-                    4L);
-
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                required);
-
-            ushort[] heights =
-                new ushort[
-                    sampleCount];
-
-            for (int i = 0;
-                 i < sampleCount;
-                 i++)
-            {
-                heights[i] =
-                    reader.ReadUInt16();
-            }
-
-            byte[] textureMap =
-                reader.ReadBytes(
-                    sampleCount);
-
-            if (textureMap.Length !=
-                sampleCount)
-            {
-                throw new EndOfStreamException(
-                    "WLD texture map ended unexpectedly.");
-            }
-
-            int textureCount =
-                LegacyFormatPrimitives.ReadCount(
-                    reader,
-                    "WLD terrain texture",
-                    MaxTextures);
-
             var result =
                 new LegacyWldTerrainFile
                 {
-                    Signature = signature,
-                    MapSize = mapSize,
-                    Resolution = resolution,
-                    RawHeights = heights,
-                    TextureMap = textureMap
+                    Signature = signature
                 };
 
-            for (int i = 0;
-                 i < textureCount;
-                 i++)
+            if (isField)
             {
+                uint mapSizeRaw =
+                    reader.ReadUInt32();
+
+                if (mapSizeRaw >
+                    int.MaxValue)
+                {
+                    throw new InvalidDataException(
+                        "WLD map size is too large.");
+                }
+
+                int mapSize =
+                    (int)mapSizeRaw;
+
+                int resolution =
+                    LegacyTerrainHeightCore
+                        .ResolutionForMapSize(
+                            mapSize);
+
+                int sampleCount =
+                    checked(
+                        resolution *
+                        resolution);
+
+                long required =
+                    checked(
+                        (long)sampleCount *
+                        3L +
+                        4L);
+
                 LegacyFormatPrimitives.EnsureRemaining(
                     reader,
-                    FixedStringBytes +
-                    4L +
-                    FixedStringBytes);
+                    required);
 
-                string name =
-                    ReadFixedAscii(reader);
+                ushort[] heights =
+                    new ushort[
+                        sampleCount];
 
-                float tileSize =
-                    LegacyFormatPrimitives
-                        .ReadFiniteSingle(
-                            reader);
-
-                string walkSound =
-                    ReadFixedAscii(reader);
-
-                if (string.IsNullOrWhiteSpace(
-                        name))
+                for (int i = 0;
+                     i < sampleCount;
+                     i++)
                 {
-                    throw new InvalidDataException(
-                        "WLD terrain texture " +
-                        i +
-                        " has no file name.");
+                    heights[i] =
+                        reader.ReadUInt16();
                 }
 
-                if (tileSize <= 0f ||
-                    tileSize > 100000f)
+                byte[] textureMap =
+                    reader.ReadBytes(
+                        sampleCount);
+
+                if (textureMap.Length !=
+                    sampleCount)
                 {
-                    throw new InvalidDataException(
-                        "WLD terrain texture " +
-                        i +
-                        " has invalid tile size " +
-                        tileSize +
-                        ".");
+                    throw new EndOfStreamException(
+                        "WLD texture map ended unexpectedly.");
                 }
 
-                result.Textures.Add(
-                    new LegacyWldTexture
+                int textureCount =
+                    LegacyFormatPrimitives.ReadCount(
+                        reader,
+                        "WLD terrain texture",
+                        MaxTextures);
+
+                result.MapSize =
+                    mapSize;
+
+                result.Resolution =
+                    resolution;
+
+                result.RawHeights =
+                    heights;
+
+                result.TextureMap =
+                    textureMap;
+
+                for (int i = 0;
+                     i < textureCount;
+                     i++)
+                {
+                    LegacyFormatPrimitives.EnsureRemaining(
+                        reader,
+                        FixedStringBytes +
+                        4L +
+                        FixedStringBytes);
+
+                    string name =
+                        ReadFixedAscii(reader);
+
+                    float tileSize =
+                        LegacyFormatPrimitives
+                            .ReadFiniteSingle(
+                                reader);
+
+                    string walkSound =
+                        ReadFixedAscii(reader);
+
+                    if (string.IsNullOrWhiteSpace(
+                            name))
                     {
-                        TextureName =
-                            name,
-                        TileSize =
-                            tileSize,
-                        WalkSound =
-                            walkSound
-                    });
+                        throw new InvalidDataException(
+                            "WLD terrain texture " +
+                            i +
+                            " has no file name.");
+                    }
+
+                    if (tileSize <= 0f ||
+                        tileSize > 100000f)
+                    {
+                        throw new InvalidDataException(
+                            "WLD terrain texture " +
+                            i +
+                            " has invalid tile size " +
+                            tileSize +
+                            ".");
+                    }
+
+                    result.Textures.Add(
+                        new LegacyWldTexture
+                        {
+                            TextureName =
+                                name,
+                            TileSize =
+                                tileSize,
+                            WalkSound =
+                                walkSound
+                        });
+                }
             }
 
             result.InnerLayout =
@@ -1014,14 +1025,17 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     patrolCount + 1;
             }
 
-            result.SkyName =
-                ReadFixedAscii(reader);
+            if (isField)
+            {
+                result.SkyName =
+                    ReadFixedAscii(reader);
 
-            result.CloudsName1 =
-                ReadFixedAscii(reader);
+                result.CloudsName1 =
+                    ReadFixedAscii(reader);
 
-            result.CloudsName2 =
-                ReadFixedAscii(reader);
+                result.CloudsName2 =
+                    ReadFixedAscii(reader);
+            }
 
             result.Point1 =
                 LegacyFormatPrimitives
