@@ -303,31 +303,99 @@ jobs:
         id: canonical-corpus
         if: github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'build-only'
         run: |
-          $root = $env:DREYNOX_CORPUS_ROOT
+          $expected = "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d"
+          $explicit = $env:DREYNOX_CORPUS_ROOT
 
-          if ([string]::IsNullOrWhiteSpace($root)) {
+          function Test-CanonicalCorpus([string]$candidate) {
+            if ([string]::IsNullOrWhiteSpace($candidate)) {
+              return $null
+            }
+
+            try {
+              $candidate = [System.IO.Path]::GetFullPath($candidate)
+            }
+            catch {
+              return $null
+            }
+
+            $gameExe = Join-Path $candidate "game.exe"
+            $dataRoot = Join-Path $candidate "DATA_Español"
+
+            if (-not (Test-Path -LiteralPath $gameExe -PathType Leaf) -or
+                -not (Test-Path -LiteralPath $dataRoot -PathType Container)) {
+              return $null
+            }
+
+            $actual = (Get-FileHash -LiteralPath $gameExe -Algorithm SHA256).Hash.ToLowerInvariant()
+
+            if ($actual -ne $expected) {
+              return $null
+            }
+
+            return $candidate
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($explicit)) {
+            $resolved = Test-CanonicalCorpus $explicit
+            if ([string]::IsNullOrWhiteSpace($resolved)) {
+              throw "DREYNOX_CORPUS_ROOT está configurado pero no es el corpus ps0032 canónico: $explicit"
+            }
+          }
+          else {
+            $candidates = New-Object System.Collections.Generic.List[string]
+
+            $homeRoots = @(
+              (Join-Path $env:USERPROFILE "Desktop"),
+              (Join-Path $env:USERPROFILE "Downloads"),
+              (Join-Path $env:USERPROFILE "Documents")
+            )
+
+            foreach ($homeRoot in $homeRoots) {
+              if (-not (Test-Path -LiteralPath $homeRoot -PathType Container)) {
+                continue
+              }
+
+              $candidates.Add($homeRoot)
+
+              Get-ChildItem -LiteralPath $homeRoot -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+                $candidates.Add($_.FullName)
+
+                Get-ChildItem -LiteralPath $_.FullName -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+                  $candidates.Add($_.FullName)
+                }
+              }
+            }
+
+            @(
+              "C:\Sh",
+              "C:\Shaiya",
+              "D:\Sh",
+              "D:\Shaiya"
+            ) | ForEach-Object {
+              $candidates.Add($_)
+            }
+
+            $resolved = $null
+
+            foreach ($candidate in ($candidates | Select-Object -Unique)) {
+              $match = Test-CanonicalCorpus $candidate
+              if (-not [string]::IsNullOrWhiteSpace($match)) {
+                $resolved = $match
+                break
+              }
+            }
+          }
+
+          if ([string]::IsNullOrWhiteSpace($resolved)) {
             "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-            Write-Host "DREYNOX_CORPUS_ROOT no está configurado; canonical parity build se omite."
+            Write-Host "No se encontró corpus ps0032 extraído en rutas locales acotadas; canonical parity build se omite."
             exit 0
           }
 
-          $gameExe = Join-Path $root "game.exe"
-          $dataRoot = Join-Path $root "DATA_Español"
-
-          if (-not (Test-Path $gameExe) -or -not (Test-Path $dataRoot)) {
-            throw "DREYNOX_CORPUS_ROOT no contiene game.exe + DATA_Español: $root"
-          }
-
-          $expected = "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d"
-          $actual = (Get-FileHash -Path $gameExe -Algorithm SHA256).Hash.ToLowerInvariant()
-
-          if ($actual -ne $expected) {
-            throw "game.exe del corpus no es ps0032 canónico. Actual=$actual Esperado=$expected"
-          }
-
+          "DREYNOX_CORPUS_ROOT=$resolved" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          "root=$root" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          Write-Host "Canonical ps0032 corpus OK: $root"
+          "root=$resolved" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Canonical ps0032 corpus OK: $resolved"
 
       - name: Build canonical ps0032 parity player
         id: canonical-build
@@ -420,33 +488,82 @@ jobs:
         id: native-reference
         if: steps.canonical-corpus.outputs.available == 'true'
         run: |
-          $root = $env:DREYNOX_NATIVE_REFERENCE_ROOT
+          $explicit = $env:DREYNOX_NATIVE_REFERENCE_ROOT
 
-          if ([string]::IsNullOrWhiteSpace($root)) {
-            "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-            Write-Host "DREYNOX_NATIVE_REFERENCE_ROOT no está configurado; comparación visual automática se omite."
-            exit 0
+          function Test-NativeReference([string]$candidate) {
+            if ([string]::IsNullOrWhiteSpace($candidate) -or
+                -not (Test-Path -LiteralPath $candidate -PathType Container)) {
+              return $null
+            }
+
+            $directEditor = Join-Path $candidate "05-character-editor.png"
+            $directSelect = Join-Path $candidate "08-character-selection.png"
+
+            if ((Test-Path -LiteralPath $directEditor -PathType Leaf) -and
+                (Test-Path -LiteralPath $directSelect -PathType Leaf)) {
+              return [System.IO.Path]::GetFullPath($candidate)
+            }
+
+            $nested = Join-Path $candidate "capturas_nativas"
+            $nestedEditor = Join-Path $nested "05-character-editor.png"
+            $nestedSelect = Join-Path $nested "08-character-selection.png"
+
+            if ((Test-Path -LiteralPath $nestedEditor -PathType Leaf) -and
+                (Test-Path -LiteralPath $nestedSelect -PathType Leaf)) {
+              return [System.IO.Path]::GetFullPath($nested)
+            }
+
+            return $null
           }
 
-          if (-not (Test-Path $root)) {
-            throw "DREYNOX_NATIVE_REFERENCE_ROOT no existe: $root"
+          if (-not [string]::IsNullOrWhiteSpace($explicit)) {
+            $resolved = Test-NativeReference $explicit
+            if ([string]::IsNullOrWhiteSpace($resolved)) {
+              throw "DREYNOX_NATIVE_REFERENCE_ROOT está configurado pero no contiene la suite nativa esperada: $explicit"
+            }
           }
+          else {
+            $candidates = New-Object System.Collections.Generic.List[string]
 
-          $required = @(
-            "05-character-editor.png",
-            "08-character-selection.png"
-          )
+            @(
+              (Join-Path $env:USERPROFILE "Desktop"),
+              (Join-Path $env:USERPROFILE "Downloads"),
+              (Join-Path $env:USERPROFILE "Documents")
+            ) | ForEach-Object {
+              if (Test-Path -LiteralPath $_ -PathType Container) {
+                $candidates.Add($_)
 
-          foreach ($file in $required) {
-            $match = Get-ChildItem -Path $root -Filter $file -File -Recurse | Select-Object -First 1
-            if (-not $match) {
-              throw "Referencia nativa requerida no encontrada: $file"
+                Get-ChildItem -LiteralPath $_ -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+                  $candidates.Add($_.FullName)
+
+                  Get-ChildItem -LiteralPath $_.FullName -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+                    $candidates.Add($_.FullName)
+                  }
+                }
+              }
+            }
+
+            $resolved = $null
+
+            foreach ($candidate in ($candidates | Select-Object -Unique)) {
+              $match = Test-NativeReference $candidate
+              if (-not [string]::IsNullOrWhiteSpace($match)) {
+                $resolved = $match
+                break
+              }
             }
           }
 
+          if ([string]::IsNullOrWhiteSpace($resolved)) {
+            "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            Write-Host "No se encontró suite nativa local; comparación visual automática se omite."
+            exit 0
+          }
+
+          "DREYNOX_NATIVE_REFERENCE_ROOT=$resolved" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          "root=$root" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          Write-Host "Native game.exe screenshot suite encontrada: $root"
+          "root=$resolved" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Native game.exe screenshot suite encontrada: $resolved"
 
       - name: Compare canonical Unity captures against native game.exe
         if: steps.canonical-corpus.outputs.available == 'true' && steps.native-reference.outputs.available == 'true'
