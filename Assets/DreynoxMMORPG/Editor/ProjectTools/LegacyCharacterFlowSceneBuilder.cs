@@ -642,20 +642,20 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             {
                 "character.make.class.fighter",
                 "character.make.class.defender",
+                "character.make.class.priest",
                 "character.make.class.ranger",
                 "character.make.class.archer",
-                "character.make.class.mage",
-                "character.make.class.priest"
+                "character.make.class.mage"
             };
 
             string[] classLabels =
             {
                 "Fighter",
                 "Defender",
+                "Priest",
                 "Ranger",
                 "Archer",
-                "Mage",
-                "Priest"
+                "Mage"
             };
 
             Vector2[] classPositions =
@@ -668,13 +668,19 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 new Vector2(227f, 514f)
             };
 
-            for (int job = 0;
-                 job < classTextureKeys.Length;
-                 job++)
+            for (int visualSlot = 0;
+                 visualSlot < classTextureKeys.Length;
+                 visualSlot++)
             {
+                int job =
+                    LegacyCharacterMakeLayoutCore
+                        .JobForVisualSlot(
+                            visualSlot);
+
                 Texture2D atlas =
                     RequireCharacterMakeTextureByKey(
-                        classTextureKeys[job]);
+                        classTextureKeys[
+                            visualSlot]);
 
                 int state =
                     job == 0
@@ -682,10 +688,12 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                         : 0;
 
                 CreateLegacyAtlasLayer(
-                    "ClassVisual_" + job,
+                    "ClassVisual_" +
+                    visualSlot,
                     root,
                     atlas,
-                    classPositions[job],
+                    classPositions[
+                        visualSlot],
                     new Vector2(96f, 78f),
                     new Rect(
                         0f,
@@ -694,10 +702,13 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                         78f));
 
                 CreateLegacyTopLeftText(
-                    "ClassLabel_" + job,
+                    "ClassLabel_" +
+                    visualSlot,
                     root,
-                    classLabels[job],
-                    classPositions[job] +
+                    classLabels[
+                        visualSlot],
+                    classPositions[
+                        visualSlot] +
                     new Vector2(8f, 58f),
                     new Vector2(80f, 18f),
                     11,
@@ -706,9 +717,11 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
                 Button jobButton =
                     CreateTransparentButton(
-                        "ClassHit_" + job,
+                        "ClassHit_" +
+                        visualSlot,
                         root,
-                        classPositions[job],
+                        classPositions[
+                            visualSlot],
                         new Vector2(96f, 78f));
 
                 UnityEventTools
