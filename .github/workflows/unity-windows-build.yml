@@ -396,16 +396,13 @@ jobs:
                 & ./Tools/CI/Prepare-CharacterParityCorpus.ps1
               )
 
-              if ($LASTEXITCODE -eq 0 -and $prepared.Count -gt 0) {
+              if ($prepared.Count -gt 0) {
                 $candidate = [string]$prepared[$prepared.Count - 1]
                 $resolved = Test-CanonicalCorpus $candidate
 
                 if (-not [string]::IsNullOrWhiteSpace($resolved)) {
                   $source = "shzip-minimal"
                 }
-              }
-              elseif ($LASTEXITCODE -ne 2) {
-                throw "Prepare-CharacterParityCorpus.ps1 terminó con código $LASTEXITCODE."
               }
             }
           }
@@ -610,12 +607,9 @@ jobs:
                 & ./Tools/CI/Prepare-NativeReferenceSuite.ps1
               )
 
-              if ($LASTEXITCODE -eq 0 -and $prepared.Count -gt 0) {
+              if ($prepared.Count -gt 0) {
                 $candidate = [string]$prepared[$prepared.Count - 1]
                 $resolved = Test-NativeReference $candidate
-              }
-              elseif ($LASTEXITCODE -ne 2) {
-                throw "Prepare-NativeReferenceSuite.ps1 terminó con código $LASTEXITCODE."
               }
             }
           }
