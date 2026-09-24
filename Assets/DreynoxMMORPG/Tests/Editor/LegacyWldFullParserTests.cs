@@ -138,6 +138,33 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 3478,
                 wld.VAni2.Coordinates.Count);
 
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "eagle.VANI",
+                    "Dun1_moths01.VANI",
+                    "waterflower03.VANI",
+                    "R1_Green_ani03.VANI",
+                    "F_FB_banner02.VANI"
+                },
+                wld.VAni1.Names);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "R1_Green_ani13.vani",
+                    "L_H2_ElfFlage.VANI",
+                    "R1_Grass_Ani02.vani",
+                    "B1_Flower_ani02.vani",
+                    "B1_Green_ani01.VANI"
+                },
+                wld.VAni2.Names);
+
+            Assert.AreEqual(
+                3977,
+                wld.VAni1.Coordinates.Count +
+                wld.VAni2.Coordinates.Count);
+
             Assert.AreEqual(
                 4,
                 wld.MAniNames.Count);
