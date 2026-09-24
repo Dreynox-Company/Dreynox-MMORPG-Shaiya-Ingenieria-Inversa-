@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Dreynox.Mmorpg.ParityCore;
 using Dreynox.Mmorpg.UI;
 using NUnit.Framework;
@@ -208,7 +209,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 screen.SelectFace(4);
                 screen.SelectHair(3);
 
-                Assert.Greater(
+                Assert.Less(
                     female.uvRect.y,
                     male.uvRect.y);
 
@@ -236,16 +237,51 @@ namespace Dreynox.Mmorpg.Tests.Editor
             }
             finally
             {
-                Object.DestroyImmediate(root);
+                var ownedTextures =
+                    new HashSet<Texture2D>();
 
-                DestroyTextures(
+                if (root != null)
+                {
+                    RawImage[] images =
+                        root.GetComponentsInChildren<
+                            RawImage>(
+                                true);
+
+                    for (int i = 0;
+                         i < images.Length;
+                         i++)
+                    {
+                        Texture2D texture =
+                            images[i].texture
+                                as Texture2D;
+
+                        if (texture != null)
+                            ownedTextures.Add(
+                                texture);
+                    }
+                }
+
+                AddTextures(
+                    ownedTextures,
                     classBars);
 
-                DestroyTextures(
+                AddTextures(
+                    ownedTextures,
                     weaponIcons);
 
-                DestroyTextures(
+                AddTextures(
+                    ownedTextures,
                     weaponTexts);
+
+                Object.DestroyImmediate(root);
+
+                foreach (Texture2D texture in
+                         ownedTextures)
+                {
+                    if (texture != null)
+                        Object.DestroyImmediate(
+                            texture);
+                }
             }
         }
 
@@ -388,15 +424,20 @@ namespace Dreynox.Mmorpg.Tests.Editor
             return result;
         }
 
-        private static void DestroyTextures(
+        private static void AddTextures(
+            ISet<Texture2D> target,
             Texture2D[] textures)
         {
+            if (target == null ||
+                textures == null)
+                return;
+
             for (int i = 0;
                  i < textures.Length;
                  i++)
             {
                 if (textures[i] != null)
-                    Object.DestroyImmediate(
+                    target.Add(
                         textures[i]);
             }
         }
