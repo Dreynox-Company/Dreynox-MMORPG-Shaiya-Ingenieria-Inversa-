@@ -70,7 +70,7 @@ if ([string]::IsNullOrWhiteSpace($ShZipPath)) {
 if ([string]::IsNullOrWhiteSpace($ShZipPath) -or
     -not (Test-Path -LiteralPath $ShZipPath -PathType Leaf)) {
     Write-Host "Sh.zip no fue encontrado en rutas locales acotadas."
-    exit 2
+    return
 }
 
 $ShZipPath = [System.IO.Path]::GetFullPath($ShZipPath)
