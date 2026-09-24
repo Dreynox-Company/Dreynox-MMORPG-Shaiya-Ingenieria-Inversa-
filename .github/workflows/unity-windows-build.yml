@@ -175,6 +175,7 @@ jobs:
       - name: Unity EditMode tests
         id: unity-tests
         if: github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'tests-only'
+        timeout-minutes: 20
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task test
 
       - name: Upload Unity test evidence
@@ -189,6 +190,7 @@ jobs:
       - name: Build StandaloneWindows64
         id: unity-build
         if: github.event_name != 'workflow_dispatch' || inputs.mode == 'full' || inputs.mode == 'build-only'
+        timeout-minutes: 30
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task build
 
       - name: Verify build manifest and SHA-256
@@ -447,6 +449,7 @@ jobs:
       - name: Build Character ps0032 parity player
         id: character-build
         if: steps.canonical-corpus.outputs.character_available == 'true'
+        timeout-minutes: 45
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task character-build
 
       - name: Verify Character parity build
@@ -661,6 +664,7 @@ jobs:
       - name: Build full canonical ps0032 parity player
         id: canonical-build
         if: steps.canonical-corpus.outputs.world_available == 'true'
+        timeout-minutes: 60
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task canonical-build
 
       - name: Verify full canonical parity build
