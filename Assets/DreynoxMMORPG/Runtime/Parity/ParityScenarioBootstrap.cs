@@ -107,6 +107,9 @@ namespace Dreynox.Mmorpg.Parity
                 case "world-entry":
                 case "world-loaded":
                 case "after-movement":
+                case "map1":
+                    return "CanonicalMap001World";
+
                 case "map0":
                     return "CanonicalMap000World";
 
