@@ -401,13 +401,23 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
             RenderSettings.fogColor =
                 new Color(
-                    Mathf.Clamp01(
+                    NormalizeLegacyColor(
                         fog.x),
-                    Mathf.Clamp01(
+                    NormalizeLegacyColor(
                         fog.y),
-                    Mathf.Clamp01(
+                    NormalizeLegacyColor(
                         fog.z),
                     1f);
+        }
+
+        private static float NormalizeLegacyColor(
+            float value)
+        {
+            if (value > 1f)
+                value /= 255f;
+
+            return Mathf.Clamp01(
+                value);
         }
 
         private static void ApplyStaticFlagsRecursively(
