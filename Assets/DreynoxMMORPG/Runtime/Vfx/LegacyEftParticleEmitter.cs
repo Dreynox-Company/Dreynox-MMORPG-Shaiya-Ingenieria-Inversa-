@@ -31,7 +31,7 @@ namespace Dreynox.Mmorpg.Vfx
     {
         private const int MaximumParticles = 200;
 
-        [SerializeField] private ParticleSystem particleSystem;
+        [SerializeField] private ParticleSystem particleSystemComponent;
         [SerializeField] private ParticleSystemRenderer particleRenderer;
         [SerializeField] private LegacyVertexEffectClip meshClip;
 
@@ -225,8 +225,8 @@ namespace Dreynox.Mmorpg.Vfx
 
         private void OnEnable()
         {
-            if (particleSystem != null)
-                particleSystem.Stop(
+            if (particleSystemComponent != null)
+                particleSystemComponent.Stop(
                     true,
                     ParticleSystemStopBehavior
                         .StopEmittingAndClear);
@@ -262,8 +262,8 @@ namespace Dreynox.Mmorpg.Vfx
                 _states[i] = default;
             }
 
-            particleSystem.Clear(true);
-            particleSystem.Play(true);
+            particleSystemComponent.Clear(true);
+            particleSystemComponent.Play(true);
 
             StepEmitter(0f);
         }
@@ -273,10 +273,10 @@ namespace Dreynox.Mmorpg.Vfx
         {
             _playing = false;
 
-            if (particleSystem == null)
+            if (particleSystemComponent == null)
                 return;
 
-            particleSystem.Stop(
+            particleSystemComponent.Stop(
                 true,
                 clearParticles
                     ? ParticleSystemStopBehavior
@@ -288,7 +288,7 @@ namespace Dreynox.Mmorpg.Vfx
         private void Update()
         {
             if (!_playing ||
-                particleSystem == null)
+                particleSystemComponent == null)
                 return;
 
             float dt =
@@ -310,8 +310,8 @@ namespace Dreynox.Mmorpg.Vfx
 
         private void Prepare()
         {
-            if (particleSystem == null)
-                particleSystem =
+            if (particleSystemComponent == null)
+                particleSystemComponent =
                     GetComponent<ParticleSystem>();
 
             if (particleRenderer == null)
@@ -320,7 +320,7 @@ namespace Dreynox.Mmorpg.Vfx
                         ParticleSystemRenderer>();
 
             ParticleSystem.MainModule main =
-                particleSystem.main;
+                particleSystemComponent.main;
 
             main.playOnAwake = false;
             main.loop = false;
@@ -337,7 +337,7 @@ namespace Dreynox.Mmorpg.Vfx
                         : 1f);
 
             ParticleSystem.EmissionModule emission =
-                particleSystem.emission;
+                particleSystemComponent.emission;
 
             emission.enabled = false;
 
@@ -717,7 +717,7 @@ namespace Dreynox.Mmorpg.Vfx
                 RotationVector(
                     state);
 
-            particleSystem.Emit(
+            particleSystemComponent.Emit(
                 emit,
                 1);
         }
@@ -725,7 +725,7 @@ namespace Dreynox.Mmorpg.Vfx
         private void SyncParticleSystem()
         {
             int count =
-                particleSystem.GetParticles(
+                particleSystemComponent.GetParticles(
                     _particles);
 
             for (int i = 0;
@@ -784,7 +784,7 @@ namespace Dreynox.Mmorpg.Vfx
                     particle;
             }
 
-            particleSystem.SetParticles(
+            particleSystemComponent.SetParticles(
                 _particles,
                 count);
         }
