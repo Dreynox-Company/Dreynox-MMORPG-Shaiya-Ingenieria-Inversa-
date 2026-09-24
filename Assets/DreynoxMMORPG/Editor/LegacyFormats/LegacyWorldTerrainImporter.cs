@@ -389,6 +389,36 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     ? grassRuntime.LogicalPlacementCount
                     : 0;
 
+            LegacyWorldVaniRuntime vaniRuntime =
+                LegacyVaniBatchBuilder.Create(
+                    corpus,
+                    wld.VAni1,
+                    wld.VAni2,
+                    actor.transform,
+                    camera);
+
+            int vani1Instances =
+                wld.VAni1.Coordinates.Count;
+
+            int vani2Instances =
+                wld.VAni2.Coordinates.Count;
+
+            int vaniInstances =
+                vaniRuntime != null
+                    ? vaniRuntime.LogicalPlacementCount
+                    : 0;
+
+            if (vaniInstances !=
+                vani1Instances +
+                vani2Instances)
+            {
+                throw new InvalidDataException(
+                    "Canonical Map 0 VANI placement count changed. " +
+                    "runtime=" + vaniInstances +
+                    ", VAni1=" + vani1Instances +
+                    ", VAni2=" + vani2Instances + ".");
+            }
+
             CreateLighting();
 
             LegacyWorldEnvironmentBuildResult environment =
@@ -434,6 +464,9 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 maniInstances + " MAni placements / " +
                 rotatingManiInstances + " rotating, " +
                 grassInstances + " GPU-instanced grass placements, " +
+                vaniInstances + " VANI placements (" +
+                vani1Instances + " group1 / " +
+                vani2Instances + " group2), " +
                 worldEffectPlacements + " WLD effect placements, water=" +
                 (waterSurface != null
                     ? waterSurface.FrameCount + " WTR frames / tile " +
