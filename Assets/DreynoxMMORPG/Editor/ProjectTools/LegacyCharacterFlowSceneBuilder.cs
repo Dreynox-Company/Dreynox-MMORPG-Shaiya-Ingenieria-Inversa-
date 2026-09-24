@@ -42,6 +42,9 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             LegacyCharacterImporter.ImportCanonicalHumanMale003();
             EnsureGeneratedSceneFolder();
 
+            CanonicalClientCorpus corpus =
+                RequireCanonicalCorpus();
+
             Scene scene =
                 EditorSceneManager.NewScene(
                     NewSceneSetup.EmptyScene,
@@ -49,26 +52,39 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             CreateEventSystem();
 
+            LegacyDungeonPreviewBuildResult environment =
+                LegacyDungeonPreviewEnvironmentImporter
+                    .CreateCanonicalLogin(
+                        corpus);
+
+            Vector3 anchor =
+                environment.PreviewAnchor;
+
             Camera camera =
                 CreateCamera(
-                    new Vector3(0f, 1.55f, -6.2f),
-                    new Vector3(0.75f, 1.0f, 0f),
+                    anchor +
+                    new Vector3(
+                        0f,
+                        1.55f,
+                        -6.2f),
+                    anchor +
+                    new Vector3(
+                        0.75f,
+                        1.0f,
+                        0f),
                     35f);
-
-            Texture2D background =
-                LegacyUiAssetImporter.LoadCharacterSelectTexture(
-                    "selectbg.tga");
-
-            CreateBackdrop(
-                camera,
-                background,
-                "CharacterSelect_Backdrop",
-                30f);
 
             GameObject actor =
                 InstantiateCanonicalActor(
-                    new Vector3(0.85f, 0f, 0f),
-                    Quaternion.Euler(0f, 180f, 0f));
+                    anchor +
+                    new Vector3(
+                        0.85f,
+                        0f,
+                        0f),
+                    Quaternion.Euler(
+                        0f,
+                        180f,
+                        0f));
 
             ShaiyaClientActor clientActor =
                 actor.GetComponent<ShaiyaClientActor>();
@@ -123,6 +139,9 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             LegacyCharacterImporter.ImportCanonicalHumanMale003();
             EnsureGeneratedSceneFolder();
 
+            CanonicalClientCorpus corpus =
+                RequireCanonicalCorpus();
+
             Scene scene =
                 EditorSceneManager.NewScene(
                     NewSceneSetup.EmptyScene,
@@ -130,26 +149,39 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             CreateEventSystem();
 
+            LegacyDungeonPreviewBuildResult environment =
+                LegacyDungeonPreviewEnvironmentImporter
+                    .CreateCanonicalLogin(
+                        corpus);
+
+            Vector3 anchor =
+                environment.PreviewAnchor;
+
             Camera camera =
                 CreateCamera(
-                    new Vector3(0f, 1.55f, -6.4f),
-                    new Vector3(0.75f, 1.0f, 0f),
+                    anchor +
+                    new Vector3(
+                        0f,
+                        1.55f,
+                        -6.4f),
+                    anchor +
+                    new Vector3(
+                        0.75f,
+                        1.0f,
+                        0f),
                     34f);
-
-            Texture2D background =
-                LegacyUiAssetImporter.LoadCharacterMakeTexture(
-                    "ta_2d_character_createbg.tga");
-
-            CreateBackdrop(
-                camera,
-                background,
-                "CharacterMake_Backdrop",
-                30f);
 
             GameObject actor =
                 InstantiateCanonicalActor(
-                    new Vector3(0.85f, 0f, 0f),
-                    Quaternion.Euler(0f, 180f, 0f));
+                    anchor +
+                    new Vector3(
+                        0.85f,
+                        0f,
+                        0f),
+                    Quaternion.Euler(
+                        0f,
+                        180f,
+                        0f));
 
             ShaiyaClientActor clientActor =
                 actor.GetComponent<ShaiyaClientActor>();
@@ -196,6 +228,21 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             Debug.Log(
                 "Dreynox MMORPG: canonical CharacterMake scene generated at " +
                 CharacterMakeScenePath + ".");
+        }
+
+        private static CanonicalClientCorpus RequireCanonicalCorpus()
+        {
+            CanonicalClientCorpus corpus =
+                CanonicalClientCorpus.FromStoredRoot();
+
+            if (corpus == null ||
+                !corpus.Validate().IsCanonical)
+            {
+                throw new InvalidOperationException(
+                    "Configure the canonical ps0032 corpus before building character parity scenes.");
+            }
+
+            return corpus;
         }
 
         private static void BuildCharacterSelectUi(
