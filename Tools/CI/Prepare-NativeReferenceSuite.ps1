@@ -14,17 +14,45 @@ if ([string]::IsNullOrWhiteSpace($CacheRoot)) {
         Join-Path $env:LOCALAPPDATA "DreynoxMmorpg\native-visual-reference"
 }
 
+function Get-DreynoxSearchRoots {
+    $roots = New-Object System.Collections.Generic.List[string]
+
+    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        foreach ($name in @("Desktop", "Downloads", "Documents")) {
+            $candidate = Join-Path $env:USERPROFILE $name
+            if (Test-Path -LiteralPath $candidate -PathType Container) {
+                $roots.Add([System.IO.Path]::GetFullPath($candidate))
+            }
+        }
+    }
+
+    $systemDrive = [Environment]::GetEnvironmentVariable("SystemDrive")
+    if ([string]::IsNullOrWhiteSpace($systemDrive)) {
+        $systemDrive = "C:"
+    }
+
+    $usersRoot = Join-Path $systemDrive "Users"
+    if (Test-Path -LiteralPath $usersRoot -PathType Container) {
+        Get-ChildItem -LiteralPath $usersRoot -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            foreach ($name in @("Desktop", "Downloads", "Documents")) {
+                $candidate = Join-Path $_.FullName $name
+                if (Test-Path -LiteralPath $candidate -PathType Container) {
+                    $roots.Add([System.IO.Path]::GetFullPath($candidate))
+                }
+            }
+        }
+    }
+
+    return @($roots | Select-Object -Unique)
+}
+
 function Find-NativePackage {
     if (-not [string]::IsNullOrWhiteSpace($env:DREYNOX_NATIVE_REFERENCE_ZIP) -and
         (Test-Path -LiteralPath $env:DREYNOX_NATIVE_REFERENCE_ZIP -PathType Leaf)) {
         return [System.IO.Path]::GetFullPath($env:DREYNOX_NATIVE_REFERENCE_ZIP)
     }
 
-    $roots = @(
-        (Join-Path $env:USERPROFILE "Desktop"),
-        (Join-Path $env:USERPROFILE "Downloads"),
-        (Join-Path $env:USERPROFILE "Documents")
-    )
+    $roots = @(Get-DreynoxSearchRoots)
 
     $names = @(
         "Shaiya_Offline_Nativo.zip",

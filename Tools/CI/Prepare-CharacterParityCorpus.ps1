@@ -13,17 +13,45 @@ if ([string]::IsNullOrWhiteSpace($CacheRoot)) {
     $CacheRoot = Join-Path $env:LOCALAPPDATA "DreynoxMmorpg\ps0032-character-parity"
 }
 
+function Get-DreynoxSearchRoots {
+    $roots = New-Object System.Collections.Generic.List[string]
+
+    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        foreach ($name in @("Desktop", "Downloads", "Documents")) {
+            $candidate = Join-Path $env:USERPROFILE $name
+            if (Test-Path -LiteralPath $candidate -PathType Container) {
+                $roots.Add([System.IO.Path]::GetFullPath($candidate))
+            }
+        }
+    }
+
+    $systemDrive = [Environment]::GetEnvironmentVariable("SystemDrive")
+    if ([string]::IsNullOrWhiteSpace($systemDrive)) {
+        $systemDrive = "C:"
+    }
+
+    $usersRoot = Join-Path $systemDrive "Users"
+    if (Test-Path -LiteralPath $usersRoot -PathType Container) {
+        Get-ChildItem -LiteralPath $usersRoot -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            foreach ($name in @("Desktop", "Downloads", "Documents")) {
+                $candidate = Join-Path $_.FullName $name
+                if (Test-Path -LiteralPath $candidate -PathType Container) {
+                    $roots.Add([System.IO.Path]::GetFullPath($candidate))
+                }
+            }
+        }
+    }
+
+    return @($roots | Select-Object -Unique)
+}
+
 function Find-ShZip {
     if (-not [string]::IsNullOrWhiteSpace($env:DREYNOX_SH_ZIP) -and
         (Test-Path -LiteralPath $env:DREYNOX_SH_ZIP -PathType Leaf)) {
         return [System.IO.Path]::GetFullPath($env:DREYNOX_SH_ZIP)
     }
 
-    $roots = @(
-        (Join-Path $env:USERPROFILE "Desktop"),
-        (Join-Path $env:USERPROFILE "Downloads"),
-        (Join-Path $env:USERPROFILE "Documents")
-    )
+    $roots = @(Get-DreynoxSearchRoots)
 
     foreach ($root in $roots) {
         if (-not (Test-Path -LiteralPath $root -PathType Container)) {
@@ -64,11 +92,7 @@ function Find-ShZip {
 }
 
 function Find-ShMultipart {
-    $roots = @(
-        (Join-Path $env:USERPROFILE "Desktop"),
-        (Join-Path $env:USERPROFILE "Downloads"),
-        (Join-Path $env:USERPROFILE "Documents")
-    )
+    $roots = @(Get-DreynoxSearchRoots)
 
     $directories = New-Object System.Collections.Generic.List[string]
 
@@ -444,13 +468,28 @@ if ($gameSha -ne $ExpectedGameSha) {
 $required = @(
     "DATA_Español\world\Login.wld",
     "DATA_Español\world\dungeon\dun_login.dg",
-    "DATA_Español\character\human\3dc\co_humf_upper003.3dc",
-    "DATA_Español\character\human\ani6\humf_019_select.ani",
     "DATA_Español\interface\CharacterMake\basicinfo_bg.tga",
     "DATA_Español\interface\CharacterSelect\selectbg.tga"
 )
 
-foreach ($relative in $required) {
+foreach ($rig in $previewRigs) {
+    foreach ($part in @("upper", "lower", "hand", "foot")) {
+        $required += "DATA_Español\character\$($rig.Folder)\3dc\co_$($rig.Prefix)_$($part)003.3dc"
+        $required += "DATA_Español\character\$($rig.Folder)\dds\co_$($rig.Prefix)_$($part)003.dds"
+    }
+
+    for ($variant = 1; $variant -le 5; $variant++) {
+        $index = $variant.ToString("D3")
+        $required += "DATA_Español\character\$($rig.Folder)\3dc\$($rig.Prefix)_face$index.3dc"
+        $required += "DATA_Español\character\$($rig.Folder)\3dc\$($rig.Prefix)_hair$index.3dc"
+        $required += "DATA_Español\character\$($rig.Folder)\dds\$($rig.TexturePrefix)_face$index.dds"
+        $required += "DATA_Español\character\$($rig.Folder)\dds\$($rig.TexturePrefix)_hair$index.dds"
+    }
+
+    $required += "DATA_Español\character\$($rig.Folder)\ani6\$($rig.Prefix)_019_select.ani"
+}
+
+foreach ($relative in ($required | Select-Object -Unique)) {
     $path = Join-Path $CacheRoot $relative
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "El corpus mínimo no contiene un recurso requerido: $relative"

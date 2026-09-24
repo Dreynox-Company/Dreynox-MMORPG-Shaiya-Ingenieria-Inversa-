@@ -180,8 +180,7 @@ namespace Dreynox.Mmorpg.Parity
                     ").");
             }
 
-            if (_instance != null)
-                Destroy(_instance);
+            DestroyPreviewInstance();
 
             _instance =
                 Instantiate(
@@ -224,6 +223,21 @@ namespace Dreynox.Mmorpg.Parity
 
             PlaySelect();
             return _instance;
+        }
+
+        private void DestroyPreviewInstance()
+        {
+            if (_instance == null)
+                return;
+
+            if (Application.isPlaying)
+                Destroy(_instance);
+            else
+                DestroyImmediate(_instance);
+
+            _instance = null;
+            _currentRigIndex = -1;
+            CurrentAnimation = null;
         }
 
         private static void ApplyAppearance(
