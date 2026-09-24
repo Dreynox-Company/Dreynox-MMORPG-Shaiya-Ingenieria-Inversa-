@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using Dreynox.Mmorpg.Editor.Corpus;
 using Dreynox.Mmorpg.Editor.LegacyFormats;
+using Dreynox.Mmorpg.World;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -286,6 +287,60 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 0.031415924f,
                 raputa04.AnimationSpeed,
                 0.0000001f);
+
+            Assert.AreEqual(
+                45f,
+                LegacyManiRotationRuntime.ResolveDegreesPerSecond(
+                    raputa02.AnimationSpeed,
+                    30f,
+                    true),
+                0.0001f);
+
+            Assert.AreEqual(
+                9f,
+                LegacyManiRotationRuntime.ResolveDegreesPerSecond(
+                    raputa03.AnimationSpeed,
+                    30f,
+                    true),
+                0.0001f);
+
+            Assert.AreEqual(
+                54f,
+                LegacyManiRotationRuntime.ResolveDegreesPerSecond(
+                    raputa04.AnimationSpeed,
+                    30f,
+                    true),
+                0.0001f);
+
+            LegacyWldTerrainFile wld =
+                LegacyWldTerrainParser.Parse(
+                    corpus.Resolve(
+                        "DATA_Español/world/0.wld"));
+
+            int rotatingPlacements = 0;
+
+            for (int i = 0;
+                 i < wld.MAniCoordinates.Count;
+                 i++)
+            {
+                LegacyManiFile descriptor =
+                    new[]
+                    {
+                        raputa01,
+                        raputa02,
+                        raputa03,
+                        raputa04
+                    }[
+                        wld.MAniCoordinates[i]
+                            .Id];
+
+                if (descriptor.RotationEnabled)
+                    rotatingPlacements++;
+            }
+
+            Assert.AreEqual(
+                5,
+                rotatingPlacements);
         }
 
         private static byte[] BuildSyntheticVani()
