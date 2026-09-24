@@ -660,6 +660,22 @@ namespace Dreynox.Mmorpg.Tests
                     64,
                     reference.Sha256.Length);
 
+                Assert.AreEqual(
+                    3,
+                    reference.NativeCropX);
+
+                Assert.AreEqual(
+                    26,
+                    reference.NativeCropY);
+
+                Assert.AreEqual(
+                    1018,
+                    reference.NativeCropWidth);
+
+                Assert.AreEqual(
+                    740,
+                    reference.NativeCropHeight);
+
                 Assert.IsTrue(
                     ids.Add(
                         reference.ScenarioId));
