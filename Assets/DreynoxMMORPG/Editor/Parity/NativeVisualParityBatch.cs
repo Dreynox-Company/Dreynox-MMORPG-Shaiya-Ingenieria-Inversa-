@@ -19,6 +19,8 @@ namespace Dreynox.Mmorpg.Editor.Parity
         public string candidateSha256 = string.Empty;
         public int width;
         public int height;
+        public int comparisonWidth;
+        public int comparisonHeight;
         public int nativeCropX;
         public int nativeCropY;
         public int nativeCropWidth;
@@ -227,6 +229,10 @@ namespace Dreynox.Mmorpg.Editor.Parity
                             reference.Width,
                         height =
                             reference.Height,
+                        comparisonWidth =
+                            reference.NativeCropWidth,
+                        comparisonHeight =
+                            reference.NativeCropHeight,
                         nativeCropX =
                             reference.NativeCropX,
                         nativeCropY =
