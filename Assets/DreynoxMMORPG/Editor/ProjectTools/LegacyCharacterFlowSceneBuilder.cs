@@ -31,7 +31,7 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             "HumanMale003_Canonical.prefab";
 
         private static readonly Vector2 ReferenceResolution =
-            new Vector2(1920f, 1200f);
+            new Vector2(1024f, 768f);
 
         [MenuItem(
             "Dreynox MMORPG/Client Parity/" +
@@ -410,207 +410,345 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             RectTransform root,
             LegacyCharacterMakeScreenController controller)
         {
-            RectTransform leftPanel =
-                CreateRect(
-                    "CreationPanel",
-                    root,
-                    new Vector2(0f, 0.5f),
-                    new Vector2(0f, 0.5f),
-                    new Vector2(530f, 860f),
-                    new Vector2(300f, -10f),
-                    new Vector2(0.5f, 0.5f));
+            Texture2D infoFrame =
+                RequireCharacterMakeTexture(
+                    "info.tga");
 
-            Image panelImage =
-                leftPanel.gameObject.AddComponent<Image>();
+            Texture2D basicInfo =
+                RequireCharacterMakeTexture(
+                    "basicinfo_bg.tga");
 
-            panelImage.color =
-                new Color(0.05f, 0.025f, 0.01f, 0.60f);
+            Texture2D classInfoBackground =
+                RequireCharacterMakeTexture(
+                    "bg.tga");
 
-            Text title =
-                CreateText(
-                    "Title",
-                    leftPanel,
-                    "CREATE CHARACTER",
-                    28,
-                    TextAnchor.UpperCenter);
+            Texture2D classFigure =
+                RequireCharacterMakeTexture(
+                    "fighter_worrior.tga");
 
-            title.fontStyle = FontStyle.Bold;
+            CreateLegacyTextureLayer(
+                "ExplanationFrame",
+                root,
+                infoFrame,
+                new Vector2(5f, 23f),
+                new Vector2(334f, 223f),
+                new Rect(0f, 0f, 334f, 223f));
 
-            SetOffsets(
-                title.rectTransform,
-                20f,
-                28f,
-                -20f,
-                -780f);
+            CreateLegacyTextureLayer(
+                "BasicInfoFrame",
+                root,
+                basicInfo,
+                new Vector2(5f, 302f),
+                new Vector2(334f, 466f),
+                new Rect(0f, 0f, 334f, 466f));
+
+            CreateLegacyTextureLayer(
+                "ClassInfoFrame",
+                root,
+                classInfoBackground,
+                new Vector2(738f, 33f),
+                new Vector2(288f, 440f),
+                new Rect(0f, 0f, 288f, 440f));
+
+            CreateLegacyTopLeftText(
+                "ExplanationTitle",
+                root,
+                "Explanation",
+                new Vector2(34f, 34f),
+                new Vector2(120f, 18f),
+                11,
+                Color.white,
+                TextAnchor.MiddleLeft);
+
+            CreateLegacyTopLeftText(
+                "ExplanationBody",
+                root,
+                "The Fighter is your standard melee combatant. Up close\n" +
+                "and personal is how the Fighter prefers confrontation.\n" +
+                "Physical attack power is the focus of the Fighter, but don't\n" +
+                "be fooled. A certain amount of Magical Points (MP) is\n" +
+                "needed to power the Fighter's devastating Special Skills.\n\n" +
+                "Characteristics:\n" +
+                "· Wide range of available weapons\n" +
+                "· Powerful physical attacks",
+                new Vector2(33f, 68f),
+                new Vector2(288f, 164f),
+                10,
+                Color.white,
+                TextAnchor.UpperLeft);
+
+            Texture2D tabAtlas =
+                RequireCharacterMakeTexture(
+                    "create_tab_button.tga");
+
+            CreateLegacyAtlasLayer(
+                "BasicTab",
+                root,
+                tabAtlas,
+                new Vector2(35f, 278f),
+                new Vector2(92f, 32f),
+                new Rect(0f, 96f, 92f, 32f));
+
+            CreateLegacyAtlasLayer(
+                "AppearanceTab",
+                root,
+                tabAtlas,
+                new Vector2(128f, 286f),
+                new Vector2(92f, 32f),
+                new Rect(0f, 0f, 92f, 32f));
+
+            CreateLegacyAtlasLayer(
+                "ModeTab",
+                root,
+                tabAtlas,
+                new Vector2(221f, 286f),
+                new Vector2(92f, 32f),
+                new Rect(0f, 0f, 92f, 32f));
+
+            CreateLegacyTopLeftText(
+                "BasicTabLabel",
+                root,
+                "Basic Info",
+                new Vector2(43f, 286f),
+                new Vector2(76f, 20f),
+                11,
+                Color.white,
+                TextAnchor.MiddleCenter);
+
+            CreateLegacyTopLeftText(
+                "AppearanceTabLabel",
+                root,
+                "Appearance",
+                new Vector2(136f, 294f),
+                new Vector2(76f, 20f),
+                11,
+                Color.white,
+                TextAnchor.MiddleCenter);
+
+            CreateLegacyTopLeftText(
+                "ModeTabLabel",
+                root,
+                "Mode",
+                new Vector2(229f, 294f),
+                new Vector2(76f, 20f),
+                11,
+                Color.white,
+                TextAnchor.MiddleCenter);
+
+            CreateLegacyTopLeftText(
+                "NameLabel",
+                root,
+                "Name",
+                new Vector2(55f, 337f),
+                new Vector2(56f, 18f),
+                10,
+                new Color(1f, 0.86f, 0.12f, 1f),
+                TextAnchor.MiddleCenter);
 
             InputField name =
-                CreateInput(
+                CreateLegacyInput(
                     "CharacterName",
-                    leftPanel,
-                    "Character name",
-                    new Vector2(0f, 285f));
+                    root,
+                    new Vector2(28f, 356f),
+                    new Vector2(188f, 24f));
 
-            Text selection =
-                CreateText(
-                    "Selection",
-                    leftPanel,
-                    string.Empty,
-                    17,
-                    TextAnchor.MiddleCenter);
+            Button nameCheck =
+                CreateLegacyRedButton(
+                    "NameCheck",
+                    root,
+                    "Name Check",
+                    new Vector2(228f, 355f),
+                    new Vector2(94f, 27f));
 
-            selection.rectTransform.anchorMin =
-                selection.rectTransform.anchorMax =
-                    new Vector2(0.5f, 0.5f);
+            CreateLegacyTopLeftText(
+                "ClassLabel",
+                root,
+                "Class",
+                new Vector2(54f, 405f),
+                new Vector2(58f, 18f),
+                10,
+                new Color(1f, 0.86f, 0.12f, 1f),
+                TextAnchor.MiddleCenter);
 
-            selection.rectTransform.sizeDelta =
-                new Vector2(480f, 56f);
-
-            selection.rectTransform.anchoredPosition =
-                new Vector2(0f, 225f);
-
-            Text jobsLabel =
-                CreateText(
-                    "JobsLabel",
-                    leftPanel,
-                    "JOB",
-                    18,
-                    TextAnchor.MiddleCenter);
-
-            jobsLabel.rectTransform.anchorMin =
-                jobsLabel.rectTransform.anchorMax =
-                    new Vector2(0.5f, 0.5f);
-
-            jobsLabel.rectTransform.sizeDelta =
-                new Vector2(460f, 32f);
-
-            jobsLabel.rectTransform.anchoredPosition =
-                new Vector2(0f, 165f);
-
-            for (int job = 0; job < 6; job++)
+            string[] classTextures =
             {
-                int column = job % 3;
-                int row = job / 3;
+                "fighter_worrior.tga",
+                "defender_guardian.tga",
+                "priest_oracle.tga",
+                "ranger_assassin.tga",
+                "archer_hunter.tga",
+                "mage_pagan.tga"
+            };
+
+            string[] classLabels =
+            {
+                "Fighter",
+                "Defender",
+                "Priest",
+                "Ranger",
+                "Archer",
+                "Mage"
+            };
+
+            Vector2[] classPositions =
+            {
+                new Vector2(27f, 428f),
+                new Vector2(127f, 428f),
+                new Vector2(227f, 428f),
+                new Vector2(27f, 514f),
+                new Vector2(127f, 514f),
+                new Vector2(227f, 514f)
+            };
+
+            for (int job = 0;
+                 job < classTextures.Length;
+                 job++)
+            {
+                Texture2D atlas =
+                    RequireCharacterMakeTexture(
+                        classTextures[job]);
+
+                int state =
+                    job == 0
+                        ? 3
+                        : 0;
+
+                CreateLegacyAtlasLayer(
+                    "ClassVisual_" + job,
+                    root,
+                    atlas,
+                    classPositions[job],
+                    new Vector2(96f, 78f),
+                    new Rect(
+                        0f,
+                        state * 128f,
+                        96f,
+                        78f));
+
+                CreateLegacyTopLeftText(
+                    "ClassLabel_" + job,
+                    root,
+                    classLabels[job],
+                    classPositions[job] +
+                    new Vector2(8f, 58f),
+                    new Vector2(80f, 18f),
+                    11,
+                    Color.white,
+                    TextAnchor.MiddleCenter);
 
                 Button jobButton =
-                    CreateButton(
-                        "Job_" + job,
-                        leftPanel,
-                        "JOB " + job,
-                        new Vector2(0.5f, 0.5f),
-                        new Vector2(
-                            -150f + column * 150f,
-                            115f - row * 58f),
-                        new Vector2(132f, 46f));
+                    CreateTransparentButton(
+                        "ClassHit_" + job,
+                        root,
+                        classPositions[job],
+                        new Vector2(96f, 78f));
 
-                UnityEventTools.AddIntPersistentListener(
-                    jobButton.onClick,
-                    controller.SelectJob,
-                    job);
+                UnityEventTools
+                    .AddIntPersistentListener(
+                        jobButton.onClick,
+                        controller.SelectJob,
+                        job);
             }
 
+            CreateLegacyTopLeftText(
+                "GenderLabel",
+                root,
+                "Gender",
+                new Vector2(52f, 615f),
+                new Vector2(70f, 18f),
+                10,
+                new Color(1f, 0.86f, 0.12f, 1f),
+                TextAnchor.MiddleCenter);
+
+            Texture2D maleAtlas =
+                RequireCharacterMakeTexture(
+                    "sexm.tga");
+
+            Texture2D femaleAtlas =
+                RequireCharacterMakeTexture(
+                    "sexw.tga");
+
+            CreateLegacyAtlasLayer(
+                "MaleVisual",
+                root,
+                maleAtlas,
+                new Vector2(114f, 640f),
+                new Vector2(58f, 57f),
+                new Rect(0f, 192f, 58f, 57f));
+
+            CreateLegacyAtlasLayer(
+                "FemaleVisual",
+                root,
+                femaleAtlas,
+                new Vector2(176f, 640f),
+                new Vector2(58f, 57f),
+                new Rect(0f, 0f, 58f, 57f));
+
             Button male =
-                CreateButton(
+                CreateTransparentButton(
                     "Male",
-                    leftPanel,
-                    "MALE",
-                    new Vector2(0.5f, 0.5f),
-                    new Vector2(-105f, -30f),
-                    new Vector2(180f, 46f));
+                    root,
+                    new Vector2(114f, 640f),
+                    new Vector2(58f, 57f));
+
+            Button female =
+                CreateTransparentButton(
+                    "Female",
+                    root,
+                    new Vector2(176f, 640f),
+                    new Vector2(58f, 57f));
 
             UnityEventTools.AddIntPersistentListener(
                 male.onClick,
                 controller.SelectSex,
                 0);
 
-            Button female =
-                CreateButton(
-                    "Female",
-                    leftPanel,
-                    "FEMALE",
-                    new Vector2(0.5f, 0.5f),
-                    new Vector2(105f, -30f),
-                    new Vector2(180f, 46f));
-
             UnityEventTools.AddIntPersistentListener(
                 female.onClick,
                 controller.SelectSex,
                 1);
 
-            CreatePairControl(
-                leftPanel,
-                "FACE",
-                -105f,
-                controller.PreviousFace,
-                controller.NextFace);
-
-            CreatePairControl(
-                leftPanel,
-                "HAIR",
-                -185f,
-                controller.PreviousHair,
-                controller.NextHair);
-
-            Button basic =
-                CreateButton(
-                    "BasicMode",
-                    leftPanel,
-                    "BASIC",
-                    new Vector2(0.5f, 0.5f),
-                    new Vector2(-105f, -260f),
-                    new Vector2(180f, 46f));
-
-            UnityEventTools.AddPersistentListener(
-                basic.onClick,
-                controller.SelectModeBasic);
-
-            Button ultimate =
-                CreateButton(
-                    "UltimateMode",
-                    leftPanel,
-                    "ULTIMATE",
-                    new Vector2(0.5f, 0.5f),
-                    new Vector2(105f, -260f),
-                    new Vector2(180f, 46f));
-
-            UnityEventTools.AddPersistentListener(
-                ultimate.onClick,
-                controller.SelectModeUltimate);
-
-            Button create =
-                CreateButton(
-                    "CreateButton",
-                    leftPanel,
-                    "CREATE",
-                    new Vector2(0.5f, 0f),
-                    new Vector2(-105f, 55f),
-                    new Vector2(180f, 54f));
+            BuildNativeFighterClassInfo(
+                root,
+                classFigure);
 
             Button cancel =
-                CreateButton(
+                CreateLegacyRedButton(
                     "CancelButton",
-                    leftPanel,
-                    "CANCEL",
-                    new Vector2(0.5f, 0f),
-                    new Vector2(105f, 55f),
-                    new Vector2(180f, 54f));
+                    root,
+                    "Back",
+                    new Vector2(779f, 716f),
+                    new Vector2(113f, 38f));
+
+            Button create =
+                CreateLegacyRedButton(
+                    "CreateButton",
+                    root,
+                    "Create",
+                    new Vector2(905f, 716f),
+                    new Vector2(113f, 38f));
+
+            Text selection =
+                CreateText(
+                    "Selection",
+                    root,
+                    string.Empty,
+                    1,
+                    TextAnchor.MiddleCenter);
+
+            selection.color =
+                Color.clear;
 
             Text status =
                 CreateText(
                     "Status",
-                    leftPanel,
+                    root,
                     string.Empty,
-                    15,
+                    1,
                     TextAnchor.MiddleCenter);
 
-            status.rectTransform.anchorMin =
-                status.rectTransform.anchorMax =
-                    new Vector2(0.5f, 0f);
-
-            status.rectTransform.sizeDelta =
-                new Vector2(480f, 46f);
-
-            status.rectTransform.anchoredPosition =
-                new Vector2(0f, 8f);
+            status.color =
+                Color.clear;
 
             controller.Bind(
                 name,
@@ -626,6 +764,435 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 0,
                 0,
                 0);
+        }
+
+        private static void BuildNativeFighterClassInfo(
+            RectTransform root,
+            Texture2D fighterBars)
+        {
+            CreateLegacyTopLeftText(
+                "WeaponHeader",
+                root,
+                "Weapon",
+                new Vector2(941f, 83f),
+                new Vector2(70f, 18f),
+                10,
+                new Color(1f, 0.86f, 0.12f, 1f),
+                TextAnchor.MiddleCenter);
+
+            string[] iconFiles =
+            {
+                "icon_onehandedsword.tga",
+                "icon_twohandedsword.tga",
+                "icon_dualwieldsword.tga",
+                "icon_spear.tga",
+                "icon_onehandedblunt.tga",
+                "icon_twohandedblunt.tga",
+                "icon_shield.tga"
+            };
+
+            string[] labelFiles =
+            {
+                "icon_onehandedsword_usa.tga",
+                "icon_twohandedsword_usa.tga",
+                "icon_dualwieldsword_usa.tga",
+                "icon_spear_usa.tga",
+                "icon_onehandedblunt_usa.tga",
+                "icon_twohandedblunt_usa.tga",
+                "icon_shield_usa.tga"
+            };
+
+            Vector2[] iconPositions =
+            {
+                new Vector2(758f, 99f),
+                new Vector2(823f, 99f),
+                new Vector2(888f, 99f),
+                new Vector2(953f, 99f),
+                new Vector2(823f, 177f),
+                new Vector2(888f, 177f),
+                new Vector2(953f, 177f)
+            };
+
+            for (int i = 0;
+                 i < iconFiles.Length;
+                 i++)
+            {
+                Texture2D icon =
+                    RequireCharacterMakeTexture(
+                        iconFiles[i]);
+
+                Texture2D label =
+                    RequireCharacterMakeTexture(
+                        labelFiles[i]);
+
+                CreateLegacyTextureLayer(
+                    "WeaponIcon_" + i,
+                    root,
+                    icon,
+                    iconPositions[i],
+                    new Vector2(64f, 64f),
+                    new Rect(
+                        0f,
+                        0f,
+                        icon.width,
+                        icon.height));
+
+                CreateLegacyTextureLayer(
+                    "WeaponText_" + i,
+                    root,
+                    label,
+                    iconPositions[i] +
+                    new Vector2(-32f, 49f),
+                    new Vector2(128f, 32f),
+                    new Rect(
+                        0f,
+                        0f,
+                        label.width,
+                        label.height));
+            }
+
+            CreateLegacyTopLeftText(
+                "ClassFigureHeader",
+                root,
+                "Class figure",
+                new Vector2(929f, 293f),
+                new Vector2(82f, 18f),
+                10,
+                new Color(1f, 0.86f, 0.12f, 1f),
+                TextAnchor.MiddleCenter);
+
+            CreateLegacyTextureLayer(
+                "FighterBars",
+                root,
+                fighterBars,
+                new Vector2(762f, 323f),
+                new Vector2(256f, 128f),
+                new Rect(
+                    0f,
+                    0f,
+                    fighterBars.width,
+                    fighterBars.height));
+
+            Texture2D soloParty =
+                RequireCharacterMakeTexture(
+                    "info_bg01_usa.tga");
+
+            Texture2D atkDef =
+                RequireCharacterMakeTexture(
+                    "info_bg02_usa.tga");
+
+            CreateLegacyTextureLayer(
+                "SoloPartyText",
+                root,
+                soloParty,
+                new Vector2(945f, 331f),
+                new Vector2(64f, 64f),
+                new Rect(
+                    0f,
+                    0f,
+                    soloParty.width,
+                    soloParty.height));
+
+            CreateLegacyTextureLayer(
+                "AtkDefText",
+                root,
+                atkDef,
+                new Vector2(945f, 405f),
+                new Vector2(64f, 64f),
+                new Rect(
+                    0f,
+                    0f,
+                    atkDef.width,
+                    atkDef.height));
+        }
+
+        private static Texture2D RequireCharacterMakeTexture(
+            string fileName)
+        {
+            Texture2D texture =
+                LegacyUiAssetImporter
+                    .LoadCharacterMakeTexture(
+                        fileName);
+
+            if (texture == null)
+            {
+                throw new InvalidOperationException(
+                    "Canonical CharacterMake texture is missing: " +
+                    fileName);
+            }
+
+            return texture;
+        }
+
+        private static RawImage CreateLegacyTextureLayer(
+            string name,
+            RectTransform parent,
+            Texture2D texture,
+            Vector2 topLeft,
+            Vector2 size,
+            Rect sourceTopLeftPixels)
+        {
+            RectTransform rect =
+                CreateRect(
+                    name,
+                    parent,
+                    new Vector2(0f, 1f),
+                    new Vector2(0f, 1f),
+                    size,
+                    new Vector2(
+                        topLeft.x,
+                        -topLeft.y),
+                    new Vector2(0f, 1f));
+
+            RawImage image =
+                rect.gameObject
+                    .AddComponent<RawImage>();
+
+            image.texture =
+                texture;
+
+            image.raycastTarget =
+                false;
+
+            float u =
+                sourceTopLeftPixels.x /
+                texture.width;
+
+            float v =
+                1f -
+                (sourceTopLeftPixels.y +
+                 sourceTopLeftPixels.height) /
+                texture.height;
+
+            image.uvRect =
+                new Rect(
+                    u,
+                    v,
+                    sourceTopLeftPixels.width /
+                    texture.width,
+                    sourceTopLeftPixels.height /
+                    texture.height);
+
+            return image;
+        }
+
+        private static RawImage CreateLegacyAtlasLayer(
+            string name,
+            RectTransform parent,
+            Texture2D atlas,
+            Vector2 topLeft,
+            Vector2 size,
+            Rect sourceTopLeftPixels)
+        {
+            return CreateLegacyTextureLayer(
+                name,
+                parent,
+                atlas,
+                topLeft,
+                size,
+                sourceTopLeftPixels);
+        }
+
+        private static Text CreateLegacyTopLeftText(
+            string name,
+            RectTransform parent,
+            string value,
+            Vector2 topLeft,
+            Vector2 size,
+            int fontSize,
+            Color color,
+            TextAnchor alignment)
+        {
+            RectTransform rect =
+                CreateRect(
+                    name,
+                    parent,
+                    new Vector2(0f, 1f),
+                    new Vector2(0f, 1f),
+                    size,
+                    new Vector2(
+                        topLeft.x,
+                        -topLeft.y),
+                    new Vector2(0f, 1f));
+
+            Text text =
+                rect.gameObject
+                    .AddComponent<Text>();
+
+            text.text =
+                value;
+
+            text.font =
+                Resources
+                    .GetBuiltinResource<Font>(
+                        "LegacyRuntime.ttf");
+
+            text.fontSize =
+                fontSize;
+
+            text.alignment =
+                alignment;
+
+            text.color =
+                color;
+
+            text.horizontalOverflow =
+                HorizontalWrapMode.Wrap;
+
+            text.verticalOverflow =
+                VerticalWrapMode.Overflow;
+
+            return text;
+        }
+
+        private static InputField CreateLegacyInput(
+            string name,
+            RectTransform parent,
+            Vector2 topLeft,
+            Vector2 size)
+        {
+            RectTransform rect =
+                CreateRect(
+                    name,
+                    parent,
+                    new Vector2(0f, 1f),
+                    new Vector2(0f, 1f),
+                    size,
+                    new Vector2(
+                        topLeft.x,
+                        -topLeft.y),
+                    new Vector2(0f, 1f));
+
+            Image hitGraphic =
+                rect.gameObject
+                    .AddComponent<Image>();
+
+            hitGraphic.color =
+                new Color(
+                    0f,
+                    0f,
+                    0f,
+                    0.01f);
+
+            Text value =
+                CreateText(
+                    "Text",
+                    rect,
+                    string.Empty,
+                    12,
+                    TextAnchor.MiddleLeft);
+
+            value.color =
+                Color.white;
+
+            SetOffsets(
+                value.rectTransform,
+                5f,
+                0f,
+                -5f,
+                0f);
+
+            InputField input =
+                rect.gameObject
+                    .AddComponent<InputField>();
+
+            input.textComponent =
+                value;
+
+            input.characterLimit =
+                19;
+
+            return input;
+        }
+
+        private static Button CreateTransparentButton(
+            string name,
+            RectTransform parent,
+            Vector2 topLeft,
+            Vector2 size)
+        {
+            RectTransform rect =
+                CreateRect(
+                    name,
+                    parent,
+                    new Vector2(0f, 1f),
+                    new Vector2(0f, 1f),
+                    size,
+                    new Vector2(
+                        topLeft.x,
+                        -topLeft.y),
+                    new Vector2(0f, 1f));
+
+            Image image =
+                rect.gameObject
+                    .AddComponent<Image>();
+
+            image.color =
+                new Color(
+                    1f,
+                    1f,
+                    1f,
+                    0.001f);
+
+            Button button =
+                rect.gameObject
+                    .AddComponent<Button>();
+
+            button.targetGraphic =
+                image;
+
+            return button;
+        }
+
+        private static Button CreateLegacyRedButton(
+            string name,
+            RectTransform parent,
+            string label,
+            Vector2 topLeft,
+            Vector2 size)
+        {
+            RectTransform rect =
+                CreateRect(
+                    name,
+                    parent,
+                    new Vector2(0f, 1f),
+                    new Vector2(0f, 1f),
+                    size,
+                    new Vector2(
+                        topLeft.x,
+                        -topLeft.y),
+                    new Vector2(0f, 1f));
+
+            Image image =
+                rect.gameObject
+                    .AddComponent<Image>();
+
+            image.color =
+                new Color(
+                    0.34f,
+                    0.04f,
+                    0.04f,
+                    0.88f);
+
+            Button button =
+                rect.gameObject
+                    .AddComponent<Button>();
+
+            button.targetGraphic =
+                image;
+
+            Text text =
+                CreateText(
+                    "Label",
+                    rect,
+                    label,
+                    12,
+                    TextAnchor.MiddleCenter);
+
+            text.color =
+                Color.white;
+
+            return button;
         }
 
         private static void CreatePairControl(
