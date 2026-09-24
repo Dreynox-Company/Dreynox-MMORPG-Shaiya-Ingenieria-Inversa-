@@ -767,10 +767,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     AudioCompressionFormat.Vorbis;
 
                 settings.quality = 0.72f;
+                settings.preloadAudioData = true;
 
                 importer.defaultSampleSettings = settings;
                 importer.forceToMono = false;
-                importer.preloadAudioData = true;
                 importer.loadInBackground = false;
                 importer.SaveAndReimport();
             }
