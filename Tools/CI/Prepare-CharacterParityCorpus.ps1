@@ -346,10 +346,14 @@ foreach ($rig in $previewRigs) {
         $exactPaths += "DATA_Español/character/$($rig.Folder)/dds/co_$($rig.Prefix)_$($part)003.dds"
     }
 
-    $exactPaths += "DATA_Español/character/$($rig.Folder)/3dc/$($rig.Prefix)_face001.3dc"
-    $exactPaths += "DATA_Español/character/$($rig.Folder)/3dc/$($rig.Prefix)_hair001.3dc"
-    $exactPaths += "DATA_Español/character/$($rig.Folder)/dds/$($rig.TexturePrefix)_face001.dds"
-    $exactPaths += "DATA_Español/character/$($rig.Folder)/dds/$($rig.TexturePrefix)_hair001.dds"
+    for ($variant = 1; $variant -le 5; $variant++) {
+        $index = $variant.ToString("D3")
+        $exactPaths += "DATA_Español/character/$($rig.Folder)/3dc/$($rig.Prefix)_face$index.3dc"
+        $exactPaths += "DATA_Español/character/$($rig.Folder)/3dc/$($rig.Prefix)_hair$index.3dc"
+        $exactPaths += "DATA_Español/character/$($rig.Folder)/dds/$($rig.TexturePrefix)_face$index.dds"
+        $exactPaths += "DATA_Español/character/$($rig.Folder)/dds/$($rig.TexturePrefix)_hair$index.dds"
+    }
+
     $exactPaths += "DATA_Español/character/$($rig.Folder)/ani6/$($rig.Prefix)_019_select.ani"
 }
 

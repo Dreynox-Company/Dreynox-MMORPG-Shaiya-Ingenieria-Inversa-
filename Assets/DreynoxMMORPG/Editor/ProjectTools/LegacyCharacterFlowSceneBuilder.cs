@@ -39,8 +39,11 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
         public static void BuildCharacterSelect()
         {
             LegacyUiAssetImporter.ImportCanonicalCharacterSelectUi();
-            LegacyCharacterImporter.ImportCanonicalHumanMale003();
             EnsureGeneratedSceneFolder();
+
+            GameObject[] previewPrefabs =
+                LegacyCharacterPreviewImporter
+                    .ImportAllCanonicalRigs();
 
             Scene scene =
                 EditorSceneManager.NewScene(
@@ -66,32 +69,38 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 "CharacterSelect_Backdrop",
                 30f);
 
-            GameObject actor =
-                InstantiateCanonicalActor(
-                    new Vector3(0.85f, 0f, 0f),
-                    Quaternion.Euler(
-                        0f,
-                        180f,
-                        0f));
+            GameObject previewRoot =
+                new GameObject(
+                    "CharacterPreviewRoot");
 
-            ShaiyaClientActor clientActor =
-                actor.GetComponent<ShaiyaClientActor>();
+            previewRoot.transform.position =
+                new Vector3(
+                    0.85f,
+                    0f,
+                    0f);
 
-            if (clientActor != null)
-                clientActor.enabled = false;
+            LegacyCharacterPreviewSwitcher previewSwitcher =
+                previewRoot.AddComponent<
+                    LegacyCharacterPreviewSwitcher>();
 
-            CharacterController characterController =
-                actor.GetComponent<CharacterController>();
-
-            if (characterController != null)
-                characterController.enabled = false;
-
-            SemanticAnimationPlayer animation =
-                actor.GetComponent<SemanticAnimationPlayer>();
+            previewSwitcher.Configure(
+                previewPrefabs,
+                Vector3.zero,
+                new Vector3(
+                    0f,
+                    180f,
+                    0f),
+                0,
+                0,
+                0,
+                0,
+                0);
 
             AddSelectionLighting();
 
-            Canvas canvas = CreateCanvas("CharacterSelectCanvas");
+            Canvas canvas =
+                CreateCanvas(
+                    "CharacterSelectCanvas");
 
             LegacyCharacterSelectScreenController controller =
                 canvas.gameObject.AddComponent<
@@ -105,18 +114,23 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 canvas.gameObject.AddComponent<
                     LegacyCharacterSelectParityFixture>();
 
-            fixture.Bind(controller, animation);
+            fixture.Bind(
+                controller,
+                previewSwitcher);
 
             EditorSceneManager.SaveScene(
                 scene,
                 CharacterSelectScenePath);
 
-            Selection.activeObject = actor;
+            Selection.activeObject =
+                previewRoot;
 
             Debug.Log(
                 "Dreynox MMORPG: canonical CharacterSelect scene generated at " +
                 CharacterSelectScenePath +
-                " · selectbg.tga parity backdrop active.");
+                " · selectbg.tga parity backdrop active · native preview rigs=" +
+                previewPrefabs.Length +
+                ".");
         }
 
         [MenuItem(

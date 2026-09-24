@@ -9,20 +9,25 @@ namespace Dreynox.Mmorpg.Parity
     public sealed class LegacyCharacterSelectParityFixture : MonoBehaviour
     {
         [SerializeField] private LegacyCharacterSelectScreenController screen;
-        [SerializeField] private SemanticAnimationPlayer previewAnimation;
+        [SerializeField] private LegacyCharacterPreviewSwitcher previewSwitcher;
 
         public void Bind(
             LegacyCharacterSelectScreenController controller,
-            SemanticAnimationPlayer animation)
+            LegacyCharacterPreviewSwitcher switcher)
         {
             screen = controller;
-            previewAnimation = animation;
+            previewSwitcher = switcher;
         }
 
         private void Start()
         {
             if (screen == null)
                 return;
+
+            screen.CharacterSelected += OnSelected;
+            screen.EmptySlotRequested += OnEmptySlot;
+            screen.EnterRequested += OnEnter;
+            screen.DeleteRequested += OnDelete;
 
             screen.SetCharacters(
                 new[]
@@ -42,13 +47,6 @@ namespace Dreynox.Mmorpg.Parity
                 });
 
             screen.SelectSlot(0);
-            screen.CharacterSelected += OnSelected;
-            screen.EmptySlotRequested += OnEmptySlot;
-            screen.EnterRequested += OnEnter;
-            screen.DeleteRequested += OnDelete;
-
-            if (previewAnimation != null)
-                previewAnimation.PlaySemantic("select");
         }
 
         private void OnDestroy()
@@ -62,30 +60,51 @@ namespace Dreynox.Mmorpg.Parity
             screen.DeleteRequested -= OnDelete;
         }
 
-        private void OnSelected(CharacterSummaryCore character)
+        private void OnSelected(
+            CharacterSummaryCore character)
         {
+            if (previewSwitcher != null)
+            {
+                previewSwitcher.Apply(
+                    character.Family,
+                    character.Job,
+                    character.Sex,
+                    character.Face,
+                    character.Hair);
+            }
+
             screen.SetStatus(
-                character.Name + " · Lv." + character.Level +
-                " · family=" + character.Family +
-                " job=" + character.Job);
+                character.Name +
+                " · Lv." +
+                character.Level +
+                " · " +
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    character.Family,
+                    character.Job));
         }
 
         private void OnEmptySlot(int slot)
         {
             screen.SetStatus(
-                "Create requested for slot " + (slot + 1) + ".");
+                "Create requested for slot " +
+                (slot + 1) +
+                ".");
         }
 
         private void OnEnter(long characterId)
         {
             screen.SetStatus(
-                "Enter world requested for character " + characterId + ".");
+                "Enter world requested for character " +
+                characterId +
+                ".");
         }
 
         private void OnDelete(long characterId)
         {
             screen.SetStatus(
-                "Delete requested for character " + characterId + ".");
+                "Delete requested for character " +
+                characterId +
+                ".");
         }
     }
 
@@ -140,7 +159,9 @@ namespace Dreynox.Mmorpg.Parity
                 previewSwitcher.Apply(
                     screen.Family,
                     screen.Job,
-                    screen.Sex);
+                    screen.Sex,
+                    screen.Face,
+                    screen.Hair);
             }
         }
 

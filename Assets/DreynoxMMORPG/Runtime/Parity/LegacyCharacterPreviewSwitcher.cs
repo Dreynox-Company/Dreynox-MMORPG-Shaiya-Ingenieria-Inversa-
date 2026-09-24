@@ -17,12 +17,16 @@ namespace Dreynox.Mmorpg.Parity
         [SerializeField] private int initialFamily;
         [SerializeField] private int initialJob;
         [SerializeField] private int initialSex;
+        [SerializeField] private int initialFaceIndex;
+        [SerializeField] private int initialHairIndex;
 
         private GameObject _instance;
         private int _currentRigIndex = -1;
 
         public GameObject CurrentInstance => _instance;
         public int CurrentRigIndex => _currentRigIndex;
+        public int CurrentFaceIndex { get; private set; }
+        public int CurrentHairIndex { get; private set; }
         public SemanticAnimationPlayer CurrentAnimation { get; private set; }
 
         public void Configure(
@@ -31,7 +35,9 @@ namespace Dreynox.Mmorpg.Parity
             Vector3 previewLocalEulerAngles,
             int family,
             int job,
-            int sex)
+            int sex,
+            int faceIndex = 0,
+            int hairIndex = 0)
         {
             if (prefabs == null ||
                 prefabs.Length != 16)
@@ -73,9 +79,19 @@ namespace Dreynox.Mmorpg.Parity
                     job,
                     sex);
 
+            ValidateAppearanceIndex(
+                faceIndex,
+                nameof(faceIndex));
+
+            ValidateAppearanceIndex(
+                hairIndex,
+                nameof(hairIndex));
+
             initialFamily = family;
             initialJob = job;
             initialSex = sex;
+            initialFaceIndex = faceIndex;
+            initialHairIndex = hairIndex;
 
             if (selection.NativeRigIndex < 0 ||
                 selection.NativeRigIndex >=
@@ -91,7 +107,9 @@ namespace Dreynox.Mmorpg.Parity
             Apply(
                 initialFamily,
                 initialJob,
-                initialSex);
+                initialSex,
+                initialFaceIndex,
+                initialHairIndex);
         }
 
         public GameObject Apply(
@@ -99,6 +117,29 @@ namespace Dreynox.Mmorpg.Parity
             int job,
             int sex)
         {
+            return Apply(
+                family,
+                job,
+                sex,
+                0,
+                0);
+        }
+
+        public GameObject Apply(
+            int family,
+            int job,
+            int sex,
+            int faceIndex,
+            int hairIndex)
+        {
+            ValidateAppearanceIndex(
+                faceIndex,
+                nameof(faceIndex));
+
+            ValidateAppearanceIndex(
+                hairIndex,
+                nameof(hairIndex));
+
             LegacyCharacterRigSelection selection =
                 LegacyCharacterRigCore.Resolve(
                     family,
@@ -109,6 +150,17 @@ namespace Dreynox.Mmorpg.Parity
                 _currentRigIndex ==
                     selection.NativeRigIndex)
             {
+                ApplyAppearance(
+                    _instance,
+                    faceIndex,
+                    hairIndex);
+
+                CurrentFaceIndex =
+                    faceIndex;
+
+                CurrentHairIndex =
+                    hairIndex;
+
                 PlaySelect();
                 return _instance;
             }
@@ -155,12 +207,55 @@ namespace Dreynox.Mmorpg.Parity
             _currentRigIndex =
                 selection.NativeRigIndex;
 
+            CurrentFaceIndex =
+                faceIndex;
+
+            CurrentHairIndex =
+                hairIndex;
+
             CurrentAnimation =
                 _instance.GetComponent<
                     SemanticAnimationPlayer>();
 
+            ApplyAppearance(
+                _instance,
+                faceIndex,
+                hairIndex);
+
             PlaySelect();
             return _instance;
+        }
+
+        private static void ApplyAppearance(
+            GameObject instance,
+            int faceIndex,
+            int hairIndex)
+        {
+            LegacyCharacterAppearanceVariants appearance =
+                instance.GetComponent<
+                    LegacyCharacterAppearanceVariants>();
+
+            if (appearance == null)
+            {
+                throw new InvalidOperationException(
+                    "Character preview prefab has no appearance variant controller.");
+            }
+
+            appearance.Apply(
+                faceIndex,
+                hairIndex);
+        }
+
+        private static void ValidateAppearanceIndex(
+            int value,
+            string parameterName)
+        {
+            if (value < 0 ||
+                value > 4)
+            {
+                throw new ArgumentOutOfRangeException(
+                    parameterName);
+            }
         }
 
         private void PlaySelect()

@@ -944,6 +944,34 @@ namespace Dreynox.Mmorpg.Tests
                     paths.SelectAnimation);
             }
 
+            for (int face = 0;
+                 face < 5;
+                 face++)
+            for (int hair = 0;
+                 hair < 5;
+                 hair++)
+            {
+                LegacyCharacterPreviewAssetPaths variant =
+                    LegacyCharacterAssetCore.ResolvePreview(
+                        0,
+                        0,
+                        0,
+                        face,
+                        hair);
+
+                StringAssert.EndsWith(
+                    "_face" +
+                    (face + 1).ToString("D3") +
+                    ".3dc",
+                    variant.FaceMesh);
+
+                StringAssert.EndsWith(
+                    "_hair" +
+                    (hair + 1).ToString("D3") +
+                    ".3dc",
+                    variant.HairMesh);
+            }
+
             LegacyCharacterPreviewAssetPaths humanFighterMale =
                 LegacyCharacterAssetCore.ResolvePreview(
                     0,
