@@ -200,18 +200,15 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 WriteEmptyNameCoordinateGroup(
                     writer);
 
-                writer.Write(0);
-                writer.Write(0);
-
-                writer.Write(0);
-                writer.Write(0);
-                writer.Write(0);
-                writer.Write(0);
-                writer.Write(0);
-                writer.Write(0);
-                writer.Write(0);
-                writer.Write(0);
-                writer.Write(0);
+                // Music names, music zones, sound names, zones,
+                // positional sounds, restricted boxes, portals, spawns,
+                // named areas and NPC logical entries.
+                for (int counter = 0;
+                     counter < 10;
+                     counter++)
+                {
+                    writer.Write(0);
+                }
 
                 WriteVector3(
                     writer,
