@@ -697,6 +697,51 @@ jobs:
           "sha256=$actualSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host "Full canonical parity build verificado: $actualSha"
 
+      - name: Smoke local full client flow
+        if: steps.canonical-corpus.outputs.world_available == 'true'
+        run: |
+          $exe = Join-Path $env:GITHUB_WORKSPACE "Builds\WindowsCanonicalParity\DreynoxMmorpg-CanonicalParity.exe"
+          $logRoot = Join-Path $env:GITHUB_WORKSPACE "BuildLogs"
+          $log = Join-Path $logRoot "canonical-local-flow-smoke.log"
+
+          New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
+          Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
+
+          $arguments = @(
+            "-force-d3d11",
+            "-screen-width", "1024",
+            "-screen-height", "768",
+            "-screen-fullscreen", "0",
+            "-logFile", $log,
+            "--parity-local-flow-smoke"
+          )
+
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -PassThru
+
+          if (-not $process.WaitForExit(120000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Canonical local-flow smoke excedió 120 segundos."
+          }
+
+          if ($process.ExitCode -ne 0) {
+            if (Test-Path $log) {
+              Get-Content -LiteralPath $log -Tail 200
+            }
+
+            throw "Canonical local-flow smoke terminó con código $($process.ExitCode)."
+          }
+
+          if (-not (Test-Path $log)) {
+            throw "Canonical local-flow smoke no produjo log."
+          }
+
+          if (-not (Select-String -LiteralPath $log -Pattern "DREYNOX_LOCAL_FLOW_SMOKE_OK" -SimpleMatch -Quiet)) {
+            Get-Content -LiteralPath $log -Tail 200
+            throw "Canonical local-flow smoke terminó sin marcador OK."
+          }
+
+          Write-Host "Canonical Login -> Select -> Make -> Select -> World smoke: OK"
+
       - name: Upload canonical parity Windows player
         if: steps.canonical-corpus.outputs.world_available == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

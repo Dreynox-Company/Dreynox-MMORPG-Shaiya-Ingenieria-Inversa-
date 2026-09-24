@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Dreynox.Mmorpg.ParityCore;
 using Dreynox.Mmorpg.UI;
 using UnityEngine;
@@ -10,6 +11,8 @@ namespace Dreynox.Mmorpg.Parity
     /// Explicit local-only scene-flow adapter for end-to-end client parity QA.
     /// It never claims to be the recovered ps0032 network protocol.
     /// Activate with --parity-local-flow.
+    /// Use --parity-local-flow-smoke to run an automated end-to-end
+    /// Login -> Select -> Make -> Select -> World QA pass.
     /// </summary>
     public sealed class LegacyLocalClientFlowCoordinator : MonoBehaviour
     {
@@ -29,6 +32,9 @@ namespace Dreynox.Mmorpg.Parity
         private LegacyCharacterSelectScreenController _select;
         private LegacyCharacterMakeScreenController _make;
 
+        private bool _smokeRunning;
+        private bool _smokeFailed;
+
         public static bool IsActive =>
             _instance != null;
 
@@ -39,9 +45,15 @@ namespace Dreynox.Mmorpg.Parity
             RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void InstallWhenRequested()
         {
+            string[] args =
+                Environment.GetCommandLineArgs();
+
             if (!HasFlag(
-                    Environment.GetCommandLineArgs(),
-                    "--parity-local-flow"))
+                    args,
+                    "--parity-local-flow") &&
+                !HasFlag(
+                    args,
+                    "--parity-local-flow-smoke"))
                 return;
 
             EnsureInstalled();
@@ -85,6 +97,14 @@ namespace Dreynox.Mmorpg.Parity
         {
             BindCurrentScene(
                 SceneManager.GetActiveScene());
+
+            if (HasFlag(
+                    Environment.GetCommandLineArgs(),
+                    "--parity-local-flow-smoke"))
+            {
+                StartCoroutine(
+                    RunLocalFlowSmoke());
+            }
         }
 
         private void OnDestroy()
@@ -422,6 +442,189 @@ namespace Dreynox.Mmorpg.Parity
                 LoadScene(
                     SelectScene);
             }
+        }
+
+        private IEnumerator RunLocalFlowSmoke()
+        {
+            if (_smokeRunning)
+                yield break;
+
+            _smokeRunning = true;
+            _smokeFailed = false;
+
+            Debug.Log(
+                "DREYNOX_LOCAL_FLOW_SMOKE_BEGIN");
+
+            if (!string.Equals(
+                    SceneManager.GetActiveScene().name,
+                    LoginScene,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                LoadScene(
+                    LoginScene);
+            }
+
+            yield return WaitForSmokeCondition(
+                () =>
+                    string.Equals(
+                        SceneManager.GetActiveScene().name,
+                        LoginScene,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    _login != null,
+                "Login scene/controller did not become ready.");
+
+            if (_smokeFailed)
+                yield break;
+
+            OnLoginRequested(
+                "local_parity",
+                "local_parity",
+                false);
+
+            yield return WaitForSmokeCondition(
+                () =>
+                    _flow.State ==
+                        ClientFlowState.CharacterSelect &&
+                    _select != null,
+                "Login -> CharacterSelect transition failed.");
+
+            if (_smokeFailed)
+                yield break;
+
+            _select.SelectSlot(1);
+            _select.RequestCreate();
+
+            yield return WaitForSmokeCondition(
+                () =>
+                    _flow.State ==
+                        ClientFlowState.CharacterCreate &&
+                    _make != null,
+                "CharacterSelect -> CharacterMake transition failed.");
+
+            if (_smokeFailed)
+                yield break;
+
+            int slot =
+                _flow.CharacterCreateSlot ??
+                1;
+
+            OnCreateRequested(
+                new CharacterCreationRequestCore(
+                    "SmokeHero",
+                    slot,
+                    (int)LegacyCharacterFamily.Human,
+                    (int)LegacyCharacterJob.Fighter,
+                    0,
+                    1,
+                    1,
+                    CharacterDifficultyMode.Basic));
+
+            yield return WaitForSmokeCondition(
+                () =>
+                    _flow.State ==
+                        ClientFlowState.CharacterSelect &&
+                    _select != null &&
+                    FindCharacterBySlot(
+                        slot) != null,
+                "Character creation did not return to CharacterSelect.");
+
+            if (_smokeFailed)
+                yield break;
+
+            CharacterSummaryCore created =
+                FindCharacterBySlot(
+                    slot);
+
+            _select.SelectSlot(
+                created.Slot);
+
+            _select.RequestPrimaryAction();
+
+            yield return WaitForSmokeCondition(
+                () =>
+                    string.Equals(
+                        SceneManager.GetActiveScene().name,
+                        WorldScene,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    _flow.State ==
+                        ClientFlowState.InWorld,
+                "CharacterSelect -> World transition failed.");
+
+            if (_smokeFailed)
+                yield break;
+
+            Debug.Log(
+                "DREYNOX_LOCAL_FLOW_SMOKE_OK " +
+                "character=" +
+                created.CharacterId +
+                " slot=" +
+                created.Slot +
+                " state=" +
+                _flow.State);
+
+            yield return null;
+
+            Application.Quit(0);
+        }
+
+        private IEnumerator WaitForSmokeCondition(
+            Func<bool> condition,
+            string failureMessage,
+            float timeoutSeconds = 30f)
+        {
+            float started =
+                Time.realtimeSinceStartup;
+
+            while (!condition())
+            {
+                if (Time.realtimeSinceStartup -
+                    started >=
+                    timeoutSeconds)
+                {
+                    FailSmoke(
+                        failureMessage);
+
+                    yield break;
+                }
+
+                yield return null;
+            }
+        }
+
+        private void FailSmoke(
+            string message)
+        {
+            if (_smokeFailed)
+                return;
+
+            _smokeFailed = true;
+
+            Debug.LogError(
+                "DREYNOX_LOCAL_FLOW_SMOKE_FAIL: " +
+                message +
+                " · scene=" +
+                SceneManager.GetActiveScene().name +
+                " · state=" +
+                _flow.State);
+
+            Application.Quit(2);
+        }
+
+        private CharacterSummaryCore FindCharacterBySlot(
+            int slot)
+        {
+            for (int i = 0;
+                 i < _flow.Characters.Count;
+                 i++)
+            {
+                if (_flow.Characters[i].Slot ==
+                    slot)
+                {
+                    return _flow.Characters[i];
+                }
+            }
+
+            return null;
         }
 
         private int FirstEmptySlot()
