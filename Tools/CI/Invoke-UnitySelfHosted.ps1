@@ -64,63 +64,21 @@ function Invoke-Checked {
         [Parameter(Mandatory = $true)]
         [string[]]$Arguments,
         [Parameter(Mandatory = $true)]
-        [string]$Description,
-        [int]$TimeoutSeconds = 0
+        [string]$Description
     )
 
     Write-Host "::group::$Description"
 
     $process = $null
-    $exitCode = $null
 
     try {
-        if ($TimeoutSeconds -le 0) {
-            $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
+        $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
 
-            if ($null -eq $process) {
-                throw "No se pudo iniciar $Executable."
-            }
-
-            $exitCode = $process.ExitCode
+        if ($null -eq $process) {
+            throw "No se pudo iniciar $Executable."
         }
-        else {
-            $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru -NoNewWindow
 
-            if ($null -eq $process) {
-                throw "No se pudo iniciar $Executable."
-            }
-
-            $finished = $process.WaitForExit($TimeoutSeconds * 1000)
-
-            if (-not $finished) {
-                Write-Error "$Description excedió el timeout de $TimeoutSeconds segundos. Finalizando PID $($process.Id) y procesos hijos."
-
-                $taskkill = Get-Command taskkill.exe -ErrorAction SilentlyContinue
-
-                if ($null -ne $taskkill) {
-                    & $taskkill.Source /PID $process.Id /T /F 2>&1 | ForEach-Object { Write-Host $_ }
-                }
-                elseif (-not $process.HasExited) {
-                    $process.Kill()
-                }
-
-                try {
-                    $process.WaitForExit(10000) | Out-Null
-                }
-                catch {
-                    Write-Warning "No se pudo esperar el cierre del proceso después del timeout."
-                }
-
-                throw "$Description excedió el timeout de $TimeoutSeconds segundos."
-            }
-
-            # Complete the non-timed wait after the bounded wait reports
-            # completion. This makes ExitCode reliable on Windows PowerShell
-            # 5.1 / .NET Framework Process objects.
-            $process.WaitForExit()
-            $process.Refresh()
-            $exitCode = $process.ExitCode
-        }
+        $exitCode = $process.ExitCode
     }
     finally {
         if ($null -ne $process) {
@@ -128,10 +86,6 @@ function Invoke-Checked {
         }
 
         Write-Host "::endgroup::"
-    }
-
-    if ($null -eq $exitCode) {
-        throw "$Description terminó sin código de salida disponible."
     }
 
     if ($exitCode -ne 0) {
@@ -319,7 +273,7 @@ Después abre una nueva terminal y verifica:
                     "-testPlatform", "editmode",
                     "-testResults", $TestResult,
                     "-logFile", $TestLog
-                ) -Description "Unity EditMode tests" -TimeoutSeconds 1200
+                ) -Description "Unity EditMode tests"
             }
             catch {
                 $packageRenameLock = $false
