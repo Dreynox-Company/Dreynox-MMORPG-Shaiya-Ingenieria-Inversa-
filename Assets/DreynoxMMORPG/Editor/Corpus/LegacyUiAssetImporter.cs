@@ -130,6 +130,24 @@ namespace Dreynox.Mmorpg.Editor.Corpus
             return LoadTexture(CharacterMakeRoot, fileName);
         }
 
+        public static Texture2D LoadCharacterMakeTextureByKey(string key)
+        {
+            string relative;
+            if (!LegacyUiReferenceManifest.Paths.TryGetValue(
+                    key,
+                    out relative))
+            {
+                throw new KeyNotFoundException(
+                    "UI manifest key not found: " + key);
+            }
+
+            return LoadTexture(
+                CharacterMakeRoot,
+                DestinationFileName(
+                    key,
+                    relative));
+        }
+
         public static string ResolveCaseInsensitive(
             string root,
             string relativePath)
@@ -215,7 +233,10 @@ namespace Dreynox.Mmorpg.Editor.Corpus
                         source);
 
                 string fileName =
-                    Path.GetFileName(source).ToLowerInvariant();
+                    DestinationFileName(
+                        key,
+                        source)
+                        .ToLowerInvariant();
 
                 string destination =
                     destinationRoot + "/" + fileName;
@@ -267,6 +288,58 @@ namespace Dreynox.Mmorpg.Editor.Corpus
                 root + "/" + fileName.ToLowerInvariant();
 
             return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+        }
+
+        private static string DestinationFileName(
+            string key,
+            string sourcePath)
+        {
+            string extension =
+                Path.GetExtension(
+                    sourcePath);
+
+            if (string.IsNullOrWhiteSpace(
+                    extension))
+                extension = ".tga";
+
+            bool requiresAlias =
+                key.StartsWith(
+                    "character.make.class.",
+                    StringComparison.Ordinal) ||
+                key.StartsWith(
+                    "character.make.classInfo.",
+                    StringComparison.Ordinal) ||
+                key.StartsWith(
+                    "character.make.weapon.",
+                    StringComparison.Ordinal) ||
+                key.EndsWith(
+                    "Atlas",
+                    StringComparison.Ordinal) ||
+                string.Equals(
+                    key,
+                    "character.make.infoFrame",
+                    StringComparison.Ordinal);
+
+            if (!requiresAlias)
+                return Path.GetFileName(
+                    sourcePath);
+
+            string prefix =
+                "character.make.";
+
+            string value =
+                key.StartsWith(
+                    prefix,
+                    StringComparison.Ordinal)
+                    ? key.Substring(
+                        prefix.Length)
+                    : key;
+
+            return value
+                .Replace('.', '_')
+                .Replace('/', '_')
+                .Replace('\\', '_') +
+                extension.ToLowerInvariant();
         }
 
         private static void ConfigureTexture(string assetPath)
