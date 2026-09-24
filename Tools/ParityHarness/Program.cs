@@ -474,6 +474,13 @@ namespace Dreynox.Mmorpg.ParityHarness
                     "2fd2807d305f5ae589f30232ac31c52a12f9caef66ed1b674ca6405a607f5549",
                 "native character editor visual reference is pinned");
 
+            Check(
+                nativeCharacterEditor.NativeCropX == 3 &&
+                nativeCharacterEditor.NativeCropY == 26 &&
+                nativeCharacterEditor.NativeCropWidth == 1018 &&
+                nativeCharacterEditor.NativeCropHeight == 740,
+                "native Windows client crop calibration is pinned");
+
             NativeVisualReference nativeWorldLoaded =
                 NativeVisualReferenceCore.Get(
                     "world-loaded");
