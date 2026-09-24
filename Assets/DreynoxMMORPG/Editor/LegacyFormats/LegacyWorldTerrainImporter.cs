@@ -370,6 +370,12 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
             CreateLighting();
 
+            LegacyWorldEnvironmentBuildResult environment =
+                LegacyWorldEnvironmentImporter.Create(
+                    corpus,
+                    wld,
+                    actor.transform);
+
             GameObject hudObject =
                 new GameObject("ParityHUD");
 
@@ -409,7 +415,15 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     ? waterSurface.FrameCount + " WTR frames / tile " +
                       waterSurface.TileSize
                     : "none") +
-                ", sky='" + wld.SkyName + "'.");
+                ", sky='" + environment.SkyName +
+                "', clouds='" + environment.CloudsName1 +
+                "'/'" + environment.CloudsName2 +
+                "', music=" + environment.ImportedMusicClips +
+                " clips / " + environment.MusicZones +
+                " zones, ambient=" +
+                environment.ImportedSoundClips +
+                " clips / " + environment.PositionalSounds +
+                " placements.");
         }
 
         private static TerrainData BuildTerrainData(
