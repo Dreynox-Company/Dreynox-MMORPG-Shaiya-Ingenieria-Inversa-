@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Dreynox.Mmorpg.Editor.Corpus;
+using Dreynox.Mmorpg.World;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -179,6 +180,129 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 TreeInstances = trees,
                 GrassInstances = grass
             };
+        }
+
+        public static int AttachRuntimeEffects(
+            CanonicalClientCorpus corpus,
+            LegacyDungeonPreviewBuildResult environment,
+            Transform observer)
+        {
+            if (corpus == null)
+                throw new ArgumentNullException(nameof(corpus));
+
+            if (environment == null ||
+                environment.World == null ||
+                environment.Root == null)
+            {
+                throw new ArgumentNullException(
+                    nameof(environment));
+            }
+
+            if (observer == null)
+                throw new ArgumentNullException(nameof(observer));
+
+            LegacyWldTerrainFile wld =
+                environment.World;
+
+            if (wld.Effects.Count == 0)
+                return 0;
+
+            if (string.IsNullOrWhiteSpace(
+                    wld.EffectName))
+            {
+                throw new InvalidDataException(
+                    "Login DUN contains EFT placements but no EffectName.");
+            }
+
+            LegacyEftFile library =
+                LegacyEftPrefabImporter
+                    .ParseCanonical(
+                        corpus,
+                        wld.EffectName);
+
+            if (library == null)
+            {
+                throw new FileNotFoundException(
+                    "Login DUN EFT library could not be resolved: " +
+                    wld.EffectName);
+            }
+
+            GameObject prefab =
+                LegacyEftPrefabImporter.Import(
+                    corpus,
+                    wld.EffectName);
+
+            if (prefab == null)
+            {
+                throw new InvalidDataException(
+                    "Login DUN EFT importer returned null for '" +
+                    wld.EffectName +
+                    "'.");
+            }
+
+            var placements =
+                new System.Collections.Generic.List<
+                    LegacyWorldEffectPlacement>(
+                        wld.Effects.Count);
+
+            for (int i = 0;
+                 i < wld.Effects.Count;
+                 i++)
+            {
+                LegacyWldEffectPlacement source =
+                    wld.Effects[i];
+
+                if (source.EffectId < 0 ||
+                    source.EffectId >=
+                    library.Sequences.Count)
+                {
+                    throw new InvalidDataException(
+                        "Login DUN effect placement " +
+                        i +
+                        " references sequence " +
+                        source.EffectId +
+                        " but '" +
+                        wld.EffectName +
+                        "' contains " +
+                        library.Sequences.Count +
+                        " sequences.");
+                }
+
+                placements.Add(
+                    new LegacyWorldEffectPlacement
+                    {
+                        sequenceIndex =
+                            source.EffectId,
+                        position =
+                            source.Position,
+                        rotation =
+                            RotationFromBasis(
+                                source.Forward,
+                                source.Up,
+                                "Effect",
+                                i),
+                        effectPrefab =
+                            prefab
+                    });
+            }
+
+            GameObject runtime =
+                new GameObject(
+                    "WLD_Login_Effects_Runtime");
+
+            runtime.transform.SetParent(
+                environment.Root.transform,
+                false);
+
+            LegacyWorldEffectStreamer streamer =
+                runtime.AddComponent<
+                    LegacyWorldEffectStreamer>();
+
+            streamer.Configure(
+                observer,
+                placements);
+
+            return placements.Count;
         }
 
         private static int CreateStaticGroup(
