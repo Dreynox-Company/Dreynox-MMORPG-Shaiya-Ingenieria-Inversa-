@@ -242,6 +242,15 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     wld.Trees,
                     alphaClip: true);
 
+            int rotatingManiInstances;
+
+            int maniInstances =
+                CreateManiInstances(
+                    corpus,
+                    staticRoot.transform,
+                    wld,
+                    out rotatingManiInstances);
+
             GameObject markerRoot =
                 new GameObject("SVMAP_Metadata");
 
@@ -422,6 +431,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 buildingInstances + " buildings, " +
                 shapeInstances + " shapes, " +
                 treeInstances + " trees, " +
+                maniInstances + " MAni placements / " +
+                rotatingManiInstances + " rotating, " +
                 grassInstances + " GPU-instanced grass placements, " +
                 worldEffectPlacements + " WLD effect placements, water=" +
                 (waterSurface != null
@@ -1152,6 +1163,192 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 throw new InvalidDataException(
                     "Map 0 terrain height calibration mismatch.");
             }
+        }
+
+        private static int CreateManiInstances(
+            CanonicalClientCorpus corpus,
+            Transform worldRoot,
+            LegacyWldTerrainFile wld,
+            out int rotatingCount)
+        {
+            rotatingCount = 0;
+
+            if (wld == null ||
+                wld.MAniCoordinates.Count == 0)
+                return 0;
+
+            string maniRoot =
+                ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/entity/mani");
+
+            GameObject container =
+                new GameObject(
+                    "MAni");
+
+            container.transform.SetParent(
+                worldRoot,
+                false);
+
+            var prefabCache =
+                new Dictionary<int, GameObject>();
+
+            var maniCache =
+                new Dictionary<int, LegacyManiFile>();
+
+            const float LegacyTicksPerSecondCandidate =
+                30f;
+
+            for (int i = 0;
+                 i < wld.MAniCoordinates.Count;
+                 i++)
+            {
+                LegacyWldManiCoordinate coordinate =
+                    wld.MAniCoordinates[i];
+
+                if (coordinate.WorldBuildingId < 0 ||
+                    coordinate.WorldBuildingId >=
+                        wld.Buildings.Names.Count)
+                {
+                    throw new InvalidDataException(
+                        "MAni coordinate " +
+                        i +
+                        " references BuildingAsset " +
+                        coordinate.WorldBuildingId +
+                        " outside 0.." +
+                        (wld.Buildings.Names.Count - 1) +
+                        ".");
+                }
+
+                if (coordinate.Id < 0 ||
+                    coordinate.Id >=
+                        wld.MAniNames.Count)
+                {
+                    throw new InvalidDataException(
+                        "MAni coordinate " +
+                        i +
+                        " references descriptor " +
+                        coordinate.Id +
+                        " outside 0.." +
+                        (wld.MAniNames.Count - 1) +
+                        ".");
+                }
+
+                GameObject prefab;
+
+                if (!prefabCache.TryGetValue(
+                        coordinate.WorldBuildingId,
+                        out prefab))
+                {
+                    string buildingName =
+                        wld.Buildings.Names[
+                            coordinate.WorldBuildingId];
+
+                    prefab =
+                        LegacySmodPrefabImporter.Import(
+                            corpus,
+                            "building",
+                            buildingName,
+                            alphaClip: false);
+
+                    if (prefab == null)
+                    {
+                        throw new InvalidDataException(
+                            "MAni building SMOD import returned null for " +
+                            buildingName + ".");
+                    }
+
+                    prefabCache.Add(
+                        coordinate.WorldBuildingId,
+                        prefab);
+                }
+
+                LegacyManiFile descriptor;
+
+                if (!maniCache.TryGetValue(
+                        coordinate.Id,
+                        out descriptor))
+                {
+                    string maniName =
+                        wld.MAniNames[
+                            coordinate.Id];
+
+                    string maniPath =
+                        CanonicalResourceIndex.FindUnique(
+                            maniRoot,
+                            Path.GetFileName(
+                                maniName));
+
+                    if (maniPath == null ||
+                        !File.Exists(
+                            maniPath))
+                    {
+                        throw new FileNotFoundException(
+                            "MAni descriptor was not found: " +
+                            maniName,
+                            maniPath);
+                    }
+
+                    descriptor =
+                        LegacyManiParser.Parse(
+                            maniPath);
+
+                    maniCache.Add(
+                        coordinate.Id,
+                        descriptor);
+                }
+
+                GameObject instance =
+                    PrefabUtility.InstantiatePrefab(
+                        prefab)
+                    as GameObject;
+
+                if (instance == null)
+                {
+                    throw new InvalidOperationException(
+                        "Could not instantiate MAni building " +
+                        wld.Buildings.Names[
+                            coordinate.WorldBuildingId] +
+                        ".");
+                }
+
+                instance.name =
+                    Path.GetFileNameWithoutExtension(
+                        wld.Buildings.Names[
+                            coordinate.WorldBuildingId]) +
+                    "_MAni_" +
+                    i.ToString("D3");
+
+                instance.transform.SetParent(
+                    container.transform,
+                    false);
+
+                instance.transform.position =
+                    coordinate.Position;
+
+                instance.transform.rotation =
+                    RotationFromBasis(
+                        coordinate.Forward,
+                        coordinate.Up,
+                        "WLD MAni",
+                        i);
+
+                LegacyManiRotationRuntime runtime =
+                    instance.AddComponent<
+                        LegacyManiRotationRuntime>();
+
+                runtime.Configure(
+                    descriptor.RotationEnabled,
+                    descriptor.RotationAxis,
+                    descriptor.AnimationSpeed,
+                    LegacyTicksPerSecondCandidate,
+                    calibrated: false);
+
+                if (descriptor.RotationEnabled)
+                    rotatingCount++;
+            }
+
+            return wld.MAniCoordinates.Count;
         }
 
         private static int CreateStaticGroup(
