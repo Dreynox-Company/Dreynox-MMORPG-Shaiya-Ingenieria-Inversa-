@@ -19,6 +19,10 @@ namespace Dreynox.Mmorpg.Editor.Parity
         public string candidateSha256 = string.Empty;
         public int width;
         public int height;
+        public int nativeCropX;
+        public int nativeCropY;
+        public int nativeCropWidth;
+        public int nativeCropHeight;
         public double mae;
         public double rmse;
         public double psnr;
@@ -222,7 +226,15 @@ namespace Dreynox.Mmorpg.Editor.Parity
                         width =
                             reference.Width,
                         height =
-                            reference.Height
+                            reference.Height,
+                        nativeCropX =
+                            reference.NativeCropX,
+                        nativeCropY =
+                            reference.NativeCropY,
+                        nativeCropWidth =
+                            reference.NativeCropWidth,
+                        nativeCropHeight =
+                            reference.NativeCropHeight
                     };
 
                 report.scenarios.Add(
@@ -281,7 +293,7 @@ namespace Dreynox.Mmorpg.Editor.Parity
                     FileFingerprint.Sha256(
                         candidatePath);
 
-                Texture2D native =
+                Texture2D nativeFull =
                     LoadPng(
                         referencePath);
 
@@ -289,11 +301,14 @@ namespace Dreynox.Mmorpg.Editor.Parity
                     LoadPng(
                         candidatePath);
 
+                Texture2D native =
+                    null;
+
                 try
                 {
-                    if (native.width !=
+                    if (nativeFull.width !=
                             reference.Width ||
-                        native.height !=
+                        nativeFull.height !=
                             reference.Height)
                     {
                         scenario.status =
@@ -313,6 +328,11 @@ namespace Dreynox.Mmorpg.Editor.Parity
 
                         continue;
                     }
+
+                    native =
+                        NormalizeNativeClient(
+                            nativeFull,
+                            reference);
 
                     Color32[] nativePixels =
                         native.GetPixels32();
@@ -362,9 +382,16 @@ namespace Dreynox.Mmorpg.Editor.Parity
                 }
                 finally
                 {
+                    if (native != null)
+                    {
+                        UnityEngine.Object
+                            .DestroyImmediate(
+                                native);
+                    }
+
                     UnityEngine.Object
                         .DestroyImmediate(
-                            native);
+                            nativeFull);
 
                     UnityEngine.Object
                         .DestroyImmediate(
@@ -415,6 +442,112 @@ namespace Dreynox.Mmorpg.Editor.Parity
             }
 
             return null;
+        }
+
+        private static Texture2D NormalizeNativeClient(
+            Texture2D source,
+            NativeVisualReference reference)
+        {
+            if (source == null)
+                throw new ArgumentNullException(
+                    nameof(source));
+
+            int sourceY =
+                source.height -
+                reference.NativeCropY -
+                reference.NativeCropHeight;
+
+            if (reference.NativeCropX < 0 ||
+                sourceY < 0 ||
+                reference.NativeCropX +
+                    reference.NativeCropWidth >
+                    source.width ||
+                sourceY +
+                    reference.NativeCropHeight >
+                    source.height)
+            {
+                throw new InvalidDataException(
+                    "Native client crop is outside the verified screenshot.");
+            }
+
+            Color[] cropPixels =
+                source.GetPixels(
+                    reference.NativeCropX,
+                    sourceY,
+                    reference.NativeCropWidth,
+                    reference.NativeCropHeight);
+
+            Texture2D crop =
+                new Texture2D(
+                    reference.NativeCropWidth,
+                    reference.NativeCropHeight,
+                    TextureFormat.RGBA32,
+                    false,
+                    true);
+
+            crop.SetPixels(
+                cropPixels);
+
+            crop.Apply(
+                false,
+                false);
+
+            RenderTexture temporary =
+                RenderTexture.GetTemporary(
+                    reference.Width,
+                    reference.Height,
+                    0,
+                    RenderTextureFormat.ARGB32,
+                    RenderTextureReadWrite.Linear);
+
+            RenderTexture previous =
+                RenderTexture.active;
+
+            try
+            {
+                Graphics.Blit(
+                    crop,
+                    temporary);
+
+                RenderTexture.active =
+                    temporary;
+
+                Texture2D normalized =
+                    new Texture2D(
+                        reference.Width,
+                        reference.Height,
+                        TextureFormat.RGBA32,
+                        false,
+                        true);
+
+                normalized.ReadPixels(
+                    new Rect(
+                        0f,
+                        0f,
+                        reference.Width,
+                        reference.Height),
+                    0,
+                    0,
+                    false);
+
+                normalized.Apply(
+                    false,
+                    false);
+
+                return normalized;
+            }
+            finally
+            {
+                RenderTexture.active =
+                    previous;
+
+                RenderTexture.ReleaseTemporary(
+                    temporary);
+
+                UnityEngine.Object
+                    .DestroyImmediate(
+                        crop);
+            }
         }
 
         private static Texture2D LoadPng(
