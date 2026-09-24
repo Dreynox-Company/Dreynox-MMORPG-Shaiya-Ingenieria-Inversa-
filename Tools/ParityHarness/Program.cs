@@ -618,6 +618,35 @@ namespace Dreynox.Mmorpg.ParityHarness
                 LegacyCharacterMakeLayoutCore.JobForVisualSlot(5) == 4,
                 "native CharacterMake visual order stays Fighter Defender Priest / Ranger Archer Mage");
 
+            LegacyCharacterClassVisualProfile fighterVisual =
+                LegacyCharacterClassVisualCore.Resolve(0, 0);
+
+            Check(
+                fighterVisual.Weapons.Count == 7 &&
+                fighterVisual.Weapons[0] ==
+                    LegacyCharacterWeaponKind.OneHandSword &&
+                fighterVisual.Weapons[6] ==
+                    LegacyCharacterWeaponKind.Shield,
+                "Light Fighter visual profile matches native seven-weapon layout");
+
+            LegacyCharacterClassVisualProfile warriorVisual =
+                LegacyCharacterClassVisualCore.Resolve(2, 0);
+
+            Check(
+                warriorVisual.Weapons.Count == 7 &&
+                warriorVisual.Weapons[0] ==
+                    LegacyCharacterWeaponKind.OneHandAxe &&
+                warriorVisual.Weapons[2] ==
+                    LegacyCharacterWeaponKind.DualAxe,
+                "Fury Warrior visual profile swaps swords for native axe family");
+
+            Check(
+                LegacyCharacterClassVisualCore.Resolve(1, 3).Weapons[1] ==
+                    LegacyCharacterWeaponKind.Crossbow &&
+                LegacyCharacterClassVisualCore.Resolve(2, 3).Weapons[1] ==
+                    LegacyCharacterWeaponKind.ThrowingWeapon,
+                "Archer and Hunter preserve faction-specific ranged weapons");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }

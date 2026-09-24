@@ -1030,5 +1030,59 @@ namespace Dreynox.Mmorpg.Tests
             }
         }
 
+        [Test]
+        public void CharacterClassVisualProfilesMatchNativeWeaponFamilies()
+        {
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LegacyCharacterWeaponKind.OneHandSword,
+                    LegacyCharacterWeaponKind.TwoHandSword,
+                    LegacyCharacterWeaponKind.DualSword,
+                    LegacyCharacterWeaponKind.Spear,
+                    LegacyCharacterWeaponKind.OneHandBlunt,
+                    LegacyCharacterWeaponKind.TwoHandBlunt,
+                    LegacyCharacterWeaponKind.Shield
+                },
+                LegacyCharacterClassVisualCore.Resolve(0, 0).Weapons);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LegacyCharacterWeaponKind.OneHandAxe,
+                    LegacyCharacterWeaponKind.TwoHandAxe,
+                    LegacyCharacterWeaponKind.DualAxe,
+                    LegacyCharacterWeaponKind.Spear,
+                    LegacyCharacterWeaponKind.OneHandBlunt,
+                    LegacyCharacterWeaponKind.TwoHandBlunt,
+                    LegacyCharacterWeaponKind.Shield
+                },
+                LegacyCharacterClassVisualCore.Resolve(2, 0).Weapons);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LegacyCharacterWeaponKind.Bow,
+                    LegacyCharacterWeaponKind.Crossbow
+                },
+                LegacyCharacterClassVisualCore.Resolve(1, 3).Weapons);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LegacyCharacterWeaponKind.Bow,
+                    LegacyCharacterWeaponKind.ThrowingWeapon
+                },
+                LegacyCharacterClassVisualCore.Resolve(2, 3).Weapons);
+
+            Assert.AreEqual(
+                "character.make.classInfo.mageBars",
+                LegacyCharacterClassVisualCore.Resolve(1, 4).ClassInfoKey);
+
+            Assert.AreEqual(
+                "Pagan",
+                LegacyCharacterClassVisualCore.Resolve(3, 4).DisplayJob);
+        }
+
     }
 }

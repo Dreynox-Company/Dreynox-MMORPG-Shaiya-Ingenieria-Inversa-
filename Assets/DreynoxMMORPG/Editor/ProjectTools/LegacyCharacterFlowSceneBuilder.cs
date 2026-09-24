@@ -490,9 +490,21 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 RequireCharacterMakeTextureByKey(
                     "character.make.classInfo.background");
 
-            Texture2D classFigure =
+            Texture2D[] classFigures =
+            {
                 RequireCharacterMakeTextureByKey(
-                    "character.make.classInfo.fighterBars");
+                    "character.make.classInfo.fighterBars"),
+                RequireCharacterMakeTextureByKey(
+                    "character.make.classInfo.defenderBars"),
+                RequireCharacterMakeTextureByKey(
+                    "character.make.classInfo.priestBars"),
+                RequireCharacterMakeTextureByKey(
+                    "character.make.classInfo.rangerBars"),
+                RequireCharacterMakeTextureByKey(
+                    "character.make.classInfo.archerBars"),
+                RequireCharacterMakeTextureByKey(
+                    "character.make.classInfo.mageBars")
+            };
 
             CreateLegacyTextureLayer(
                 "ExplanationFrame",
@@ -528,7 +540,8 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 Color.white,
                 TextAnchor.MiddleLeft);
 
-            CreateLegacyTopLeftText(
+            Text explanationBody =
+                CreateLegacyTopLeftText(
                 "ExplanationBody",
                 root,
                 "The Fighter is your standard melee combatant. Up close\n" +
@@ -668,6 +681,12 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 new Vector2(227f, 514f)
             };
 
+            var classVisuals =
+                new RawImage[classTextureKeys.Length];
+
+            var classLabelTexts =
+                new Text[classTextureKeys.Length];
+
             for (int visualSlot = 0;
                  visualSlot < classTextureKeys.Length;
                  visualSlot++)
@@ -687,7 +706,8 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                         ? 3
                         : 0;
 
-                CreateLegacyAtlasLayer(
+                classVisuals[visualSlot] =
+                    CreateLegacyAtlasLayer(
                     "ClassVisual_" +
                     visualSlot,
                     root,
@@ -701,7 +721,8 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                         96f,
                         78f));
 
-                CreateLegacyTopLeftText(
+                classLabelTexts[visualSlot] =
+                    CreateLegacyTopLeftText(
                     "ClassLabel_" +
                     visualSlot,
                     root,
@@ -749,7 +770,8 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 RequireCharacterMakeTextureByKey(
                     "character.make.sex.femaleAtlas");
 
-            CreateLegacyAtlasLayer(
+            RawImage maleVisual =
+                CreateLegacyAtlasLayer(
                 "MaleVisual",
                 root,
                 maleAtlas,
@@ -757,7 +779,8 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 new Vector2(58f, 57f),
                 new Rect(0f, 192f, 58f, 57f));
 
-            CreateLegacyAtlasLayer(
+            RawImage femaleVisual =
+                CreateLegacyAtlasLayer(
                 "FemaleVisual",
                 root,
                 femaleAtlas,
@@ -789,9 +812,10 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 controller.SelectSex,
                 1);
 
-            BuildNativeFighterClassInfo(
-                root,
-                classFigure);
+            CharacterMakeClassInfoBindings classInfo =
+                BuildNativeClassInfo(
+                    root,
+                    classFigures[0]);
 
             Button cancel =
                 CreateLegacyRedButton(
@@ -888,6 +912,12 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 254f
             };
 
+            var faceHighlights =
+                new Image[5];
+
+            var hairHighlights =
+                new Image[5];
+
             for (int variant = 0;
                  variant < 5;
                  variant++)
@@ -925,6 +955,24 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                         hairButton.onClick,
                         controller.SelectHair,
                         variant);
+
+                faceHighlights[variant] =
+                    CreateSelectionHighlight(
+                        "FaceHighlight_" + variant,
+                        appearancePanel,
+                        new Vector2(
+                            appearanceColumns[variant],
+                            48f),
+                        new Vector2(56f, 84f));
+
+                hairHighlights[variant] =
+                    CreateSelectionHighlight(
+                        "HairHighlight_" + variant,
+                        appearancePanel,
+                        new Vector2(
+                            appearanceColumns[variant],
+                            152f),
+                        new Vector2(56f, 84f));
             }
 
             LegacyCharacterMakeTabController tabs =
@@ -970,11 +1018,38 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 0,
                 0,
                 0);
+
+            LegacyCharacterMakeVisualController visualController =
+                root.gameObject.AddComponent<
+                    LegacyCharacterMakeVisualController>();
+
+            visualController.Bind(
+                controller,
+                classVisuals,
+                classLabelTexts,
+                maleVisual,
+                femaleVisual,
+                classInfo.Bars,
+                classFigures,
+                classInfo.WeaponIcons,
+                classInfo.WeaponTexts,
+                LoadWeaponTextures(true),
+                LoadWeaponTextures(false),
+                explanationBody,
+                faceHighlights,
+                hairHighlights);
         }
 
-        private static void BuildNativeFighterClassInfo(
+        private sealed class CharacterMakeClassInfoBindings
+        {
+            public RawImage Bars;
+            public RawImage[] WeaponIcons;
+            public RawImage[] WeaponTexts;
+        }
+
+        private static CharacterMakeClassInfoBindings BuildNativeClassInfo(
             RectTransform root,
-            Texture2D fighterBars)
+            Texture2D initialBars)
         {
             CreateLegacyTopLeftText(
                 "WeaponHeader",
@@ -986,27 +1061,10 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 new Color(1f, 0.86f, 0.12f, 1f),
                 TextAnchor.MiddleCenter);
 
-            string[] iconKeys =
-            {
-                "character.make.weapon.oneHandSword.icon",
-                "character.make.weapon.twoHandSword.icon",
-                "character.make.weapon.dualSword.icon",
-                "character.make.weapon.spear.icon",
-                "character.make.weapon.oneHandBlunt.icon",
-                "character.make.weapon.twoHandBlunt.icon",
-                "character.make.weapon.shield.icon"
-            };
-
-            string[] labelKeys =
-            {
-                "character.make.weapon.oneHandSword.text",
-                "character.make.weapon.twoHandSword.text",
-                "character.make.weapon.dualSword.text",
-                "character.make.weapon.spear.text",
-                "character.make.weapon.oneHandBlunt.text",
-                "character.make.weapon.twoHandBlunt.text",
-                "character.make.weapon.shield.text"
-            };
+            LegacyCharacterWeaponKind[] initialWeapons =
+                LegacyCharacterClassVisualCore.ResolveWeapons(
+                    0,
+                    0);
 
             Vector2[] iconPositions =
             {
@@ -1019,42 +1077,47 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 new Vector2(953f, 177f)
             };
 
-            for (int i = 0;
-                 i < iconKeys.Length;
-                 i++)
+            Texture2D[] allIcons =
+                LoadWeaponTextures(true);
+
+            Texture2D[] allTexts =
+                LoadWeaponTextures(false);
+
+            var icons =
+                new RawImage[7];
+
+            var texts =
+                new RawImage[7];
+
+            for (int i = 0; i < icons.Length; i++)
             {
+                int weapon =
+                    (int)initialWeapons[i];
+
                 Texture2D icon =
-                    RequireCharacterMakeTextureByKey(
-                        iconKeys[i]);
+                    allIcons[weapon];
 
                 Texture2D label =
-                    RequireCharacterMakeTextureByKey(
-                        labelKeys[i]);
+                    allTexts[weapon];
 
-                CreateLegacyTextureLayer(
-                    "WeaponIcon_" + i,
-                    root,
-                    icon,
-                    iconPositions[i],
-                    new Vector2(64f, 64f),
-                    new Rect(
-                        0f,
-                        0f,
-                        icon.width,
-                        icon.height));
+                icons[i] =
+                    CreateLegacyTextureLayer(
+                        "WeaponIcon_" + i,
+                        root,
+                        icon,
+                        iconPositions[i],
+                        new Vector2(64f, 64f),
+                        new Rect(0f, 0f, icon.width, icon.height));
 
-                CreateLegacyTextureLayer(
-                    "WeaponText_" + i,
-                    root,
-                    label,
-                    iconPositions[i] +
-                    new Vector2(-32f, 49f),
-                    new Vector2(128f, 32f),
-                    new Rect(
-                        0f,
-                        0f,
-                        label.width,
-                        label.height));
+                texts[i] =
+                    CreateLegacyTextureLayer(
+                        "WeaponText_" + i,
+                        root,
+                        label,
+                        iconPositions[i] +
+                        new Vector2(-32f, 49f),
+                        new Vector2(128f, 32f),
+                        new Rect(0f, 0f, label.width, label.height));
             }
 
             CreateLegacyTopLeftText(
@@ -1067,17 +1130,18 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 new Color(1f, 0.86f, 0.12f, 1f),
                 TextAnchor.MiddleCenter);
 
-            CreateLegacyTextureLayer(
-                "FighterBars",
-                root,
-                fighterBars,
-                new Vector2(762f, 323f),
-                new Vector2(256f, 128f),
-                new Rect(
-                    0f,
-                    0f,
-                    fighterBars.width,
-                    fighterBars.height));
+            RawImage bars =
+                CreateLegacyTextureLayer(
+                    "ClassBars",
+                    root,
+                    initialBars,
+                    new Vector2(762f, 323f),
+                    new Vector2(256f, 128f),
+                    new Rect(
+                        0f,
+                        0f,
+                        initialBars.width,
+                        initialBars.height));
 
             Texture2D soloParty =
                 RequireCharacterMakeTextureByKey(
@@ -1093,11 +1157,7 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 soloParty,
                 new Vector2(945f, 331f),
                 new Vector2(64f, 64f),
-                new Rect(
-                    0f,
-                    0f,
-                    soloParty.width,
-                    soloParty.height));
+                new Rect(0f, 0f, soloParty.width, soloParty.height));
 
             CreateLegacyTextureLayer(
                 "AtkDefText",
@@ -1105,11 +1165,84 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 atkDef,
                 new Vector2(945f, 405f),
                 new Vector2(64f, 64f),
-                new Rect(
-                    0f,
-                    0f,
-                    atkDef.width,
-                    atkDef.height));
+                new Rect(0f, 0f, atkDef.width, atkDef.height));
+
+            return new CharacterMakeClassInfoBindings
+            {
+                Bars = bars,
+                WeaponIcons = icons,
+                WeaponTexts = texts
+            };
+        }
+
+        private static Texture2D[] LoadWeaponTextures(
+            bool icon)
+        {
+            string suffix =
+                icon
+                    ? ".icon"
+                    : ".text";
+
+            string[] names =
+            {
+                "oneHandSword",
+                "twoHandSword",
+                "dualSword",
+                "spear",
+                "oneHandBlunt",
+                "twoHandBlunt",
+                "shield",
+                "oneHandAxe",
+                "twoHandAxe",
+                "dualAxe",
+                "reversedSword",
+                "dagger",
+                "knuckle",
+                "bow",
+                "crossbow",
+                "throwingWeapon",
+                "staff"
+            };
+
+            Texture2D[] result =
+                new Texture2D[names.Length];
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                result[i] =
+                    RequireCharacterMakeTextureByKey(
+                        "character.make.weapon." +
+                        names[i] +
+                        suffix);
+            }
+
+            return result;
+        }
+
+        private static Image CreateSelectionHighlight(
+            string name,
+            RectTransform parent,
+            Vector2 topLeft,
+            Vector2 size)
+        {
+            RectTransform rect =
+                CreateRect(
+                    name,
+                    parent,
+                    new Vector2(0f, 1f),
+                    new Vector2(0f, 1f),
+                    size,
+                    new Vector2(topLeft.x, -topLeft.y),
+                    new Vector2(0f, 1f));
+
+            Image image =
+                rect.gameObject.AddComponent<Image>();
+
+            image.color =
+                new Color(1f, 1f, 1f, 0.035f);
+
+            image.raycastTarget = false;
+            return image;
         }
 
         private static Texture2D RequireCharacterMakeTextureByKey(

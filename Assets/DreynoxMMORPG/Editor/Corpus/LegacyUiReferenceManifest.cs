@@ -69,6 +69,16 @@ namespace Dreynox.Mmorpg.Editor.Corpus
                     "DATA_Español/interface/CharacterMake/classinfo/bg.tga",
                 ["character.make.classInfo.fighterBars"] =
                     "DATA_Español/interface/CharacterMake/classinfo/fighter_worrior.tga",
+                ["character.make.classInfo.defenderBars"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/defender_guardian.tga",
+                ["character.make.classInfo.priestBars"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/priest_oracle.tga",
+                ["character.make.classInfo.rangerBars"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/ranger_assassin.tga",
+                ["character.make.classInfo.archerBars"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/archer_hunter.tga",
+                ["character.make.classInfo.mageBars"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/mage_pagan.tga",
                 ["character.make.class.fighter"] =
                     "DATA_Español/interface/CharacterMake/button/fighter_worrior.tga",
                 ["character.make.class.defender"] =
@@ -114,6 +124,47 @@ namespace Dreynox.Mmorpg.Editor.Corpus
                     "DATA_Español/interface/CharacterMake/classinfo/icon_shield.tga",
                 ["character.make.weapon.shield.text"] =
                     "DATA_Español/interface/CharacterMake/classinfo/text/icon_shield_usa.tga",
+
+                ["character.make.weapon.oneHandAxe.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_onehandedaxe.tga",
+                ["character.make.weapon.oneHandAxe.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_onehandedaxe_usa.tga",
+                ["character.make.weapon.twoHandAxe.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_twohandedaxe.tga",
+                ["character.make.weapon.twoHandAxe.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_twohandedaxe_usa.tga",
+                ["character.make.weapon.dualAxe.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_dualwieldaxe.tga",
+                ["character.make.weapon.dualAxe.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_dualwieldaxe_usa.tga",
+                ["character.make.weapon.reversedSword.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_reversedsword.tga",
+                ["character.make.weapon.reversedSword.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_reversedsword_usa.tga",
+                ["character.make.weapon.dagger.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_dagger.tga",
+                ["character.make.weapon.dagger.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_dagger_usa.tga",
+                ["character.make.weapon.knuckle.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_knuckle.tga",
+                ["character.make.weapon.knuckle.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_knuckle_usa.tga",
+                ["character.make.weapon.bow.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_bow.tga",
+                ["character.make.weapon.bow.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_bow_usa.tga",
+                ["character.make.weapon.crossbow.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_crossbow.tga",
+                ["character.make.weapon.crossbow.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_crossbow_usa.tga",
+                ["character.make.weapon.throwingWeapon.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_throwingweapon.tga",
+                ["character.make.weapon.throwingWeapon.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_throwingweapon_usa.tga",
+                ["character.make.weapon.staff.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_staff.tga",
+                ["character.make.weapon.staff.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_staff_usa.tga",
                 ["character.make.classInfo.soloPartyText"] =
                     "DATA_Español/interface/CharacterMake/classinfo/text/info_bg01_usa.tga",
                 ["character.make.classInfo.atkDefText"] =
