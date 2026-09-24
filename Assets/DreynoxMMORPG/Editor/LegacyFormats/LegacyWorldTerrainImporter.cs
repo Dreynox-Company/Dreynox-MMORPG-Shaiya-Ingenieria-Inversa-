@@ -368,6 +368,18 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 actor.transform.position +
                 new Vector3(0f, 3f, -6.5f);
 
+            LegacyWorldGrassRuntime grassRuntime =
+                LegacyGrassBatchBuilder.Create(
+                    corpus,
+                    wld.Grass,
+                    actor.transform,
+                    camera);
+
+            int grassInstances =
+                grassRuntime != null
+                    ? grassRuntime.LogicalPlacementCount
+                    : 0;
+
             CreateLighting();
 
             LegacyWorldEnvironmentBuildResult environment =
@@ -410,6 +422,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 buildingInstances + " buildings, " +
                 shapeInstances + " shapes, " +
                 treeInstances + " trees, " +
+                grassInstances + " GPU-instanced grass placements, " +
                 worldEffectPlacements + " WLD effect placements, water=" +
                 (waterSurface != null
                     ? waterSurface.FrameCount + " WTR frames / tile " +
