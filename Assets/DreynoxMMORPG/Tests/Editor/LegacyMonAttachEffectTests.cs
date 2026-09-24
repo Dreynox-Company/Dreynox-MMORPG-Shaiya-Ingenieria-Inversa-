@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Dreynox.Mmorpg.Editor.Corpus;
 using Dreynox.Mmorpg.Editor.LegacyFormats;
 using Dreynox.Mmorpg.Vfx;
