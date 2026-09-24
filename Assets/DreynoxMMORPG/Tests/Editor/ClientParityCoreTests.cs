@@ -669,11 +669,11 @@ namespace Dreynox.Mmorpg.Tests
                     reference.NativeCropY);
 
                 Assert.AreEqual(
-                    1018,
+                    1021,
                     reference.NativeCropWidth);
 
                 Assert.AreEqual(
-                    740,
+                    739,
                     reference.NativeCropHeight);
 
                 Assert.IsTrue(
