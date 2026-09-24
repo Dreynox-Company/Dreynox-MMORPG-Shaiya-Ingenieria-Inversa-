@@ -202,6 +202,100 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 data;
         }
 
+        public static int AppendSceneLightmaps(
+            IReadOnlyList<Texture2D> textures)
+        {
+            LightmapData[] existing =
+                LightmapSettings.lightmaps ??
+                Array.Empty<LightmapData>();
+
+            int offset =
+                existing.Length;
+
+            if (textures == null ||
+                textures.Count == 0)
+                return offset;
+
+            LightmapData[] combined =
+                new LightmapData[
+                    existing.Length +
+                    textures.Count];
+
+            Array.Copy(
+                existing,
+                combined,
+                existing.Length);
+
+            for (int i = 0;
+                 i < textures.Count;
+                 i++)
+            {
+                if (textures[i] == null)
+                {
+                    throw new InvalidDataException(
+                        "DG lightmap " +
+                        i +
+                        " is null.");
+                }
+
+                combined[offset + i] =
+                    new LightmapData
+                    {
+                        lightmapColor =
+                            textures[i]
+                    };
+            }
+
+            LightmapSettings.lightmapsMode =
+                LightmapsMode.NonDirectional;
+
+            LightmapSettings.lightmaps =
+                combined;
+
+            return offset;
+        }
+
+        public static void OffsetInstanceLightmapIndices(
+            GameObject instance,
+            int offset,
+            int localLightmapCount)
+        {
+            if (instance == null)
+                throw new ArgumentNullException(
+                    nameof(instance));
+
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(
+                    nameof(offset));
+
+            if (localLightmapCount < 0)
+                throw new ArgumentOutOfRangeException(
+                    nameof(localLightmapCount));
+
+            MeshRenderer[] renderers =
+                instance.GetComponentsInChildren<
+                    MeshRenderer>(
+                        true);
+
+            for (int i = 0;
+                 i < renderers.Length;
+                 i++)
+            {
+                int local =
+                    renderers[i]
+                        .lightmapIndex;
+
+                if (local < 0 ||
+                    local >=
+                        localLightmapCount)
+                    continue;
+
+                renderers[i].lightmapIndex =
+                    offset +
+                    local;
+            }
+        }
+
         private static void BuildNode(
             LegacyDgNode node,
             Transform parent,
