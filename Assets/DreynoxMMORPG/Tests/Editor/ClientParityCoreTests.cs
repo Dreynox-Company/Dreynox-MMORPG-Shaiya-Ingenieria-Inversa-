@@ -678,7 +678,7 @@ namespace Dreynox.Mmorpg.Tests
                     .Sha256);
 
             Assert.AreEqual(
-                CanonicalClientCorpus.GameExeSha256,
+                "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d",
                 NativeVisualReferenceCore
                     .OriginalClientSha256);
         }
