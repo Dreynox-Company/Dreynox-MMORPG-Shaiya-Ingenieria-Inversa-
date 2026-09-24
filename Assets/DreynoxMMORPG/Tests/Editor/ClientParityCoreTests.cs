@@ -699,5 +699,61 @@ namespace Dreynox.Mmorpg.Tests
                     .OriginalClientSha256);
         }
 
+        [Test]
+        public void VaniFrameTimingUsesObservedMillisecondIntervals()
+        {
+            Assert.AreEqual(
+                0.066,
+                LegacyVaniAnimationCore.FrameDurationSeconds(66),
+                0.0000001);
+
+            Assert.AreEqual(
+                1.056,
+                LegacyVaniAnimationCore.CycleSeconds(16, 66),
+                0.0000001);
+
+            Assert.AreEqual(
+                0,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.065,
+                    16,
+                    66));
+
+            Assert.AreEqual(
+                1,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.066,
+                    16,
+                    66));
+
+            Assert.AreEqual(
+                15,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.055,
+                    16,
+                    66));
+
+            Assert.AreEqual(
+                0,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.056,
+                    16,
+                    66));
+
+            Assert.AreEqual(
+                30,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.999,
+                    61,
+                    33));
+
+            Assert.AreEqual(
+                10,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.0,
+                    21,
+                    100));
+        }
+
     }
 }
