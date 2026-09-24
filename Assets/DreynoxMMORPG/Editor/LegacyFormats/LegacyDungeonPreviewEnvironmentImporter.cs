@@ -197,7 +197,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     0.5f);
 
             LegacyWldEffectPlacement bestEffect =
-                null;
+                default;
+
+            bool hasBestEffect =
+                false;
 
             float bestEffectDistance =
                 float.PositiveInfinity;
@@ -230,10 +233,13 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
                     bestEffect =
                         effect;
+
+                    hasBestEffect =
+                        true;
                 }
             }
 
-            if (bestEffect != null)
+            if (hasBestEffect)
             {
                 source =
                     "Login.wld effect sequence 0";
