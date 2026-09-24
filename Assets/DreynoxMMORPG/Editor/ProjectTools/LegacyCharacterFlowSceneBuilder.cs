@@ -42,9 +42,6 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             LegacyCharacterImporter.ImportCanonicalHumanMale003();
             EnsureGeneratedSceneFolder();
 
-            CanonicalClientCorpus corpus =
-                RequireCanonicalCorpus();
-
             Scene scene =
                 EditorSceneManager.NewScene(
                     NewSceneSetup.EmptyScene,
@@ -52,35 +49,26 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             CreateEventSystem();
 
-            LegacyDungeonPreviewBuildResult environment =
-                LegacyDungeonPreviewEnvironmentImporter
-                    .CreateCanonicalLogin(
-                        corpus);
-
-            Vector3 anchor =
-                environment.PreviewAnchor;
-
             Camera camera =
                 CreateCamera(
-                    anchor +
-                    new Vector3(
-                        0f,
-                        1.55f,
-                        -6.2f),
-                    anchor +
-                    new Vector3(
-                        0.75f,
-                        1.0f,
-                        0f),
+                    new Vector3(0f, 1.55f, -6.2f),
+                    new Vector3(0.75f, 1.0f, 0f),
                     35f);
+
+            Texture2D background =
+                LegacyUiAssetImporter
+                    .LoadCharacterSelectTexture(
+                        "selectbg.tga");
+
+            CreateBackdrop(
+                camera,
+                background,
+                "CharacterSelect_Backdrop",
+                30f);
 
             GameObject actor =
                 InstantiateCanonicalActor(
-                    anchor +
-                    new Vector3(
-                        0.85f,
-                        0f,
-                        0f),
+                    new Vector3(0.85f, 0f, 0f),
                     Quaternion.Euler(
                         0f,
                         180f,
@@ -100,13 +88,6 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             SemanticAnimationPlayer animation =
                 actor.GetComponent<SemanticAnimationPlayer>();
-
-            int loginEffects =
-                LegacyDungeonPreviewEnvironmentImporter
-                    .AttachRuntimeEffects(
-                        corpus,
-                        environment,
-                        actor.transform);
 
             AddSelectionLighting();
 
@@ -135,13 +116,7 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             Debug.Log(
                 "Dreynox MMORPG: canonical CharacterSelect scene generated at " +
                 CharacterSelectScenePath +
-                " · DG meshes=" +
-                environment.Dungeon.Source.MeshCount +
-                " · lightmaps=" +
-                environment.Dungeon.Source.LightmapCount +
-                " · login EFT placements=" +
-                loginEffects +
-                ".");
+                " · selectbg.tga parity backdrop active.");
         }
 
         [MenuItem(
@@ -739,6 +714,9 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
             selection.color =
                 Color.clear;
 
+            selection.raycastTarget =
+                false;
+
             Text status =
                 CreateText(
                     "Status",
@@ -749,6 +727,9 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             status.color =
                 Color.clear;
+
+            status.raycastTarget =
+                false;
 
             controller.Bind(
                 name,
@@ -1053,6 +1034,9 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
 
             text.color =
                 color;
+
+            text.raycastTarget =
+                false;
 
             text.horizontalOverflow =
                 HorizontalWrapMode.Wrap;
