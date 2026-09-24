@@ -147,7 +147,67 @@ Después abre una nueva terminal y verifica:
 
         Invoke-Checked -Executable $UnityCli.Source -Arguments @("--version") -Description "Unity CLI version"
         Invoke-Checked -Executable $UnityCli.Source -Arguments @("license", "status") -Description "Unity license status"
-        Invoke-Checked -Executable $UnityCli.Source -Arguments @("doctor", "--ci") -Description "Unity CI doctor"
+
+        # unity doctor --ci also checks cloud reachability. A transient failure of
+        # services.api.unity.com must not invalidate a cached named-user
+        # entitlement that was already confirmed above. Retry first; then allow
+        # exactly one degraded condition: NETWORK_UNREACHABLE and no other failed
+        # doctor checks. Any other doctor failure remains fatal.
+        $doctorSucceeded = $false
+        $doctorOutput = @()
+        $doctorExitCode = 0
+
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            Write-Host "::group::Unity CI doctor (attempt $attempt/3)"
+            try {
+                $doctorOutput = @(& $UnityCli.Source doctor --ci 2>&1)
+                $doctorExitCode = $LASTEXITCODE
+                $doctorOutput | ForEach-Object { Write-Host $_ }
+            }
+            finally {
+                Write-Host "::endgroup::"
+            }
+
+            if ($doctorExitCode -eq 0) {
+                $doctorSucceeded = $true
+                break
+            }
+
+            if ($attempt -lt 3) {
+                Write-Warning "Unity CI doctor devolvió $doctorExitCode; reintentando por posible fallo transitorio de red."
+                Start-Sleep -Seconds (3 * $attempt)
+            }
+        }
+
+        if (-not $doctorSucceeded) {
+            $failedChecks = @(
+                $doctorOutput |
+                    Where-Object { [string]$_ -match "check\.[^\s]+\s+fail\s+" }
+            )
+
+            $nonNetworkFailures = @(
+                $failedChecks |
+                    Where-Object {
+                        [string]$_ -notmatch "check\.network\s+fail\s+NETWORK_UNREACHABLE"
+                    }
+            )
+
+            $licensePassed = [bool](
+                $doctorOutput |
+                    Where-Object { [string]$_ -match "check\.license\s+pass\s+LICENSE_OK" } |
+                    Select-Object -First 1
+            )
+
+            if ($failedChecks.Count -gt 0 -and
+                $nonNetworkFailures.Count -eq 0 -and
+                $licensePassed) {
+                Write-Warning "Unity doctor no pudo alcanzar services.api.unity.com, pero el entitlement local está válido. Se continúa en modo offline/degradado; Unity tests/build decidirán si falta algún recurso de red."
+            }
+            else {
+                throw "Unity CI doctor falló con código $doctorExitCode y contiene fallos distintos de NETWORK_UNREACHABLE."
+            }
+        }
+
         break
     }
 
