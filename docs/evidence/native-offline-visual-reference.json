@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "package": {
+    "file": "Shaiya_Offline_Nativo.zip",
+    "sha256": "983b8de803f69dac176231156acfae8da20c28c0d3004a909acfac896558e848",
+    "bytes": 181477343
+  },
+  "client": {
+    "path": "cliente/game.exe",
+    "bytes": 5352488,
+    "sha256": "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d"
+  },
+  "diagnosticCaptureClient": {
+    "sha256": "32232a8e3e176c32ac75ad357d1f70ccf8ccadc7f223384866afdd2c9e6282df",
+    "changedOffset": "0x10A084",
+    "change": "75 to EB: proceed after failed sound initialization on a headless Windows runner",
+    "offlineLoginPatch": false,
+    "gameplaySemanticsChanged": false
+  },
+  "launchers": {
+    "game_offline.exe": {
+      "bytes": 1357824,
+      "sha256": "bea860e86f3023a0d4177417bc49342547693369ff1bb3ddcf12c669a43e06ad"
+    },
+    "Jugar_Offline.exe": {
+      "bytes": 1357824,
+      "sha256": "bea860e86f3023a0d4177417bc49342547693369ff1bb3ddcf12c669a43e06ad"
+    }
+  },
+  "nativeScreenshots": [
+    {
+      "scenarioId": "server-list",
+      "file": "01-server-list.png",
+      "width": 1024,
+      "height": 768,
+      "sha256": "533f6cd8bf684ff18d46cc188c9bfbd981e684e0946cd2730839ab0970fda72d"
+    },
+    {
+      "scenarioId": "after-faction",
+      "file": "04-after-faction.png",
+      "width": 1024,
+      "height": 768,
+      "sha256": "b40064d95f1c60ab2e5ce8a6340a6679c6bec2712dba35eaf9a512092f6b33aa"
+    },
+    {
+      "scenarioId": "character-editor",
+      "file": "05-character-editor.png",
+      "width": 1024,
+      "height": 768,
+      "sha256": "2fd2807d305f5ae589f30232ac31c52a12f9caef66ed1b674ca6405a607f5549"
+    },
+    {
+      "scenarioId": "mode-selected",
+      "file": "06c-mode-selected.png",
+      "width": 1024,
+      "height": 768,
+      "sha256": "e8ddd8f935f05e6dc101a1b5dafdbffaf233312a747fd5aecffd05152f47df0a"
+    },
+    {
+      "scenarioId": "character-selection",
+      "file": "08-character-selection.png",
+      "width": 1024,
+      "height": 768,
+      "sha256": "64d80b94bcfd41aef6b3c44971275c4b166bde416e5946ba6d9b4f0e26ae74fd"
+    },
+    {
+      "scenarioId": "world-entry",
+      "file": "09-world-entry.png",
+      "width": 1024,
+      "height": 768,
+      "sha256": "7759bca4d47ba7cbe22ed2636b0a39535d359eca40dc786d076dba928e87842b"
+    },
+    {
+      "scenarioId": "world-loaded",
+      "file": "10-world-loaded.png",
+      "width": 1024,
+      "height": 768,
+      "sha256": "c19cb5f06154bf6eacb029b08be7f6762bd9a002c044ff170363a9dfeadee6a0"
+    },
+    {
+      "scenarioId": "after-movement",
+      "file": "11-after-movement.png",
+      "width": 1024,
+      "height": 768,
+      "sha256": "8e6592c871047643c6377498194fab98d9de7e46b0f4e5117885f9859fc32757"
+    }
+  ],
+  "network": {
+    "verifiedLoopbackOnly": true,
+    "loginPort": 30800,
+    "worldPort": 30810
+  },
+  "nativeCreatedCharacter": {
+    "name": "DreynoxLocal",
+    "level": 1,
+    "map": 1,
+    "x": 580,
+    "y": 78,
+    "z": 1760,
+    "mode": 2
+  }
+}
