@@ -19,6 +19,10 @@ namespace Dreynox.Mmorpg.UI
         [SerializeField] private Texture[] weaponIconTextures = new Texture[17];
         [SerializeField] private Texture[] weaponTextTextures = new Texture[17];
         [SerializeField] private Text explanationBody;
+        [SerializeField] private RawImage[] faceThumbnails = new RawImage[5];
+        [SerializeField] private RawImage[] hairThumbnails = new RawImage[5];
+        [SerializeField] private Texture[] faceThumbnailTextures = new Texture[40];
+        [SerializeField] private Texture[] hairThumbnailTextures = new Texture[40];
         [SerializeField] private Image[] faceHighlights = new Image[5];
         [SerializeField] private Image[] hairHighlights = new Image[5];
 
@@ -37,6 +41,10 @@ namespace Dreynox.Mmorpg.UI
             Texture[] allWeaponIcons,
             Texture[] allWeaponTexts,
             Text explanation,
+            RawImage[] faceImages,
+            RawImage[] hairImages,
+            Texture[] allFaceTextures,
+            Texture[] allHairTextures,
             Image[] faces,
             Image[] hairs)
         {
@@ -57,6 +65,10 @@ namespace Dreynox.Mmorpg.UI
             weaponIconTextures = ValidateArray(allWeaponIcons, 17, nameof(allWeaponIcons));
             weaponTextTextures = ValidateArray(allWeaponTexts, 17, nameof(allWeaponTexts));
             explanationBody = explanation ?? throw new ArgumentNullException(nameof(explanation));
+            faceThumbnails = ValidateArray(faceImages, 5, nameof(faceImages));
+            hairThumbnails = ValidateArray(hairImages, 5, nameof(hairImages));
+            faceThumbnailTextures = ValidateArray(allFaceTextures, 40, nameof(allFaceTextures));
+            hairThumbnailTextures = ValidateArray(allHairTextures, 40, nameof(allHairTextures));
             faceHighlights = ValidateArray(faces, 5, nameof(faces));
             hairHighlights = ValidateArray(hairs, 5, nameof(hairs));
 
@@ -182,8 +194,28 @@ namespace Dreynox.Mmorpg.UI
 
         private void RefreshAppearance()
         {
-            for (int i = 0; i < 5; i++)
+            int baseIndex =
+                LegacyCharacterAppearanceUiCore
+                    .ResolveGroupIndex(
+                        screen.Family,
+                        screen.Sex) *
+                LegacyCharacterAppearanceUiCore
+                    .VariantCount;
+
+            for (int i = 0;
+                 i <
+                    LegacyCharacterAppearanceUiCore
+                        .VariantCount;
+                 i++)
             {
+                faceThumbnails[i].texture =
+                    faceThumbnailTextures[
+                        baseIndex + i];
+
+                hairThumbnails[i].texture =
+                    hairThumbnailTextures[
+                        baseIndex + i];
+
                 SetHighlight(
                     faceHighlights[i],
                     i == screen.Face);

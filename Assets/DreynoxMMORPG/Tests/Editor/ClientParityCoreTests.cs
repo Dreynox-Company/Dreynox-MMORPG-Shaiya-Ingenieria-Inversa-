@@ -1084,5 +1084,75 @@ namespace Dreynox.Mmorpg.Tests
                 LegacyCharacterClassVisualCore.Resolve(3, 4).DisplayJob);
         }
 
+        [Test]
+        public void CharacterAppearanceUiMapsEightNativeGroups()
+        {
+            string[] expected =
+            {
+                "hum",
+                "huf",
+                "elm",
+                "elf",
+                "dem",
+                "def",
+                "vim",
+                "vif"
+            };
+
+            for (int family = 0;
+                 family < 4;
+                 family++)
+            {
+                for (int sex = 0;
+                     sex < 2;
+                     sex++)
+                {
+                    int index =
+                        family * 2 +
+                        sex;
+
+                    Assert.AreEqual(
+                        expected[index],
+                        LegacyCharacterAppearanceUiCore
+                            .ResolveGroupKey(
+                                family,
+                                sex));
+
+                    Assert.AreEqual(
+                        index,
+                        LegacyCharacterAppearanceUiCore
+                            .ResolveGroupIndex(
+                                family,
+                                sex));
+
+                    Assert.AreEqual(
+                        index * 5 + 4,
+                        LegacyCharacterAppearanceUiCore
+                            .ResolveTextureIndex(
+                                family,
+                                sex,
+                                4));
+                }
+            }
+
+            Assert.AreEqual(
+                "create_appearance_hum_face01.tga",
+                LegacyCharacterAppearanceUiCore
+                    .ResolveThumbnailFileName(
+                        0,
+                        0,
+                        true,
+                        0));
+
+            Assert.AreEqual(
+                "create_appearance_vif_hair05.tga",
+                LegacyCharacterAppearanceUiCore
+                    .ResolveThumbnailFileName(
+                        3,
+                        1,
+                        false,
+                        4));
+        }
+
     }
 }

@@ -31,6 +31,16 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     17,
                     "WeaponText");
 
+            Texture2D[] faceTextures =
+                CreateTextures(
+                    40,
+                    "FaceThumbnail");
+
+            Texture2D[] hairTextures =
+                CreateTextures(
+                    40,
+                    "HairThumbnail");
+
             try
             {
                 LegacyCharacterMakeScreenController screen =
@@ -93,6 +103,22 @@ namespace Dreynox.Mmorpg.Tests.Editor
                         root,
                         "Explanation");
 
+                RawImage[] faceThumbnails =
+                    CreateRawImages(
+                        root,
+                        5,
+                        "FaceThumbnailSlot",
+                        64,
+                        64);
+
+                RawImage[] hairThumbnails =
+                    CreateRawImages(
+                        root,
+                        5,
+                        "HairThumbnailSlot",
+                        64,
+                        64);
+
                 Image[] faceHighlights =
                     CreateImages(
                         root,
@@ -130,6 +156,10 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     weaponIcons,
                     weaponTexts,
                     explanation,
+                    faceThumbnails,
+                    hairThumbnails,
+                    faceTextures,
+                    hairTextures,
                     faceHighlights,
                     hairHighlights);
 
@@ -146,6 +176,14 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     weaponIcons[
                         (int)LegacyCharacterWeaponKind.Shield],
                     weaponIconSlots[6].texture);
+
+                Assert.AreSame(
+                    faceTextures[0],
+                    faceThumbnails[0].texture);
+
+                Assert.AreSame(
+                    hairTextures[4],
+                    hairThumbnails[4].texture);
 
                 Assert.AreEqual(
                     "Fighter",
@@ -206,6 +244,15 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     weaponIconSlots[0].texture);
 
                 screen.SelectSex(1);
+
+                Assert.AreSame(
+                    faceTextures[15],
+                    faceThumbnails[0].texture);
+
+                Assert.AreSame(
+                    hairTextures[19],
+                    hairThumbnails[4].texture);
+
                 screen.SelectFace(4);
                 screen.SelectHair(3);
 
@@ -272,6 +319,14 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 AddTextures(
                     ownedTextures,
                     weaponTexts);
+
+                AddTextures(
+                    ownedTextures,
+                    faceTextures);
+
+                AddTextures(
+                    ownedTextures,
+                    hairTextures);
 
                 Object.DestroyImmediate(root);
 

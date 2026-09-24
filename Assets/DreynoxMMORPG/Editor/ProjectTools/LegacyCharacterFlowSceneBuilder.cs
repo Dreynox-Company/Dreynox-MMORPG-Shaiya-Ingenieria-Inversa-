@@ -913,6 +913,20 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 254f
             };
 
+            Texture2D[] allFaceThumbnails =
+                LoadAppearanceTextures(
+                    face: true);
+
+            Texture2D[] allHairThumbnails =
+                LoadAppearanceTextures(
+                    face: false);
+
+            var faceThumbnails =
+                new RawImage[5];
+
+            var hairThumbnails =
+                new RawImage[5];
+
             var faceHighlights =
                 new Image[5];
 
@@ -923,6 +937,40 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                  variant < 5;
                  variant++)
             {
+                faceThumbnails[variant] =
+                    CreateLegacyTextureLayer(
+                        "FaceThumbnail_" + variant,
+                        appearancePanel,
+                        allFaceThumbnails[variant],
+                        new Vector2(
+                            appearanceColumns[variant],
+                            48f),
+                        new Vector2(
+                            56f,
+                            56f),
+                        new Rect(
+                            0f,
+                            0f,
+                            64f,
+                            64f));
+
+                hairThumbnails[variant] =
+                    CreateLegacyTextureLayer(
+                        "HairThumbnail_" + variant,
+                        appearancePanel,
+                        allHairThumbnails[variant],
+                        new Vector2(
+                            appearanceColumns[variant],
+                            152f),
+                        new Vector2(
+                            56f,
+                            56f),
+                        new Rect(
+                            0f,
+                            0f,
+                            64f,
+                            64f));
+
                 Button faceButton =
                     CreateTransparentButton(
                         "FaceVariant_" + variant,
@@ -1037,6 +1085,10 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 LoadWeaponTextures(true),
                 LoadWeaponTextures(false),
                 explanationBody,
+                faceThumbnails,
+                hairThumbnails,
+                allFaceThumbnails,
+                allHairThumbnails,
                 faceHighlights,
                 hairHighlights);
         }
@@ -1174,6 +1226,63 @@ namespace Dreynox.Mmorpg.Editor.ProjectTools
                 WeaponIcons = icons,
                 WeaponTexts = texts
             };
+        }
+
+        private static Texture2D[] LoadAppearanceTextures(
+            bool face)
+        {
+            Texture2D[] result =
+                new Texture2D[
+                    LegacyCharacterAppearanceUiCore.GroupCount *
+                    LegacyCharacterAppearanceUiCore.VariantCount];
+
+            for (int family = 0;
+                 family < 4;
+                 family++)
+            {
+                for (int sex = 0;
+                     sex < 2;
+                     sex++)
+                {
+                    for (int variant = 0;
+                         variant <
+                            LegacyCharacterAppearanceUiCore.VariantCount;
+                         variant++)
+                    {
+                        int index =
+                            LegacyCharacterAppearanceUiCore
+                                .ResolveTextureIndex(
+                                    family,
+                                    sex,
+                                    variant);
+
+                        Texture2D texture =
+                            LegacyUiAssetImporter
+                                .LoadCharacterMakeAppearanceTexture(
+                                    family,
+                                    sex,
+                                    face,
+                                    variant);
+
+                        if (texture == null)
+                        {
+                            throw new InvalidOperationException(
+                                "Canonical CharacterMake appearance texture missing: " +
+                                LegacyCharacterAppearanceUiCore
+                                    .ResolveThumbnailFileName(
+                                        family,
+                                        sex,
+                                        face,
+                                        variant));
+                        }
+
+                        result[index] =
+                            texture;
+                    }
+                }
+            }
+
+            return result;
         }
 
         private static Texture2D[] LoadWeaponTextures(

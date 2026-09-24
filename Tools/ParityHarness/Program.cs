@@ -647,6 +647,32 @@ namespace Dreynox.Mmorpg.ParityHarness
                     LegacyCharacterWeaponKind.ThrowingWeapon,
                 "Archer and Hunter preserve faction-specific ranged weapons");
 
+            Check(
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(0, 0) == "hum" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(0, 1) == "huf" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(1, 0) == "elm" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(1, 1) == "elf" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(2, 0) == "dem" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(2, 1) == "def" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(3, 0) == "vim" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(3, 1) == "vif",
+                "CharacterMake appearance UI maps all eight native sex/family groups");
+
+            Check(
+                LegacyCharacterAppearanceUiCore.ResolveThumbnailFileName(
+                    0,
+                    0,
+                    true,
+                    0) ==
+                    "create_appearance_hum_face01.tga" &&
+                LegacyCharacterAppearanceUiCore.ResolveThumbnailFileName(
+                    3,
+                    1,
+                    false,
+                    4) ==
+                    "create_appearance_vif_hair05.tga",
+                "CharacterMake native appearance thumbnail names are deterministic");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }

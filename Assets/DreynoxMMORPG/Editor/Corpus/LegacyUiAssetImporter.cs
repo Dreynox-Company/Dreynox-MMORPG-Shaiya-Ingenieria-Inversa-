@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Dreynox.Mmorpg.ParityCore;
 using UnityEditor;
 using UnityEngine;
 
@@ -19,6 +20,9 @@ namespace Dreynox.Mmorpg.Editor.Corpus
 
         public const string CharacterMakeRoot =
             LocalRoot + "/Interface/CharacterMake";
+
+        public const string CharacterMakeAppearanceRoot =
+            CharacterMakeRoot + "/Appearance";
 
         private static readonly string[] LoginKeys =
         {
@@ -124,7 +128,11 @@ namespace Dreynox.Mmorpg.Editor.Corpus
         [MenuItem("Dreynox MMORPG/Client Parity/Import Canonical Character Make UI")]
         public static void ImportCanonicalCharacterMakeUi()
         {
-            ImportGroup(CharacterMakeRoot, CharacterMakeKeys);
+            ImportGroup(
+                CharacterMakeRoot,
+                CharacterMakeKeys);
+
+            ImportCharacterMakeAppearanceThumbnails();
         }
 
         public static Sprite LoadLoginSprite(string fileName)
@@ -155,6 +163,25 @@ namespace Dreynox.Mmorpg.Editor.Corpus
         public static Texture2D LoadCharacterMakeTexture(string fileName)
         {
             return LoadTexture(CharacterMakeRoot, fileName);
+        }
+
+        public static Texture2D LoadCharacterMakeAppearanceTexture(
+            int family,
+            int sex,
+            bool face,
+            int variant)
+        {
+            string fileName =
+                LegacyCharacterAppearanceUiCore
+                    .ResolveThumbnailFileName(
+                        family,
+                        sex,
+                        face,
+                        variant);
+
+            return LoadTexture(
+                CharacterMakeAppearanceRoot,
+                fileName);
         }
 
         public static Texture2D LoadCharacterMakeTextureByKey(string key)
@@ -213,6 +240,131 @@ namespace Dreynox.Mmorpg.Editor.Corpus
             }
 
             return current;
+        }
+
+        private static void ImportCharacterMakeAppearanceThumbnails()
+        {
+            CanonicalClientCorpus corpus =
+                CanonicalClientCorpus.FromStoredRoot();
+
+            if (corpus == null)
+            {
+                throw new InvalidOperationException(
+                    "No canonical corpus selected.");
+            }
+
+            CorpusValidationResult validation =
+                corpus.Validate();
+
+            if (!validation.IsCanonical)
+            {
+                throw new InvalidOperationException(
+                    "The selected corpus is not the canonical ps0032 baseline.");
+            }
+
+            string sourceRoot =
+                ResolveCaseInsensitive(
+                    corpus.RootPath,
+                    "DATA_Español/interface/CharacterMake/appearance");
+
+            if (!Directory.Exists(
+                    sourceRoot))
+            {
+                throw new DirectoryNotFoundException(
+                    "Canonical CharacterMake appearance folder missing: " +
+                    sourceRoot);
+            }
+
+            EnsureAssetFolder(
+                CharacterMakeAppearanceRoot);
+
+            for (int family = 0;
+                 family < 4;
+                 family++)
+            {
+                for (int sex = 0;
+                     sex < 2;
+                     sex++)
+                {
+                    for (int variant = 0;
+                         variant <
+                            LegacyCharacterAppearanceUiCore.VariantCount;
+                         variant++)
+                    {
+                        ImportAppearanceThumbnail(
+                            sourceRoot,
+                            family,
+                            sex,
+                            true,
+                            variant);
+
+                        ImportAppearanceThumbnail(
+                            sourceRoot,
+                            family,
+                            sex,
+                            false,
+                            variant);
+                    }
+                }
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+        }
+
+        private static void ImportAppearanceThumbnail(
+            string sourceRoot,
+            int family,
+            int sex,
+            bool face,
+            int variant)
+        {
+            string fileName =
+                LegacyCharacterAppearanceUiCore
+                    .ResolveThumbnailFileName(
+                        family,
+                        sex,
+                        face,
+                        variant);
+
+            string source =
+                ResolveCaseInsensitive(
+                    sourceRoot,
+                    fileName);
+
+            if (!File.Exists(
+                    source))
+            {
+                throw new FileNotFoundException(
+                    "Canonical CharacterMake appearance thumbnail missing: " +
+                    fileName,
+                    source);
+            }
+
+            string destination =
+                CharacterMakeAppearanceRoot +
+                "/" +
+                fileName.ToLowerInvariant();
+
+            string absoluteDestination =
+                Path.GetFullPath(
+                    destination);
+
+            Directory.CreateDirectory(
+                Path.GetDirectoryName(
+                    absoluteDestination));
+
+            File.Copy(
+                source,
+                absoluteDestination,
+                true);
+
+            AssetDatabase.ImportAsset(
+                destination,
+                ImportAssetOptions.ForceSynchronousImport);
+
+            ConfigureTexture(
+                destination);
         }
 
         private static void ImportGroup(
