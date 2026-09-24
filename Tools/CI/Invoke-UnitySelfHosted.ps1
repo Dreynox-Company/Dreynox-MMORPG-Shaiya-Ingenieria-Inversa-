@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("preflight", "test", "build", "canonical-build")]
+    [ValidateSet("preflight", "test", "build", "canonical-build", "visual-compare")]
     [string]$Task
 )
 
@@ -262,6 +262,39 @@ Después abre una nueva terminal y verifica:
         }
 
         Write-Host "Unity EditMode tests: OK"
+        break
+    }
+
+    "visual-compare" {
+        $BuildLogDir = Join-Path $RepoRoot "BuildLogs"
+        New-Item -ItemType Directory -Force -Path $BuildLogDir | Out-Null
+        $CompareLog = Join-Path $BuildLogDir "visual-parity-editor.log"
+
+        if ([string]::IsNullOrWhiteSpace($env:DREYNOX_NATIVE_REFERENCE_ROOT)) {
+            throw "DREYNOX_NATIVE_REFERENCE_ROOT no está configurado."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($env:DREYNOX_UNITY_CAPTURE_ROOT)) {
+            throw "DREYNOX_UNITY_CAPTURE_ROOT no está configurado."
+        }
+
+        Invoke-Checked -Executable $UnityEditor -Arguments @(
+            "-batchmode",
+            "-nographics",
+            "-projectPath", $RepoRoot,
+            "-executeMethod", "Dreynox.Mmorpg.Editor.Parity.NativeVisualParityBatch.RunFromEnvironment",
+            "-logFile", $CompareLog,
+            "-quit"
+        ) -Description "Unity native-vs-canonical visual parity compare"
+
+        $ReportPath = Join-Path $RepoRoot "Artifacts\Parity\Reports\native-vs-unity.json"
+
+        if (-not (Test-Path $ReportPath)) {
+            throw "Visual parity compare terminó sin generar $ReportPath."
+        }
+
+        Write-Host "Visual parity report: OK"
+        Get-Content $ReportPath | ForEach-Object { Write-Host $_ }
         break
     }
 
