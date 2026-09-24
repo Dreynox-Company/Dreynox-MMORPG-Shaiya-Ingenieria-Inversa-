@@ -158,6 +158,24 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 16,
                 wld.Effects.Count);
 
+            LegacyWldEffectPlacement centerEffect =
+                wld.Effects.Find(
+                    effect =>
+                        effect.EffectId == 0);
+
+            Assert.IsNotNull(
+                centerEffect);
+
+            Assert.AreEqual(
+                67.9536743f,
+                centerEffect.Position.x,
+                0.0001f);
+
+            Assert.AreEqual(
+                66.2740860f,
+                centerEffect.Position.z,
+                0.0001f);
+
             Assert.IsTrue(
                 wld.MapSize == 0 &&
                 wld.Resolution == 0 &&
