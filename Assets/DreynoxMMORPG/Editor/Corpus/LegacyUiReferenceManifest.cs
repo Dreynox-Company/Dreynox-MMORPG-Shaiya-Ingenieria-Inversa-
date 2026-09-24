@@ -58,6 +58,62 @@ namespace Dreynox.Mmorpg.Editor.Corpus
                 ["character.make.mode.ultimate"] =
                     "DATA_Español/interface/CharacterMake/ta_2d_mode_ultimate_normal.tga",
 
+                ["character.make.infoFrame"] =
+                    "DATA_Español/interface/CharacterMake/info.tga",
+                ["character.make.classInfo.background"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/bg.tga",
+                ["character.make.classInfo.fighterBars"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/fighter_worrior.tga",
+                ["character.make.class.fighter"] =
+                    "DATA_Español/interface/CharacterMake/button/fighter_worrior.tga",
+                ["character.make.class.defender"] =
+                    "DATA_Español/interface/CharacterMake/button/defender_guardian.tga",
+                ["character.make.class.priest"] =
+                    "DATA_Español/interface/CharacterMake/button/priest_oracle.tga",
+                ["character.make.class.ranger"] =
+                    "DATA_Español/interface/CharacterMake/button/ranger_assassin.tga",
+                ["character.make.class.archer"] =
+                    "DATA_Español/interface/CharacterMake/button/archer_hunter.tga",
+                ["character.make.class.mage"] =
+                    "DATA_Español/interface/CharacterMake/button/mage_pagan.tga",
+                ["character.make.sex.maleAtlas"] =
+                    "DATA_Español/interface/CharacterMake/button/sexm.tga",
+                ["character.make.sex.femaleAtlas"] =
+                    "DATA_Español/interface/CharacterMake/button/sexw.tga",
+
+                ["character.make.weapon.oneHandSword.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_onehandedsword.tga",
+                ["character.make.weapon.oneHandSword.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_onehandedsword_usa.tga",
+                ["character.make.weapon.twoHandSword.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_twohandedsword.tga",
+                ["character.make.weapon.twoHandSword.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_twohandedsword_usa.tga",
+                ["character.make.weapon.dualSword.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_dualwieldsword.tga",
+                ["character.make.weapon.dualSword.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_dualwieldsword_usa.tga",
+                ["character.make.weapon.spear.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_spear.tga",
+                ["character.make.weapon.spear.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_spear_usa.tga",
+                ["character.make.weapon.oneHandBlunt.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_onehandedblunt.tga",
+                ["character.make.weapon.oneHandBlunt.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_onehandedblunt_usa.tga",
+                ["character.make.weapon.twoHandBlunt.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_twohandedblunt.tga",
+                ["character.make.weapon.twoHandBlunt.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_twohandedblunt_usa.tga",
+                ["character.make.weapon.shield.icon"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/icon_shield.tga",
+                ["character.make.weapon.shield.text"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/icon_shield_usa.tga",
+                ["character.make.classInfo.soloPartyText"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/info_bg01_usa.tga",
+                ["character.make.classInfo.atkDefText"] =
+                    "DATA_Español/interface/CharacterMake/classinfo/text/info_bg02_usa.tga",
+
                 ["wing.position"] =
                     "DATA_Español/excelxml/wingposition.xml",
                 ["wing.mon"] =
