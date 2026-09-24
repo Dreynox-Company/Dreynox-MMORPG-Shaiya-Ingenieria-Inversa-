@@ -19,6 +19,9 @@ namespace Dreynox.Mmorpg.Editor.Build
         private const string CanonicalParityOutput =
             "Builds/WindowsCanonicalParity/DreynoxMmorpg-CanonicalParity.exe";
 
+        private const string CharacterParityOutput =
+            "Builds/WindowsCharacterParity/DreynoxMmorpg-CharacterParity.exe";
+
         private static readonly string[] ReleaseScenes =
         {
             "Assets/DreynoxMMORPG/Game/Scenes/Boot.unity",
@@ -31,6 +34,17 @@ namespace Dreynox.Mmorpg.Editor.Build
         {
             BuildParityLab(ParityOutput);
             EditorUtility.RevealInFinder(Path.GetFullPath("Builds/WindowsParity"));
+        }
+
+        [MenuItem("Dreynox MMORPG/Build/Windows x64/Character Parity")]
+        public static void BuildCharacterParityMenu()
+        {
+            BuildCharacterParityLab(
+                CharacterParityOutput);
+
+            EditorUtility.RevealInFinder(
+                Path.GetFullPath(
+                    "Builds/WindowsCharacterParity"));
         }
 
         [MenuItem("Dreynox MMORPG/Build/Windows x64/Canonical Parity")]
@@ -67,6 +81,12 @@ namespace Dreynox.Mmorpg.Editor.Build
             BuildClientRelease(ReleaseOutput);
         }
 
+        public static void BuildCharacterParityBatch()
+        {
+            BuildCharacterParityLab(
+                CharacterParityOutput);
+        }
+
         public static void BuildCanonicalParityBatch()
         {
             BuildCanonicalParityLab(
@@ -84,32 +104,38 @@ namespace Dreynox.Mmorpg.Editor.Build
                 "parity-lab");
         }
 
+        public static void BuildCharacterParityLab(
+            string outputPath)
+        {
+            CanonicalClientCorpus corpus =
+                RequireCanonicalCorpus(
+                    "Character parity");
+
+            LegacyCharacterFlowSceneBuilder.BuildCharacterSelect();
+            LegacyCharacterFlowSceneBuilder.BuildCharacterMake();
+
+            ConfigureIdentity();
+
+            PlayerSettings.SetScriptingBackend(
+                NamedBuildTarget.Standalone,
+                ScriptingImplementation.Mono2x);
+
+            Build(
+                new[]
+                {
+                    LegacyCharacterFlowSceneBuilder.CharacterSelectScenePath,
+                    LegacyCharacterFlowSceneBuilder.CharacterMakeScenePath
+                },
+                outputPath,
+                "character-parity");
+        }
+
         public static void BuildCanonicalParityLab(
             string outputPath)
         {
             CanonicalClientCorpus corpus =
-                CanonicalClientCorpus.FromStoredRoot();
-
-            if (corpus == null)
-            {
-                throw new BuildFailedException(
-                    "Canonical parity build requires " +
-                    CanonicalClientCorpus.CorpusRootEnvironmentVariable +
-                    " or a local canonical corpus selection.");
-            }
-
-            CorpusValidationResult validation =
-                corpus.Validate();
-
-            if (!validation.IsCanonical)
-            {
-                throw new BuildFailedException(
-                    "Canonical ps0032 corpus validation failed: " +
-                    string.Join(
-                        " | ",
-                        validation.errors.Concat(
-                            validation.missingFiles)));
-            }
+                RequireCanonicalCorpus(
+                    "Canonical parity");
 
             LegacyLoginSceneBuilder.Build();
             LegacyCharacterFlowSceneBuilder.BuildCharacterSelect();
@@ -132,6 +158,38 @@ namespace Dreynox.Mmorpg.Editor.Build
                 },
                 outputPath,
                 "canonical-parity");
+        }
+
+        private static CanonicalClientCorpus RequireCanonicalCorpus(
+            string buildLabel)
+        {
+            CanonicalClientCorpus corpus =
+                CanonicalClientCorpus.FromStoredRoot();
+
+            if (corpus == null)
+            {
+                throw new BuildFailedException(
+                    buildLabel +
+                    " build requires " +
+                    CanonicalClientCorpus.CorpusRootEnvironmentVariable +
+                    " or a local canonical corpus selection.");
+            }
+
+            CorpusValidationResult validation =
+                corpus.Validate();
+
+            if (!validation.IsCanonical)
+            {
+                throw new BuildFailedException(
+                    buildLabel +
+                    " ps0032 corpus validation failed: " +
+                    string.Join(
+                        " | ",
+                        validation.errors.Concat(
+                            validation.missingFiles)));
+            }
+
+            return corpus;
         }
 
         public static void BuildClientRelease(string outputPath)
