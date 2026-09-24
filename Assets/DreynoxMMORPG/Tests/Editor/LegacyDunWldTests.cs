@@ -126,6 +126,38 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 "login.EFT",
                 wld.EffectName);
 
+            Assert.AreEqual(
+                2,
+                wld.Shapes.Names.Count);
+
+            Assert.AreEqual(
+                2,
+                wld.Shapes.Coordinates.Count);
+
+            CollectionAssert.Contains(
+                wld.Shapes.Names,
+                "Dragon.SMOD");
+
+            CollectionAssert.Contains(
+                wld.Shapes.Names,
+                "Starlighting.SMOD");
+
+            Assert.AreEqual(
+                1,
+                wld.Grass.Names.Count);
+
+            Assert.AreEqual(
+                "login_A.SMOD",
+                wld.Grass.Names[0]);
+
+            Assert.AreEqual(
+                1,
+                wld.Grass.Coordinates.Count);
+
+            Assert.AreEqual(
+                16,
+                wld.Effects.Count);
+
             Assert.IsTrue(
                 wld.MapSize == 0 &&
                 wld.Resolution == 0 &&
