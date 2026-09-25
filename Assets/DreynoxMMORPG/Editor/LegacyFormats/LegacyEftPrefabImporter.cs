@@ -129,7 +129,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             if (!forceReimport)
             {
                 GameObject existing =
-                    AssetDatabase.LoadAssetAtPath<GameObject>(
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<GameObject>(
                         prefabPath);
 
                 if (existing != null)
@@ -201,10 +201,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                             meshName)) +
                     ".asset";
 
-                AssetDatabase.DeleteAsset(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(
                     meshAssetPath);
 
-                AssetDatabase.CreateAsset(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                     mesh,
                     meshAssetPath);
 
@@ -227,10 +227,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     meshIndex.ToString("D3") +
                     ".asset";
 
-                AssetDatabase.DeleteAsset(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(
                     clipPath);
 
-                AssetDatabase.CreateAsset(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                     clip,
                     clipPath);
 
@@ -387,16 +387,16 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     emitters,
                     sequences);
 
-                AssetDatabase.DeleteAsset(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(
                     prefabPath);
 
                 GameObject prefab =
-                    PrefabUtility.SaveAsPrefabAsset(
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAsPrefabAsset(
                         root,
                         prefabPath);
 
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAssets();
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.Refresh();
 
                 SessionCache[cacheKey] =
                     prefab;
@@ -689,7 +689,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 effectIndex.ToString("D3") +
                 ".asset";
 
-            AssetDatabase.DeleteAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(
                 atlasPath);
 
             if (sourceTextures.Count > 0)
@@ -724,7 +724,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     true,
                     false);
 
-                AssetDatabase.CreateAsset(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                     atlas,
                     atlasPath);
 
@@ -764,7 +764,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     sprite.name =
                         sourceLabels[i];
 
-                    AssetDatabase.AddObjectToAsset(
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.AddObjectToAsset(
                         sprite,
                         atlas);
 
@@ -775,7 +775,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 EditorUtility.SetDirty(
                     atlas);
 
-                AssetDatabase.SaveAssets();
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAssets();
             }
 
             Material material =
@@ -791,10 +791,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 effectIndex.ToString("D3") +
                 ".mat";
 
-            AssetDatabase.DeleteAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(
                 materialPath);
 
-            AssetDatabase.CreateAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                 material,
                 materialPath);
 

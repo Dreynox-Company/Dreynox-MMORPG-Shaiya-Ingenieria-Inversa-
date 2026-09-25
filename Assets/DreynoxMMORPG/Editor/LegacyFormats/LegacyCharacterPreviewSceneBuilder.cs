@@ -28,7 +28,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             LegacyCharacterImporter.ImportCanonicalHumanMale003();
 
             GameObject prefab =
-                AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<GameObject>(PrefabPath);
 
             if (prefab == null)
                 throw new System.InvalidOperationException(

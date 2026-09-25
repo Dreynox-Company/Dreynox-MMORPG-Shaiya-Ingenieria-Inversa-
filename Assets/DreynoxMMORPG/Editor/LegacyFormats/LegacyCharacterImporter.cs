@@ -128,9 +128,9 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 WriteAsset(catalog, OutputRoot + "/Animations/HumanMale003_Catalog.asset");
                 animation.Catalog = catalog;
                 string prefabPath = OutputRoot + "/Prefabs/HumanMale003_Canonical.prefab";
-                PrefabUtility.SaveAsPrefabAsset(actor, prefabPath);
-                AssetDatabase.SaveAssets();
-                Selection.activeObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAsPrefabAsset(actor, prefabPath);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAssets();
+                Selection.activeObject = Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<GameObject>(prefabPath);
                 Debug.Log("DREYNOX_CHARACTER_BODY_IMPORT_OK bones=" + bones.Length + " parts=6 clips=" + entries.Count);
             }
             finally { UnityEngine.Object.DestroyImmediate(actor); }
@@ -141,8 +141,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
         private static void WriteAsset(UnityEngine.Object value, string path)
         {
-            AssetDatabase.DeleteAsset(path);
-            AssetDatabase.CreateAsset(value, path);
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(path);
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(value, path);
         }
         private static void EnsureFolder(string path)
         {

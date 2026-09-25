@@ -20,7 +20,8 @@ namespace Dreynox.Mmorpg.Parity
             public string scope = "local-map0-integration-not-native-equivalence";
             public bool passed;
             public string failure;
-            public int activeMobs, logicalMobs, targetId, initialHealth, finalHealth, hits, attackAnimations;
+            public int activeMobs, logicalMobs, targetId, initialHealth, finalHealth, hits, attackAnimations, mapId, npcDialogues;
+            public string supportSurface;
             public string deathSemantic;
             public float walkedDistance, forwardDot, cameraFov;
             public Vector3 worldStart, walkEnd, combatStart, startCameraPosition, startCameraEuler;
@@ -54,7 +55,17 @@ namespace Dreynox.Mmorpg.Parity
             var animator=actor.GetComponent<SemanticAnimationPlayer>();
             if(animator==null || animator.Catalog==null || !animator.Catalog.TryGet("attack_1",out AnimationClip attack))
             { Finish("Authored attack animation missing.");yield break; }
+            var session=FindFirstObjectByType<NativeWorldSession>();
+            var worldHud=FindFirstObjectByType<NativeWorldHud>();
+            evidence.mapId=session!=null?session.MapId:0;
+            evidence.scope="local-map"+evidence.mapId+"-integration-not-native-equivalence";
             evidence.logicalMobs=streamer.LogicalSpawnCount;
+            if(session!=null && (actor.transform.position-session.AuthoredStart).sqrMagnitude>36f)
+            {Finish("Start position is not near the authored reference.");yield break;}
+            if(!WorldGroundPlacement.TryPlace(actor,actor.transform.position,out evidence.supportSurface))
+            {Finish("Start support validation failed.");yield break;}
+            if(evidence.mapId==1 && (worldHud==null || !worldHud.Ready))
+            {Finish("Native HUD missing.");yield break;}
             evidence.worldStart=actor.transform.position;
             evidence.startCameraPosition=camera.transform.position;
             evidence.startCameraEuler=camera.transform.eulerAngles;
@@ -73,19 +84,45 @@ namespace Dreynox.Mmorpg.Parity
             yield return Capture("02-after-walking");
             if(evidence.walkedDistance<0.5f || evidence.forwardDot<0.75f)
             { Finish("Actual forward walking failed; inspect environmental obstruction and capture.");yield break; }
-            var candidate=streamer.Spawns.Where(s=>s.prefab!=null && s.maxHealth>0)
-                .OrderBy(s=>(s.position-actor.transform.position).sqrMagnitude).FirstOrDefault();
-            if(candidate==null){Finish("No real monster definitions.");yield break;}
-            Vector3 start=candidate.position+Vector3.back*2.5f;
-            start.y=terrain.SampleHeight(start)+terrain.transform.position.y+0.1f;
-            var controller=actor.GetComponent<CharacterController>();controller.enabled=false;
-            actor.transform.position=start;controller.enabled=true;
-            evidence.combatStart=start;
+            if(worldHud!=null)
+            {
+                var npcStream=FindFirstObjectByType<LegacyNpcSpawnStreamer>();
+                if(npcStream!=null)
+                {
+                    foreach(var npcSpawn in npcStream.Spawns.Where(n=>n.prefab!=null && n.npcType==7 && !string.IsNullOrWhiteSpace(n.welcomeMessage))
+                        .OrderBy(n=>(n.position-actor.transform.position).sqrMagnitude).Take(12))
+                    {
+                        if(!WorldGroundPlacement.TryPlace(actor,npcSpawn.position+Vector3.back*2f,out evidence.supportSurface))continue;
+                        yield return new WaitForSeconds(0.6f);
+                        var npc=npcSpawn.activeInstance!=null?npcSpawn.activeInstance.GetComponent<LegacyNpcRuntimeDescriptor>():null;
+                        if(npc==null || !worldHud.TryTalk(npc))continue;
+                        yield return Capture("02b-original-npc-dialogue");
+                        evidence.npcDialogues=worldHud.DialoguesOpened;worldHud.CloseDialogue();break;
+                    }
+                }
+                if(evidence.npcDialogues==0){Finish("No original NPC dialogue interaction completed.");yield break;}
+            }
+            // Select a bounded level-appropriate diagnostic encounter; never alter original HP.
+            LegacyMonsterSpawnDefinition candidate=null;
+            ShaiyaCombatTarget target=null;
+            foreach(var spawn in streamer.Spawns.Where(s=>s.prefab!=null && s.maxHealth>0 && s.maxHealth<=2500 && s.level<=8)
+                .OrderBy(s=>(s.position-evidence.worldStart).sqrMagnitude).Take(30))
+            {
+                for(int side=0;side<8;side++)
+                {
+                    float angle=side*Mathf.PI/4f;
+                    Vector3 hint=spawn.position+new Vector3(Mathf.Sin(angle),0,Mathf.Cos(angle))*2.2f;
+                    if(!WorldGroundPlacement.TryPlace(actor,hint,out evidence.supportSurface,1f,3f))continue;
+                    streamer.EvaluateNow();yield return new WaitForSeconds(0.35f);
+                    var trial=spawn.activeInstance!=null?spawn.activeInstance.GetComponent<ShaiyaCombatTarget>():null;
+                    if(trial==null || !interaction.Select(trial) || !interaction.CanImpact(trial.TargetId))continue;
+                    candidate=spawn;target=trial;break;
+                }
+                if(target!=null)break;
+            }
+            if(candidate==null || target==null){Finish("No level-appropriate, reachable authored mob encounter.");yield break;}
+            evidence.combatStart=actor.transform.position;
             camera.ConfigureView(0,18,6.5f);
-            Physics.SyncTransforms();streamer.EvaluateNow();
-            yield return new WaitForSeconds(1);
-            var target=candidate.activeInstance!=null?candidate.activeInstance.GetComponent<ShaiyaCombatTarget>():null;
-            if(target==null || !interaction.Select(target)){Finish("Real spawn cannot be selected.");yield break;}
             evidence.targetId=target.TargetId; evidence.initialHealth=target.Health; evidence.activeMobs=streamer.ActiveCount;
             Vector3 facing=Vector3.ProjectOnPlane(target.transform.position-actor.transform.position,Vector3.up);
             if(facing.sqrMagnitude>0.0001f) actor.transform.rotation=Quaternion.LookRotation(facing.normalized);

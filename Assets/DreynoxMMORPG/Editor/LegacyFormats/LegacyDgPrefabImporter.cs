@@ -44,11 +44,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 BuildNode(source.RootNode, root.transform, source, materials, outputRoot,
                     ref nodeOrdinal, ref meshOrdinal, ref collisionOrdinal);
                 string prefabPath = outputRoot + "/Prefabs/" + stem + "_DG.prefab";
-                AssetDatabase.DeleteAsset(prefabPath);
-                GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(prefabPath);
+                GameObject prefab = Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAsPrefabAsset(root, prefabPath);
                 if (prefab == null) throw new InvalidOperationException("Unity could not save DG prefab '" + prefabPath + "'.");
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAssets();
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.Refresh();
                 return new LegacyDgImportResult { Source = source, Prefab = prefab, Lightmaps = lightmaps, PrefabPath = prefabPath };
             }
             finally { UnityEngine.Object.DestroyImmediate(root); }
@@ -109,8 +109,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 {
                     Mesh mesh = BuildVisualMesh(sourceMesh);
                     string path = outputRoot + "/Meshes/Mesh_" + meshOrdinal.ToString("D4") + ".asset";
-                    AssetDatabase.DeleteAsset(path);
-                    AssetDatabase.CreateAsset(mesh, path);
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(path);
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(mesh, path);
                     var visual = new GameObject("Mesh_" + meshOrdinal.ToString("D4"));
                     visual.transform.SetParent(nodeObject.transform, false);
                     visual.AddComponent<MeshFilter>().sharedMesh = mesh;
@@ -133,8 +133,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             {
                 Mesh collision = BuildCollisionMesh(node.CollisionMesh);
                 string path = outputRoot + "/Meshes/Collision_" + collisionOrdinal.ToString("D4") + ".asset";
-                AssetDatabase.DeleteAsset(path);
-                AssetDatabase.CreateAsset(collision, path);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(path);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(collision, path);
                 var colliderObject = new GameObject("Collision_" + collisionOrdinal.ToString("D4"));
                 colliderObject.transform.SetParent(nodeObject.transform, false);
                 colliderObject.AddComponent<MeshCollider>().sharedMesh = collision;
@@ -198,7 +198,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 {
                     var untextured = new Material(shader) { name = "DG_AuthoredEmptyTexture_" + i };
                     if (untextured.HasProperty("_Smoothness")) untextured.SetFloat("_Smoothness", 0);
-                    AssetDatabase.DeleteAsset(materialPath); AssetDatabase.CreateAsset(untextured, materialPath);
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(materialPath); Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(untextured, materialPath);
                     result[i] = untextured;
                     Debug.LogWarning("DG authored empty texture slot " + i + " retained as untextured/lightmapped. Native fallback shading is not yet calibrated.");
                     continue;
@@ -218,13 +218,13 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     importer.filterMode = FilterMode.Bilinear; importer.textureCompression = TextureImporterCompression.CompressedHQ;
                     importer.SaveAndReimport();
                 }
-                Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(textureAssetPath);
+                Texture2D texture = Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Texture2D>(textureAssetPath);
                 if (texture == null) throw new InvalidDataException("Unity did not import DG texture '" + textureAssetPath + "'.");
                 var material = new Material(shader) { name = "DG_Material_" + i.ToString("D2") };
                 if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
                 else material.mainTexture = texture;
                 if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", 0);
-                AssetDatabase.DeleteAsset(materialPath); AssetDatabase.CreateAsset(material, materialPath);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(materialPath); Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(material, materialPath);
                 result[i] = material;
             }
             return result;
@@ -253,7 +253,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     importer.filterMode = FilterMode.Bilinear; importer.textureCompression = TextureImporterCompression.CompressedHQ;
                     importer.SaveAndReimport();
                 }
-                result[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+                result[i] = Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Texture2D>(assetPath);
                 if (result[i] == null) throw new InvalidDataException("Unity did not import DG lightmap '" + assetPath + "'.");
             }
             return result;

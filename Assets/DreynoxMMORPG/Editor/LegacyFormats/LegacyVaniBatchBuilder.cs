@@ -311,7 +311,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 "/" +
                 safeName;
 
-            AssetDatabase.DeleteAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(
                 resourceRoot);
 
             EnsureFolder(resourceRoot);
@@ -362,10 +362,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         frame.ToString("D3") +
                         ".asset";
 
-                    AssetDatabase.DeleteAsset(
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(
                         meshPath);
 
-                    AssetDatabase.CreateAsset(
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                         mesh,
                         meshPath);
 
@@ -386,7 +386,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     };
             }
 
-            AssetDatabase.SaveAssets();
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAssets();
 
             return new ResourceBuildResult
             {
@@ -651,10 +651,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 meshIndex.ToString("D2") +
                 ".mat";
 
-            AssetDatabase.DeleteAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(
                 materialPath);
 
-            AssetDatabase.CreateAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                 material,
                 materialPath);
 

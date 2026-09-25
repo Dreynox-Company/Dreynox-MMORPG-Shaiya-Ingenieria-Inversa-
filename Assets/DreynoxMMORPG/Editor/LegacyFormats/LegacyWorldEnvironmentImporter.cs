@@ -22,9 +22,9 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
     public static class LegacyWorldEnvironmentImporter
     {
-        private const string OutputRoot =
-            "Assets/DreynoxMMORPG/LocalLegacyGenerated/" +
-            "World/Map000/Environment";
+        private static string OutputRoot =>
+            "Assets/DreynoxMMORPG/LocalLegacyGenerated/World/Map" +
+            LegacyWorldTerrainImporter.CurrentMapId.ToString("D3") + "/Environment";
 
         public static LegacyWorldEnvironmentBuildResult Create(
             CanonicalClientCorpus corpus,
@@ -220,7 +220,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             }
 
             Texture2D texture =
-                AssetDatabase.LoadAssetAtPath<
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<
                     Texture2D>(
                         assetPath);
 
@@ -341,7 +341,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 }
 
                 AudioClip clip =
-                    AssetDatabase.LoadAssetAtPath<
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<
                         AudioClip>(
                             assetPath);
 
@@ -578,7 +578,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 label +
                 ".mat";
 
-            AssetDatabase.DeleteAsset(path);
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(path);
 
             Material material =
                 new Material(shader)
@@ -642,7 +642,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     (int)RenderQueue.Background;
             }
 
-            AssetDatabase.CreateAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                 material,
                 path);
 

@@ -131,7 +131,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         child.AddComponent<MeshFilter>();
 
                     filter.sharedMesh =
-                        AssetDatabase.LoadAssetAtPath<Mesh>(
+                        Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Mesh>(
                             meshPath);
 
                     MeshRenderer renderer =
@@ -179,7 +179,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         collisionObject.AddComponent<MeshCollider>();
 
                     collider.sharedMesh =
-                        AssetDatabase.LoadAssetAtPath<Mesh>(
+                        Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Mesh>(
                             collisionPath);
 
                     collider.convex = false;
@@ -189,10 +189,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     folder + "/Prefabs/" +
                     safe + ".prefab";
 
-                AssetDatabase.DeleteAsset(prefabPath);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(prefabPath);
 
                 GameObject prefab =
-                    PrefabUtility.SaveAsPrefabAsset(
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAsPrefabAsset(
                         root,
                         prefabPath);
 
@@ -389,7 +389,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             }
 
             Texture2D texture =
-                AssetDatabase.LoadAssetAtPath<Texture2D>(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Texture2D>(
                     texturePath);
 
             Shader shader =
@@ -439,13 +439,13 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     ? "_Alpha.mat"
                     : "_Opaque.mat");
 
-            AssetDatabase.DeleteAsset(materialPath);
-            AssetDatabase.CreateAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(materialPath);
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                 material,
                 materialPath);
 
             Material asset =
-                AssetDatabase.LoadAssetAtPath<Material>(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Material>(
                     materialPath);
 
             MaterialCache[key] = asset;
@@ -456,8 +456,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             string path,
             UnityEngine.Object value)
         {
-            AssetDatabase.DeleteAsset(path);
-            AssetDatabase.CreateAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(path);
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                 value,
                 path);
         }

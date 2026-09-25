@@ -70,6 +70,20 @@ namespace Dreynox.Mmorpg.Gameplay.Client
         }
         public void ReleaseExternalMovement() { externalMovement = false; externalMove = Vector2.zero; }
 
+        public void TeleportGrounded(Vector3 position)
+        {
+            if (_flight.Airborne) throw new System.InvalidOperationException("Land before ground placement.");
+            if (float.IsNaN(position.x) || float.IsNaN(position.y) || float.IsNaN(position.z) ||
+                float.IsInfinity(position.x) || float.IsInfinity(position.y) || float.IsInfinity(position.z))
+                throw new System.ArgumentOutOfRangeException(nameof(position));
+            if (_controller == null) _controller = GetComponent<CharacterController>();
+            bool wasEnabled = _controller.enabled;
+            _controller.enabled = false;
+            transform.position = position;
+            _planarVelocity = Vector3.zero; _verticalVelocity = -2f;
+            _controller.enabled = wasEnabled;
+        }
+
         private void Awake()
         {
             _controller = GetComponent<CharacterController>();

@@ -171,7 +171,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             }
 
             Texture2D texture =
-                AssetDatabase.LoadAssetAtPath<Texture2D>(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Texture2D>(
                     textureAssetPath);
 
             Shader shader =
@@ -207,8 +207,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 material.EnableKeyword("_ALPHATEST_ON");
             }
 
-            AssetDatabase.DeleteAsset(materialAssetPath);
-            AssetDatabase.CreateAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(materialAssetPath);
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                 material,
                 materialAssetPath);
 

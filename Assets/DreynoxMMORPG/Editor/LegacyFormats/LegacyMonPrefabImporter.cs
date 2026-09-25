@@ -95,10 +95,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         LegacyEftPrefabImporter.Import(corpus, record.DieEffect));
                 }
                 string path = outputRoot + "/Prefabs/" + safeName + ".prefab";
-                AssetDatabase.DeleteAsset(path);
-                var prefab = PrefabUtility.SaveAsPrefabAsset(entity, path);
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(path);
+                var prefab = Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAsPrefabAsset(entity, path);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAssets();
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.Refresh();
                 Debug.Log("DREYNOX_MON_IMPORT_OK " + kind + "/" + recordIndex + " " + record.Name +
                     " bones=" + bones.Length + " parts=" + plan.Parts.Length + " clips=" + plan.Clips.Count +
                     " extraTrackClips=" + plan.Clips.Count(c => c.ExtraTracks > 0) +
@@ -146,7 +146,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 string texturePath = ResolveResource(corpus, catalog.ResourceRoot, "dds", item.TextureName);
                 var mesh = LegacySkinnedAssetBuilder.BuildMesh(parts[i], bones, root, record.Name + "_Part_" + i);
                 string meshPath = outputRoot + "/Meshes/Part_" + i.ToString("D2") + ".asset";
-                AssetDatabase.DeleteAsset(meshPath); AssetDatabase.CreateAsset(mesh, meshPath);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(meshPath); Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(mesh, meshPath);
                 var material = LegacySkinnedAssetBuilder.ImportLitMaterial(texturePath,
                     outputRoot + "/Textures/" + i.ToString("D2") + "_" + Path.GetFileName(texturePath).ToLowerInvariant(),
                     outputRoot + "/Materials/Part_" + i.ToString("D2") + ".mat", record.Name + "_Material_" + i, true);
@@ -166,13 +166,13 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             {
                 var clip = LegacySkinnedAssetBuilder.BuildAnimationClip(spec.Semantic, spec.Bound, root, bones, spec.Loop);
                 string path = outputRoot + "/Animations/" + Sanitize(spec.Semantic) + ".anim";
-                AssetDatabase.DeleteAsset(path); AssetDatabase.CreateAsset(clip, path);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(path); Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(clip, path);
                 entries.Add(new AnimationStateCatalog.Entry { semanticState = spec.Semantic, clip = clip, playbackSpeed = 1 });
             }
             var catalog = ScriptableObject.CreateInstance<AnimationStateCatalog>();
             catalog.ReplaceEntries(entries);
             string catalogPath = outputRoot + "/Animations/SemanticCatalog.asset";
-            AssetDatabase.DeleteAsset(catalogPath); AssetDatabase.CreateAsset(catalog, catalogPath);
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(catalogPath); Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(catalog, catalogPath);
             return catalog;
         }
         private static List<AnimationSpec> BuildAnimationSpecs(LegacyMonRecord r)
@@ -238,7 +238,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 importer.forceToMono = false; importer.loadInBackground = false;
                 importer.SaveAndReimport();
             }
-            return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+            return Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<AudioClip>(path);
         }
         private static string ResolveResource(CanonicalClientCorpus corpus, string root, string sub, string name)
         {

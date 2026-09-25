@@ -20,10 +20,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 {
     public static class LegacyWorldTerrainImporter
     {
-        private const int MapId = 0;
+        private static int MapId = 0;
+        public static int CurrentMapId => MapId;
 
-        private const string OutputRoot =
-            "Assets/DreynoxMMORPG/LocalLegacyGenerated/World/Map000";
+        private static string OutputRoot =>
+            "Assets/DreynoxMMORPG/LocalLegacyGenerated/World/Map" + MapId.ToString("D3");
 
         private const string CharacterPrefabPath =
             "Assets/DreynoxMMORPG/LocalLegacyGenerated/" +
@@ -37,7 +38,24 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         [MenuItem(
             "Dreynox MMORPG/Client Parity/" +
             "Build Canonical Map 0 World")]
-        public static void BuildCanonicalMap0()
+        public static void BuildCanonicalMap0() { BuildMap(0); }
+
+        public const string Map1ScenePath = "Assets/DreynoxMMORPG/Game/Scenes/Generated/CanonicalMap001World.unity";
+        [MenuItem("Dreynox MMORPG/Client Parity/Build Canonical Map 1 Native Start")]
+        public static void BuildCanonicalMap1() { BuildMap(1); }
+
+        private static void BuildMap(int mapId)
+        {
+            if (mapId != 0 && mapId != 1) throw new ArgumentOutOfRangeException(nameof(mapId));
+            int previous = MapId; MapId = mapId;
+            try
+            {
+                using (Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.Begin()) BuildSelectedMap();
+            }
+            finally { MapId = previous; }
+        }
+
+        private static void BuildSelectedMap()
         {
             CanonicalClientCorpus corpus =
                 CanonicalClientCorpus.FromStoredRoot();
@@ -52,12 +70,12 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             string wldPath =
                 ResolveCaseInsensitive(
                     corpus.RootPath,
-                    "DATA_Español/world/0.wld");
+                    "DATA_Español/world/" + MapId + ".wld");
 
             string svmapPath =
                 ResolveCaseInsensitive(
                     corpus.RootPath,
-                    "DATA_Español/world/0.svmap");
+                    "DATA_Español/world/" + MapId + ".svmap");
 
             LegacyWldTerrainFile wld =
                 LegacyWldTerrainParser.Parse(wldPath);
@@ -148,7 +166,15 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     ", MON=" + npcModels.Records.Count + ".");
             }
 
-            ValidateMapZeroBaseline(wld, svmap);
+            if (MapId == 0) ValidateMapZeroBaseline(wld, svmap);
+            else
+            {
+                var expected = LegacyWorldPopulationCore.Get(MapId);
+                if (wld.MapSize != svmap.MapSize || wld.UnparsedTailBytes != 0 ||
+                    svmap.Portals.Count != expected.Portals || svmap.MonsterAreas.Count != expected.MobAreas ||
+                    svmap.MonsterInstanceCount != expected.Mobs)
+                    throw new InvalidDataException("Native-start map structural/population baseline mismatch.");
+            }
 
             EnsureFolder(OutputRoot);
             EnsureFolder(OutputRoot + "/Textures");
@@ -167,10 +193,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 BuildTerrainData(wld, layers);
 
             string terrainDataPath =
-                OutputRoot + "/TerrainData/Map000.asset";
+                OutputRoot + "/TerrainData/Map" + MapId.ToString("D3") + ".asset";
 
-            AssetDatabase.DeleteAsset(terrainDataPath);
-            AssetDatabase.CreateAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(terrainDataPath);
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                 terrainData,
                 terrainDataPath);
 
@@ -197,7 +223,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             GameObject terrainObject =
                 Terrain.CreateTerrainGameObject(terrainData);
 
-            terrainObject.name = "Map000_Terrain";
+            terrainObject.name = "Map" + MapId.ToString("D3") + "_Terrain";
             terrainObject.transform.position =
                 new Vector3(
                     0f,
@@ -300,6 +326,12 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 throw new InvalidOperationException(
                     "Canonical character prefab has no ShaiyaClientActor.");
 
+            Physics.SyncTransforms();
+            if (!WorldGroundPlacement.TryPlace(clientActor, spawn, out string support))
+                throw new InvalidDataException("No valid authored player support at " + spawn + ": " + support);
+            var session = runtime.AddComponent<NativeWorldSession>();
+            session.Configure(MapId, clientActor, spawn);
+
             int uniqueMonsterModels;
             List<LegacyMonsterSpawnDefinition> monsterSpawns =
                 BuildMonsterSpawnDefinitions(
@@ -336,10 +368,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     out unresolvedNpcDefinitions,
                     out uniqueNpcModels);
 
-            if (resolvedNpcDefinitions != 141 ||
-                unresolvedNpcDefinitions != 9 ||
-                npcSpawns.Count != 180 ||
-                uniqueNpcModels != 41)
+            if ((MapId == 0 && (resolvedNpcDefinitions != 141 || unresolvedNpcDefinitions != 9 ||
+                 npcSpawns.Count != 180 || uniqueNpcModels != 41)) ||
+                (MapId == 1 && (resolvedNpcDefinitions != 248 || unresolvedNpcDefinitions != 4 ||
+                    npcSpawns.Count != 307 || uniqueNpcModels != 54)))
             {
                 throw new InvalidDataException(
                     "Canonical Map 0 NPC resolution changed. " +
@@ -446,19 +478,20 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 hudObject.AddComponent<ParityDebugHud>();
 
             hud.Bind(clientActor);
+            hud.enabled = MapId == 0;
 
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.Flush();
             EditorSceneManager.SaveScene(
                 scene,
-                ScenePath);
+                MapId == 0 ? ScenePath : Map1ScenePath);
 
             Selection.activeObject = terrainObject;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.SaveAssets();
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.Refresh();
 
             Debug.Log(
-                "Dreynox MMORPG: canonical Map 0 generated from 0.wld + " +
-                "0.svmap. Terrain " + wld.MapSize + "x" + wld.MapSize +
+                "Dreynox MMORPG: canonical Map " + MapId + " generated. Terrain " + wld.MapSize + "x" + wld.MapSize +
                 ", " + wld.Resolution + " height samples, " +
                 wld.Textures.Count + " terrain layers, " +
                 svmap.Portals.Count + " portals, " +
@@ -652,7 +685,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 }
 
                 Texture2D texture =
-                    AssetDatabase.LoadAssetAtPath<Texture2D>(
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Texture2D>(
                         textureAssetPath);
 
                 TerrainLayer layer =
@@ -677,8 +710,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     i.ToString("D2") +
                     ".terrainlayer";
 
-                AssetDatabase.DeleteAsset(layerPath);
-                AssetDatabase.CreateAsset(layer, layerPath);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(layerPath);
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(layer, layerPath);
                 layers[i] = layer;
             }
 
@@ -824,7 +857,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 }
 
                 Texture2D frame =
-                    AssetDatabase.LoadAssetAtPath<Texture2D>(
+                    Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Texture2D>(
                         assetPath);
 
                 if (frame == null)
@@ -903,10 +936,10 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 OutputRoot +
                 "/Water/Materials/Map000_Water.mat";
 
-            AssetDatabase.DeleteAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.DeleteAsset(
                 materialPath);
 
-            AssetDatabase.CreateAsset(
+            Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.CreateAsset(
                 material,
                 materialPath);
 
@@ -1934,8 +1967,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
                     // Map 0 contains nine known placeholder definitions using
                     // (0,0). Anything else is a real regression.
-                    if (source.NpcType != 0 ||
-                        source.NpcId != 0)
+                    if (!(source.NpcType == 0 && source.NpcId == 0) &&
+                        !(MapId == 1 && source.NpcType == 8 && source.NpcId == 169))
                     {
                         throw new InvalidDataException(
                             "Map 0 references unresolved NPC key " +
@@ -1943,6 +1976,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                             source.NpcId + ".");
                     }
 
+                    Debug.LogWarning("DREYNOX_UNRESOLVED_AUTHORED_NPC map=" + MapId +
+                        " key=" + source.NpcType + "/" + source.NpcId + " positions=" + source.Positions.Count);
                     continue;
                 }
 
@@ -2421,6 +2456,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 selected = svmap.Spawns[0];
             }
 
+            if (MapId == 1) return new Vector3(580f, 78f, 1760f);
+
             Vector3 position =
                 selected.HasValue
                     ? (selected.Value.Area.Lower +
@@ -2438,7 +2475,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         private static GameObject InstantiateCanonicalActor()
         {
             GameObject prefab =
-                AssetDatabase.LoadAssetAtPath<GameObject>(
+                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<GameObject>(
                     CharacterPrefabPath);
 
             if (prefab == null)
