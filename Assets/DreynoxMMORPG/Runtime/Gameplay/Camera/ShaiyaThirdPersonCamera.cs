@@ -70,9 +70,9 @@ namespace Dreynox.Mmorpg.Gameplay.CameraSystem
             Vector2 look = externalLook; float zoom = externalZoom;
             externalLook = Vector2.zero; externalZoom = 0f;
             if (target == null) return;
-            if (Application.isFocused && Input.GetMouseButton(1))
+            if (!Dreynox.Mmorpg.Interaction.WorldInputGate.IsBlocked && Application.isFocused && Input.GetMouseButton(1))
                 look += new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
-            if (Application.isFocused) zoom += Input.mouseScrollDelta.y;
+            if (!Dreynox.Mmorpg.Interaction.WorldInputGate.IsBlocked && Application.isFocused) zoom += Input.mouseScrollDelta.y;
             Step(Time.deltaTime, look, zoom);
         }
         public void Step(float deltaTime, Vector2 look, float zoom)

@@ -77,11 +77,14 @@ namespace Dreynox.Mmorpg.Editor.Importing
         {
             var batch = active;
             if (batch == null || (batch.pending.Count == 0 && batch.deleted.Count == 0 && batch.children.Count == 0)) return;
-            // Snapshot before pausing imports; no LoadAssetAtPath/GetImporter in this scope.
+            // Native object creation must remain synchronous: URP postprocessors load package
+            // resources while creating subassets. Suppress directory rescans, not AssetDatabase
+            // availability; StartAssetEditing caused real package-load errors in run a92.
+            // Texture staging has its own explicit import batch after settings are prepared.
             var values = new List<KeyValuePair<string, Object>>(batch.pending);
             var removals = new List<string>(batch.deleted);
             var additions = new List<KeyValuePair<Object, Object>>(batch.children);
-            AssetDatabase.StartAssetEditing();
+            AssetDatabase.DisallowAutoRefresh();
             try
             {
                 foreach (string path in removals) AssetDatabase.DeleteAsset(path);
@@ -92,7 +95,7 @@ namespace Dreynox.Mmorpg.Editor.Importing
                 }
                 foreach (var value in additions) AssetDatabase.AddObjectToAsset(value.Key, value.Value);
             }
-            finally { AssetDatabase.StopAssetEditing(); }
+            finally { AssetDatabase.AllowAutoRefresh(); }
             batch.writes += values.Count + additions.Count;
             batch.flushes++;
             batch.pending.Clear(); batch.deleted.Clear(); batch.children.Clear();

@@ -32,6 +32,12 @@ namespace Dreynox.Mmorpg.UI
         private float nextUpdate;
         private int visibleLabels, visibleDots;
         public int DialoguesOpened { get; private set; }
+        public RectTransform CanvasRoot => canvasRoot;
+        public bool HasQuestPanel { get; set; }
+        public Func<int,string> QuestMarker { get; set; }
+        public event Action<LegacyNpcRuntimeDescriptor> DialogueOpened;
+        public event Action DialogueClosed;
+        public void ShowMessage(string message) { if(feedbackText!=null) feedbackText.text=message??string.Empty; }
         public int VisibleNpcNames { get; private set; }
         public bool Ready { get; private set; }
         public LegacyNpcRuntimeDescriptor SelectedNpc => selectedNpc;
@@ -53,14 +59,15 @@ namespace Dreynox.Mmorpg.UI
             combat.HitApplied+=OnHit;
             Ready=true;
         }
-        private void OnDestroy() { if(combat!=null) combat.HitApplied-=OnHit; if(healthSprite!=null)Destroy(healthSprite); }
+        private void OnDisable() { CloseDialogue(); }
+        private void OnDestroy() { Dreynox.Mmorpg.Interaction.WorldInputGate.Set(this,false); if(combat!=null) combat.HitApplied-=OnHit; if(healthSprite!=null)Destroy(healthSprite); }
         private void OnHit(ShaiyaCombatTarget target,int damage)
         { feedbackText.text=target.IsAlive?"Daño: "+damage:"Objetivo derrotado"; }
         private void Update()
         {
             if(!Ready) return;
             if(Input.GetKeyDown(KeyCode.Escape)) CloseDialogue();
-            bool overUi=EventSystem.current!=null && EventSystem.current.IsPointerOverGameObject();
+            bool overUi=Dreynox.Mmorpg.Interaction.WorldInputGate.IsBlocked || (EventSystem.current!=null && EventSystem.current.IsPointerOverGameObject());
             if(!overUi && Input.GetMouseButtonDown(0))
             {
                 Ray ray=cameraView.ScreenPointToRay(Input.mousePosition);
@@ -105,10 +112,12 @@ namespace Dreynox.Mmorpg.UI
             selectedNpc=npc;DialoguesOpened++;
             npcNameText.text=npc.DisplayName;
             var text=new StringBuilder(npc.WelcomeMessage);
-            if(npc.InQuestIds.Count+npc.OutQuestIds.Count>0)
+            if(!HasQuestPanel && npc.InQuestIds.Count+npc.OutQuestIds.Count>0)
                 text.Append("\n\nEste NPC está vinculado a misiones originales. La disponibilidad y recompensas aún requieren integración del catálogo de misiones.");
             welcomeText.text=text.ToString();
-            dialogue.gameObject.SetActive(true);
+            dialogue.gameObject.SetActive(!HasQuestPanel);
+            Dreynox.Mmorpg.Interaction.WorldInputGate.Set(this,true);
+            DialogueOpened?.Invoke(npc);
             feedbackText.text="Conversando con "+npc.DisplayName;
             return true;
         }
@@ -117,6 +126,8 @@ namespace Dreynox.Mmorpg.UI
             if(interaction!=null)interaction.Close();
             selectedNpc=null;
             if(dialogue!=null)dialogue.gameObject.SetActive(false);
+            Dreynox.Mmorpg.Interaction.WorldInputGate.Set(this,false);
+            DialogueClosed?.Invoke();
         }
         private void UpdateWorldUi()
         {
@@ -138,7 +149,8 @@ namespace Dreynox.Mmorpg.UI
             {
                 if(spawn.activeInstance==null)continue;
                 Vector3 p=spawn.activeInstance.transform.position;
-                if(Label(p,spawn.displayName,new Color(0.4f,0.96f,1f)))VisibleNpcNames++;
+                string marker=QuestMarker!=null?QuestMarker((spawn.npcType<<16)|(ushort)spawn.typeId):string.Empty;
+                if(Label(p,spawn.displayName+marker,new Color(0.4f,0.96f,1f)))VisibleNpcNames++;
                 Dot(p,new Color(0.35f,0.9f,1f),u,v,viewFraction);
             }
             if(mobs!=null)foreach(var spawn in mobs.Spawns)

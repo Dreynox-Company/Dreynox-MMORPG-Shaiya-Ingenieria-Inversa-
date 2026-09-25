@@ -38,7 +38,8 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
         private void Update()
         {
             if (actor == null || rayCamera == null) return;
-            bool overUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+            bool overUi = Dreynox.Mmorpg.Interaction.WorldInputGate.IsBlocked ||
+                (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject());
             if (!overUi && Input.GetMouseButtonDown(0)) SelectUnderCursor();
             if (!overUi)
                 for (int i = 0; i < attackDamage.Length && i < 4; i++)

@@ -112,6 +112,8 @@ namespace Dreynox.Mmorpg.Gameplay.Client
         }
         private void ReadDesktopInput()
         {
+            if (Dreynox.Mmorpg.Interaction.WorldInputGate.IsBlocked)
+            { _motion.SetMove(0, 0, false); return; }
             if (externalMovement) { _motion.SetMove(externalMove.x, externalMove.y, externalSprint); return; }
             float x = 0f, y = 0f;
             if (Input.GetKey(KeyCode.A)) x -= 1f;

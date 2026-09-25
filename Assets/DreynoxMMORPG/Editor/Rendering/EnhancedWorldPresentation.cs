@@ -20,6 +20,7 @@ namespace Dreynox.Mmorpg.Editor.Rendering
             var camera = Camera.main;
             if (camera == null) throw new InvalidOperationException("World camera is missing.");
             ConfigureCamera(camera);
+            PrepareColorBatch();
             NormalizeGeneratedMaterials();
             ReplaceLegacySkyPlanes();
             foreach (Light sun in UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
@@ -42,6 +43,31 @@ namespace Dreynox.Mmorpg.Editor.Rendering
             CreateToneMappingVolume();
             Debug.Log("DREYNOX_ENHANCED_PRESENTATION " + Revision + " HDR=on MSAA=4 neutral-tone-map soft-shadows");
         }
+        private static void PrepareColorBatch()
+        {
+            LegacyColorTextureImporter.ClearSessionCache();
+            var requests = new System.Collections.Generic.List<LegacyColorTextureImporter.Request>();
+            const string root = "Assets/DreynoxMMORPG/LocalLegacyGenerated";
+            foreach (string guid in AssetDatabase.FindAssets("t:Material", new[] { root }))
+            {
+                var material = AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(guid));
+                if (material == null || material.shader == null || material.shader.name != "Universal Render Pipeline/Lit") continue;
+                if (material.HasProperty("_Surface") && material.GetFloat("_Surface") > 0.5f) continue;
+                string path = AssetDatabase.GetAssetPath(material.GetTexture("_BaseMap"));
+                if (string.Equals(Path.GetExtension(path), ".dds", StringComparison.OrdinalIgnoreCase))
+                    requests.Add(new LegacyColorTextureImporter.Request(path,path));
+            }
+            foreach (Terrain terrain in Terrain.activeTerrains)
+                foreach (TerrainLayer layer in terrain.terrainData.terrainLayers)
+                {
+                    if (layer == null || layer.diffuseTexture == null) continue;
+                    string path = AssetDatabase.GetAssetPath(layer.diffuseTexture);
+                    if (string.Equals(Path.GetExtension(path), ".dds", StringComparison.OrdinalIgnoreCase))
+                        requests.Add(new LegacyColorTextureImporter.Request(path,path));
+                }
+            LegacyColorTextureImporter.Prepare(requests);
+        }
+
         private static void NormalizeGeneratedMaterials()
         {
             const string root = "Assets/DreynoxMMORPG/LocalLegacyGenerated";
