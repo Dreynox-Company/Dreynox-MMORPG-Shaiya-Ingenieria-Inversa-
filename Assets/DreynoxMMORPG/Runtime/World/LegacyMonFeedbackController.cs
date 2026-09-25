@@ -75,6 +75,10 @@ namespace Dreynox.Mmorpg.World
 
         private void OnEnable()
         {
+            // A pooled object may now represent a different live spawn.
+            _dead = combatTarget != null && !combatTarget.IsAlive;
+            _nextDamageAnimationTime = 0f;
+            if (audioSource != null) audioSource.Stop();
             BindTarget();
         }
 

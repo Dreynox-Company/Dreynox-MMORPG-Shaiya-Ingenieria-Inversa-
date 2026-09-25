@@ -673,6 +673,23 @@ namespace Dreynox.Mmorpg.ParityHarness
                     "create_appearance_vif_hair05.tga",
                 "CharacterMake native appearance thumbnail names are deterministic");
 
+            foreach (int yaw in new[] { 0, 90, 180, 270 })
+            {
+                ClientCoordinateCore.ResolveUnityCameraRelative(0, 1, yaw, out double wx, out double wz);
+                double angle = yaw * Math.PI / 180;
+                Check(Math.Abs(wx-Math.Sin(angle)) < 1e-6 && Math.Abs(wz-Math.Cos(angle)) < 1e-6,
+                    "Unity camera W alignment at " + yaw + " degrees");
+            }
+            var blockedCombat = new CombatCore(); blockedCombat.RegisterTarget(4,100); blockedCombat.SelectTarget(4);
+            bool reachable = true; blockedCombat.ImpactValidator = _ => reachable;
+            Check(blockedCombat.RequestAttack(30), "in-range attack starts"); reachable = false;
+            blockedCombat.Tick(0.2);
+            Check(blockedCombat.Targets[4].Health == 100 && blockedCombat.HitSerial == 0, "invalidated impact causes no damage");
+            blockedCombat.UnregisterTarget(4);
+            Check(blockedCombat.Phase == AttackPhase.Idle && !blockedCombat.SelectedTargetId.HasValue, "unregister cancels stale target");
+            blockedCombat.SynchronizeTarget(4,100,60);
+            Check(blockedCombat.Targets[4].Health == 60, "reselected damaged target retains health");
+
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }
     }

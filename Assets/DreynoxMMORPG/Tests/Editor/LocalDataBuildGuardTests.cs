@@ -53,7 +53,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
         public void InactiveDeveloperComponentIsStillRejectedInRelease()
         {
             Scene previous = SceneManager.GetActiveScene();
-            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            Scene scene = EditorSceneManager.NewPreviewScene();
             var go = new GameObject("Inactive developer loader");
             SceneManager.MoveGameObjectToScene(go, scene);
             go.AddComponent<LocalCharacterLoader>();
@@ -65,7 +65,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
             }
             finally
             {
-                EditorSceneManager.CloseScene(scene, true);
+                EditorSceneManager.ClosePreviewScene(scene);
                 if (previous.IsValid() && previous.isLoaded) SceneManager.SetActiveScene(previous);
             }
         }

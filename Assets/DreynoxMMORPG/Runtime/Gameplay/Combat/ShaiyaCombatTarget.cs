@@ -9,6 +9,7 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
         [SerializeField] private int maxHealth = 1000;
         [SerializeField] private int health = 1000;
 
+        public int Generation { get; private set; }
         public int TargetId => targetId;
         public int MaxHealth => maxHealth;
         public int Health => health;
@@ -47,11 +48,13 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
 
         public void Configure(
             int id,
-            int maximumHealth)
+            int maximumHealth,
+            int currentHealth = -1)
         {
+            Generation++;
             targetId = id;
             maxHealth = Mathf.Max(1, maximumHealth);
-            health = maxHealth;
+            health = currentHealth < 0 ? maxHealth : Mathf.Clamp(currentHealth, 0, maxHealth);
         }
 
         public void Rebirth()

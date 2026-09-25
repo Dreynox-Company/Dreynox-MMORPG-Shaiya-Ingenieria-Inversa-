@@ -4,6 +4,11 @@ namespace Dreynox.Mmorpg.ParityCore
 {
     public static class ClientCoordinateCore
     {
+        public static void ResolveUnityCameraRelative(double x, double y, double unityYaw, out double worldX, out double worldZ)
+        {
+            ResolveCameraRelative(x, y, -unityYaw, out worldX, out worldZ);
+        }
+
         public static void ResolveCameraRelative(
             double inputX,
             double inputY,

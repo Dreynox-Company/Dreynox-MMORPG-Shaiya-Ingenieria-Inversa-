@@ -51,6 +51,15 @@ namespace Dreynox.Mmorpg.Gameplay.Client
         // selected at request time while the actor completes combat descent.
         private int? _deferredAirAttackTargetId;
         private int _deferredAirAttackDamage;
+        private bool externalMovement;
+        private Vector2 externalMove;
+        private bool externalSprint;
+        public void SetExternalMovement(Vector2 value, bool sprint)
+        {
+            externalMovement = true; externalMove = Vector2.ClampMagnitude(value, 1f); externalSprint = sprint; _motion.SetFocus(true);
+        }
+        public void ReleaseExternalMovement() { externalMovement = false; externalMove = Vector2.zero; }
+
 
         public ClientMotionCore Motion => _motion;
         public EquipmentRuleCore Equipment => _equipment;
@@ -105,6 +114,7 @@ namespace Dreynox.Mmorpg.Gameplay.Client
 
         private void ReadDesktopInput()
         {
+            if (externalMovement) { _motion.SetMove(externalMove.x, externalMove.y, externalSprint); return; }
             float x = 0f;
             float y = 0f;
             if (Input.GetKey(KeyCode.A)) x -= 1f;
@@ -142,7 +152,7 @@ namespace Dreynox.Mmorpg.Gameplay.Client
             if (_flight.Airborne)
                 return;
 
-            if (_motion.BeginJump() && IsGrounded)
+            if (IsGrounded && _motion.BeginJump())
             {
                 _verticalVelocity = Mathf.Sqrt(
                     Mathf.Max(0.01f, jumpHeight) * -2f * gravity);
@@ -154,7 +164,9 @@ namespace Dreynox.Mmorpg.Gameplay.Client
             bool airborne = _flight.Airborne;
             Transform basis = cameraReference != null ? cameraReference : transform;
 
-            ClientCoordinateCore.ResolveCameraRelative(
+            // The recovered core uses legacy yaw, the camera Transform uses Unity yaw.
+            // Convert once at this boundary; otherwise W runs away from a +90 degree camera.
+            ClientCoordinateCore.ResolveUnityCameraRelative(
                 _motion.MoveX,
                 _motion.MoveY,
                 basis.eulerAngles.y,
@@ -232,6 +244,12 @@ namespace Dreynox.Mmorpg.Gameplay.Client
 
         private void ApplySemanticAnimation()
         {
+            if (_combat.Phase != AttackPhase.Idle)
+            {
+                if (semanticAnimationPlayer != null) semanticAnimationPlayer.PlaySemantic("attack");
+                _lastAnimationGeneration = -1;
+                return;
+            }
             if (_lastAnimationGeneration == _motion.ClipGeneration)
                 return;
 

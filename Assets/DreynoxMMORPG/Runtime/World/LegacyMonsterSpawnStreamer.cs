@@ -24,6 +24,9 @@ namespace Dreynox.Mmorpg.World
         public GameObject prefab;
 
         [NonSerialized] public GameObject activeInstance;
+        // Streaming is not respawning: damage and death persist until an explicit
+        // server/qualified local respawn policy replaces this spawn definition.
+        [NonSerialized] public int remainingHealth = -1;
     }
 
     public sealed class LegacyMonsterSpawnStreamer : MonoBehaviour
@@ -105,6 +108,8 @@ namespace Dreynox.Mmorpg.World
             Evaluate();
         }
 
+        public void EvaluateNow() { if (observer != null) Evaluate(); }
+
         private void Evaluate()
         {
             float loadSqr =
@@ -149,7 +154,7 @@ namespace Dreynox.Mmorpg.World
 
                 if (spawn == null ||
                     spawn.activeInstance != null ||
-                    spawn.prefab == null)
+                    spawn.prefab == null || spawn.remainingHealth == 0)
                     continue;
 
                 float sqr =
@@ -224,9 +229,11 @@ namespace Dreynox.Mmorpg.World
             {
                 target.Configure(
                     definition.targetId,
-                    definition.maxHealth);
+                    definition.maxHealth,
+                    definition.remainingHealth);
             }
 
+            instance.SetActive(true);
             SemanticAnimationPlayer animation =
                 instance.GetComponent<SemanticAnimationPlayer>();
 
@@ -250,6 +257,8 @@ namespace Dreynox.Mmorpg.World
             if (instance == null)
                 return;
 
+            ShaiyaCombatTarget health = instance.GetComponent<ShaiyaCombatTarget>();
+            if (health != null) definition.remainingHealth = health.Health;
             instance.SetActive(false);
             instance.transform.SetParent(
                 transform,
@@ -276,12 +285,13 @@ namespace Dreynox.Mmorpg.World
                     if (pooled == null)
                         continue;
 
-                    pooled.SetActive(true);
                     return pooled;
                 }
             }
 
-            return Instantiate(prefab);
+            GameObject instance = Instantiate(prefab);
+            instance.SetActive(false);
+            return instance;
         }
 
         private void DespawnAll()

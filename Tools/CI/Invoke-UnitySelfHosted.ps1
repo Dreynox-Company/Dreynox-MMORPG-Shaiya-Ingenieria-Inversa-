@@ -258,7 +258,7 @@ Después abre una nueva terminal y verifica:
 
         # Self-hosted Windows runners can retain a transient Package Manager lock
         # after a cancelled Unity process. Rebuild PackageCache from a clean state.
-        Remove-DirectoryWithRetry -Path $PackageCache
+        # Keep a healthy cache; delete it only on an observed Package Manager rename lock.
 
         for ($attempt = 1; $attempt -le 2; $attempt++) {
             Remove-Item -LiteralPath $TestResult -Force -ErrorAction SilentlyContinue
@@ -276,6 +276,13 @@ Después abre una nueva terminal y verifica:
                 ) -Description "Unity EditMode tests"
             }
             catch {
+                if (Test-Path -LiteralPath $TestResult) {
+                    [xml]$failureReport = Get-Content -LiteralPath $TestResult -Raw
+                    foreach ($case in $failureReport.SelectNodes("//test-case[@result='Failed']")) {
+                        Write-Host "FAILED_TEST: $($case.GetAttribute('fullname'))"
+                        if ($null -ne $case.failure) { Write-Host $case.failure.InnerText }
+                    }
+                }
                 $packageRenameLock = $false
                 if (Test-Path $TestLog) {
                     $packageRenameLock = [bool](Select-String -Path $TestLog -Pattern "EPERM: operation not permitted, rename" -SimpleMatch -Quiet)

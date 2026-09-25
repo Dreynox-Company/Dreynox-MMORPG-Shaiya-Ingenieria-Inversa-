@@ -59,6 +59,29 @@ namespace Dreynox.Mmorpg.ParityCore
         public int? LastHitTargetId { get; private set; }
         public int LastHitDamage { get; private set; }
 
+        // Scene adapters validate range, line of sight and pooled-instance identity at impact.
+        // Pure deterministic tests can omit the validator; no Unity type enters this core.
+        public Func<int, bool> ImpactValidator { get; set; }
+
+        public void SynchronizeTarget(int id, int maxHealth, int currentHealth)
+        {
+            if (currentHealth < 0 || currentHealth > maxHealth) throw new ArgumentOutOfRangeException(nameof(currentHealth));
+            var value = new CombatTargetState(id, maxHealth);
+            value.Damage(maxHealth - currentHealth);
+            _targets[id] = value;
+        }
+
+        public void UnregisterTarget(int id)
+        {
+            _targets.Remove(id);
+            if (_selectedTargetId == id) _selectedTargetId = null;
+            if (_lockedAttackTargetId == id)
+            {
+                _lockedAttackTargetId = null; _phase = AttackPhase.Idle;
+                _phaseRemaining = 0; _pendingDamage = 0;
+            }
+        }
+
         public void RegisterTarget(int id, int maxHealth)
         {
             _targets[id] = new CombatTargetState(id, maxHealth);
@@ -157,6 +180,7 @@ namespace Dreynox.Mmorpg.ParityCore
         private void ApplyLockedHit()
         {
             if (!_lockedAttackTargetId.HasValue) return;
+            if (ImpactValidator != null && !ImpactValidator(_lockedAttackTargetId.Value)) return;
             CombatTargetState target;
             if (!_targets.TryGetValue(_lockedAttackTargetId.Value, out target) || !target.Alive) return;
             int applied = target.Damage(_pendingDamage);
