@@ -34,7 +34,8 @@ namespace Dreynox.Mmorpg.Editor.Importing
         {
             if (active == null) { AssetDatabase.CreateAsset(value, path); return; }
             if (value == null) throw new ArgumentNullException(nameof(value));
-            RequireGenerated(path);
+            if (active.faulted) throw new InvalidOperationException("Cannot mutate a failed import batch.");
+            path = RequireGenerated(path);
             if (active.pending.ContainsKey(path))
                 throw new InvalidOperationException("Duplicate pending asset without DeleteAsset: " + path);
             active.pending.Add(path, value);
@@ -42,8 +43,25 @@ namespace Dreynox.Mmorpg.Editor.Importing
         public static bool DeleteAsset(string path)
         {
             if (active == null) return AssetDatabase.DeleteAsset(path);
-            RequireGenerated(path);
-            active.pending.Remove(path);
+            path = RequireGenerated(path);
+            if (active.faulted) throw new InvalidOperationException("Cannot mutate a failed import batch.");
+            // Folder deletion is an ordering barrier, not a deferred file write.
+            // A delayed delete would remove the caller's newly rebuilt children.
+            if (AssetDatabase.IsValidFolder(path) || Directory.Exists(path))
+            {
+                try
+                {
+                    Flush();
+                    bool removed = AssetDatabase.DeleteAsset(path);
+                    if (!removed) throw new IOException("Could not delete generated folder: " + path);
+                    return true;
+                }
+                catch { active.faulted = true; throw; }
+            }
+            bool removedPending = active.pending.Remove(path);
+            // Native DeleteAsset on a missing path is a no-op now, not a request
+            // to delete an unrelated file/folder subsequently created there.
+            if (!File.Exists(path)) return removedPending;
             active.deleted.Add(path);
             return true;
         }
@@ -73,6 +91,13 @@ namespace Dreynox.Mmorpg.Editor.Importing
         public static void Refresh()
         {
             if (active == null) AssetDatabase.Refresh();
+        }
+        /// <summary>Preserve the initiating exception when a caller abandons preparation.</summary>
+        public static void Abort()
+        {
+            if (active == null) return;
+            active.faulted = true;
+            active.pending.Clear(); active.deleted.Clear(); active.children.Clear();
         }
         public static void Flush()
         {
@@ -149,10 +174,18 @@ namespace Dreynox.Mmorpg.Editor.Importing
                 UnityEngine.Debug.Log("DREYNOX_IMPORT_BATCH writes=" + writes + " groups=" + flushes + " groupedGeometry=" + batchedGeometryWrites + " faulted=" + faulted + " seconds=" + timer.Elapsed.TotalSeconds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
             }
         }
-        private static void RequireGenerated(string path)
+        private static string RequireGenerated(string path)
         {
-            if (string.IsNullOrWhiteSpace(path) || !path.Replace('\\', '/').StartsWith("Assets/DreynoxMMORPG/LocalLegacyGenerated/", StringComparison.Ordinal))
+            const string prefix = "Assets/DreynoxMMORPG/LocalLegacyGenerated/";
+            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Generated asset path is required.");
+            string normalized = path.Replace('\\', '/');
+            if (!normalized.StartsWith(prefix, StringComparison.Ordinal))
                 throw new InvalidOperationException("Batch may only mutate generated legacy content: " + path);
+            foreach (string part in normalized.Split('/'))
+                if (part.Length == 0 || part == "." || part == ".." || part.IndexOf(':') >= 0 ||
+                    part.EndsWith(".", StringComparison.Ordinal) || part.EndsWith(" ", StringComparison.Ordinal))
+                    throw new InvalidOperationException("Noncanonical generated asset path: " + path);
+            return normalized;
         }
     }
 }

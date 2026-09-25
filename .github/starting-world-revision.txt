@@ -1,7 +1,7 @@
-Map1 qualification 15: check all textures referenced by the 30 monster and 54 resolved NPC models actually placed in Map1.
-Decode exact original DDS before scene generation; collect unsupported/missing resources with model and path. Do not substitute a same-named texture from another directory.
-Retain the explicit source gap for four guard positions without NpcQuest definition. No fabricated NPC or texture.
-Managed BC1/BC2/BC3 and RGB24/RGBA32 paths plus original image pixel checks remain required.
-Keep source/runtime identical to run14 apart from additional preflight tests. Never cancel that running revision.
-Full Player walking, NPC dialogue, quest acceptance, five fox deaths and reward are still required before one-file EXE delivery.
-Original DATA and main are unchanged.
+Map1 qualification 16: fix generated-folder deletion ordering and persistent VANI frame/material references.
+Run15 passed 213 Unity tests then failed creating an eagle frame because its parent directory had been deleted during flush.
+Missing-path deletes are no-ops; existing-folder deletes run before recreation; pending references are persisted before use.
+VANI uses the selected map output and shares original resources across both WLD groups without invalidating earlier references.
+Seven ordering/abort/path cases and two original-eagle persistence/reload cases join all prior tests. No test suppression.
+Original DATA and main remain unchanged. No synthetic replacement world, removed objects or fake success.
+Require real Map1 Player walking, NPC dialogue, quest, five fox kills and reward before one-file executable delivery.
