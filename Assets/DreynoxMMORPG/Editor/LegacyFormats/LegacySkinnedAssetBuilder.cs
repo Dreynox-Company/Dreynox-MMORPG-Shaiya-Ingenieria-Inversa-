@@ -136,43 +136,15 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     textureSource);
             }
 
-            string absoluteTexture =
-                Path.GetFullPath(textureAssetPath);
-
-            string textureDirectory =
-                Path.GetDirectoryName(absoluteTexture);
-
-            if (!string.IsNullOrWhiteSpace(textureDirectory))
-                Directory.CreateDirectory(textureDirectory);
-
-            File.Copy(
-                textureSource,
-                absoluteTexture,
-                true);
-
-            AssetDatabase.ImportAsset(
-                textureAssetPath,
-                ImportAssetOptions.ForceSynchronousImport);
-
-            TextureImporter importer =
-                AssetImporter.GetAtPath(textureAssetPath)
-                    as TextureImporter;
-
-            if (importer != null)
-            {
-                importer.sRGBTexture = true;
-                importer.mipmapEnabled = true;
-                importer.wrapMode = TextureWrapMode.Repeat;
-                importer.filterMode = FilterMode.Bilinear;
-                importer.alphaSource =
-                    TextureImporterAlphaSource.FromInput;
-
-                importer.SaveAndReimport();
-            }
-
+            // DDS must not first enter Unity's native IHV importer: the real
+            // Map1 NPC import crashed inside that path. Decode original BC data
+            // into a configurable color texture before creating any material.
+            // Normal maps and lightmaps never call this albedo-only method.
             Texture2D texture =
-                Dreynox.Mmorpg.Editor.Importing.LegacyAssetWriteBatch.LoadAssetAtPath<Texture2D>(
-                    textureAssetPath);
+                Dreynox.Mmorpg.Editor.Rendering.LegacyColorTextureImporter.Import(
+                    textureSource, textureAssetPath, TextureWrapMode.Repeat);
+            if (texture == null)
+                throw new InvalidDataException("Original color texture did not import: " + textureSource);
 
             Shader shader =
                 Shader.Find(
