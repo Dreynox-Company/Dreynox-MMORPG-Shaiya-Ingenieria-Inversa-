@@ -1,3 +1,4 @@
+# Qualification revision 2: actual DG/WLD/MON compatibility and explicit URP.
 name: Playable Map0 qualification
 on:
   push:
