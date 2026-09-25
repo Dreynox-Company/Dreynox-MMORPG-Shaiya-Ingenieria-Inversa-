@@ -20,7 +20,8 @@ namespace Dreynox.Mmorpg.Editor.Importing
         private readonly HashSet<string> deleted = new HashSet<string>(StringComparer.Ordinal);
         private readonly List<KeyValuePair<Object, Object>> children = new List<KeyValuePair<Object, Object>>();
         private readonly Stopwatch timer = Stopwatch.StartNew();
-        private int writes, flushes;
+        private int writes, flushes, batchedGeometryWrites;
+        private bool faulted;
         private bool disposed;
         private LegacyAssetWriteBatch() { }
         public static LegacyAssetWriteBatch Begin()
@@ -77,37 +78,75 @@ namespace Dreynox.Mmorpg.Editor.Importing
         {
             var batch = active;
             if (batch == null || (batch.pending.Count == 0 && batch.deleted.Count == 0 && batch.children.Count == 0)) return;
-            // Native object creation must remain synchronous: URP postprocessors load package
-            // resources while creating subassets. Suppress directory rescans, not AssetDatabase
-            // availability; StartAssetEditing caused real package-load errors in run a92.
-            // Texture staging has its own explicit import batch after settings are prepared.
+            if (batch.faulted)
+                throw new InvalidOperationException("The current import transaction has failed; rebuild it rather than reusing partial assets.");
             var values = new List<KeyValuePair<string, Object>>(batch.pending);
             var removals = new List<string>(batch.deleted);
             var additions = new List<KeyValuePair<Object, Object>>(batch.children);
+            // Meshes and numeric ANI curves have no shader/resource dependencies.
+            // Group just these native writes. Materials, terrain, catalogs and
+            // subassets remain synchronous, after geometry imports have completed.
+            var geometry = new List<KeyValuePair<string, Object>>();
+            var geometryPaths = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var value in values)
+            {
+                if (value.Value == null)
+                {
+                    batch.faulted = true;
+                    throw new InvalidOperationException("Staged Unity object destroyed before persistence: " + value.Key);
+                }
+                if (value.Value is Mesh || (value.Value is AnimationClip clip &&
+                    AnimationUtility.GetObjectReferenceCurveBindings(clip).Length == 0))
+                {
+                    geometry.Add(value);
+                    geometryPaths.Add(value.Key);
+                }
+            }
             AssetDatabase.DisallowAutoRefresh();
             try
             {
-                foreach (string path in removals) AssetDatabase.DeleteAsset(path);
-                foreach (var value in values)
+                foreach (string path in removals)
+                    if (!geometryPaths.Contains(path)) AssetDatabase.DeleteAsset(path);
+                if (geometry.Count > 0)
                 {
-                    if (value.Value == null) throw new InvalidOperationException("Staged Unity object destroyed before persistence: " + value.Key);
-                    AssetDatabase.CreateAsset(value.Value, value.Key);
+                    AssetDatabase.StartAssetEditing();
+                    try
+                    {
+                        foreach (string path in removals)
+                            if (geometryPaths.Contains(path)) AssetDatabase.DeleteAsset(path);
+                        foreach (var value in geometry) AssetDatabase.CreateAsset(value.Value, value.Key);
+                        // No loads, prefabs, materials or package lookups while imports are suspended.
+                    }
+                    finally { AssetDatabase.StopAssetEditing(); }
+                    batch.batchedGeometryWrites += geometry.Count;
                 }
+                foreach (var value in values)
+                    if (!geometryPaths.Contains(value.Key)) AssetDatabase.CreateAsset(value.Value, value.Key);
                 foreach (var value in additions) AssetDatabase.AddObjectToAsset(value.Key, value.Value);
+                // A prefab may now reference the imported geometry and the
+                // synchronously created materials without transient references.
+                batch.writes += values.Count + additions.Count;
+                batch.flushes++;
+                batch.pending.Clear(); batch.deleted.Clear(); batch.children.Clear();
+            }
+            catch
+            {
+                // Dispose must not repeat a partially applied destructive batch
+                // or hide the first exception with a second import failure.
+                batch.faulted = true;
+                throw;
             }
             finally { AssetDatabase.AllowAutoRefresh(); }
-            batch.writes += values.Count + additions.Count;
-            batch.flushes++;
-            batch.pending.Clear(); batch.deleted.Clear(); batch.children.Clear();
         }
+
         public void Dispose()
         {
             if (disposed) return;
-            try { Flush(); AssetDatabase.SaveAssets(); }
+            try { if (!faulted) { Flush(); AssetDatabase.SaveAssets(); } }
             finally
             {
                 active = null; disposed = true; timer.Stop();
-                UnityEngine.Debug.Log("DREYNOX_IMPORT_BATCH writes=" + writes + " groups=" + flushes + " seconds=" + timer.Elapsed.TotalSeconds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+                UnityEngine.Debug.Log("DREYNOX_IMPORT_BATCH writes=" + writes + " groups=" + flushes + " groupedGeometry=" + batchedGeometryWrites + " faulted=" + faulted + " seconds=" + timer.Elapsed.TotalSeconds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
             }
         }
         private static void RequireGenerated(string path)
