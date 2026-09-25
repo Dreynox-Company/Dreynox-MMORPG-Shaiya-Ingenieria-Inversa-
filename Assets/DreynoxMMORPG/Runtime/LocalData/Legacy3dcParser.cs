@@ -6,52 +6,29 @@ using UnityEngine;
 
 namespace Dreynox.Mmorpg.Editor.LegacyFormats
 {
-    public enum Legacy3dcLayout
-    {
-        Standard,
-        Skeletonless,
-        TexturePrefixed
-    }
-
+    public enum Legacy3dcLayout { Standard, Skeletonless, TexturePrefixed }
     public sealed class Legacy3dcFile
     {
         public int Version { get; internal set; }
         public Legacy3dcLayout Layout { get; internal set; }
         public string EmbeddedTextureName { get; internal set; } = string.Empty;
-
+        public int ReconstructedNormals { get; internal set; }
+        public int InactiveNormalDefaults { get; internal set; }
         public bool IsEp6 => Version == 444;
         public bool HasEmbeddedSkeleton => InverseBindMatrices.Count > 0;
-
-        public List<Matrix4x4> InverseBindMatrices { get; } =
-            new List<Matrix4x4>();
-
-        public List<Legacy3dcVertex> Vertices { get; } =
-            new List<Legacy3dcVertex>();
-
-        public List<LegacyTriangle> Faces { get; } =
-            new List<LegacyTriangle>();
+        public List<Matrix4x4> InverseBindMatrices { get; } = new List<Matrix4x4>();
+        public List<Legacy3dcVertex> Vertices { get; } = new List<Legacy3dcVertex>();
+        public List<LegacyTriangle> Faces { get; } = new List<LegacyTriangle>();
     }
-
     public struct Legacy3dcVertex
     {
         public Vector3 Position;
         public Vector3 Normal;
         public Vector2 UV;
-        public float Weight1;
-        public float Weight2;
-        public float Weight3;
-        public byte Bone1;
-        public byte Bone2;
-        public byte Bone3;
-        public byte Unknown;
+        public float Weight1, Weight2, Weight3;
+        public byte Bone1, Bone2, Bone3, Unknown;
     }
-
-    public struct LegacyTriangle
-    {
-        public ushort A;
-        public ushort B;
-        public ushort C;
-    }
+    public struct LegacyTriangle { public ushort A, B, C; }
 
     public static class Legacy3dcParser
     {
@@ -62,417 +39,172 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
         public static Legacy3dcFile Parse(string path)
         {
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("3DC path is required.", nameof(path));
-
-            byte[] bytes = File.ReadAllBytes(path);
-            return Parse(bytes);
+            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("3DC path is required.", nameof(path));
+            return Parse(File.ReadAllBytes(path));
         }
-
         public static Legacy3dcFile Parse(byte[] bytes)
         {
-            IReadOnlyList<Legacy3dcFile> sections = ParseMany(bytes);
-
-            if (sections.Count != 1)
-                throw new InvalidDataException(
-                    "3DC contains " + sections.Count +
-                    " concatenated sections. Use ParseMany for this resource.");
-
+            var sections = ParseMany(bytes);
+            if (sections.Count != 1) throw new InvalidDataException(
+                "3DC contains " + sections.Count + " concatenated sections. Use ParseMany for this resource.");
             return sections[0];
         }
-
         public static IReadOnlyList<Legacy3dcFile> ParseMany(string path)
         {
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("3DC path is required.", nameof(path));
-
+            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("3DC path is required.", nameof(path));
             return ParseMany(File.ReadAllBytes(path));
         }
-
-        public static IReadOnlyList<Legacy3dcFile> ParseMany(byte[] bytes)
+        /// <summary>Explicit MON compatibility: repair only invalid normals after topology validation.</summary>
+        public static Legacy3dcFile ParseWithTopologyNormals(byte[] bytes)
         {
-            if (bytes == null)
-                throw new ArgumentNullException(nameof(bytes));
-
+            var sections = ParseMany(bytes, true);
+            if (sections.Count != 1) throw new InvalidDataException("Expected one MON mesh section.");
+            return sections[0];
+        }
+        public static IReadOnlyList<Legacy3dcFile> ParseMany(byte[] bytes) { return ParseMany(bytes, false); }
+        private static IReadOnlyList<Legacy3dcFile> ParseMany(byte[] bytes, bool repairNormals)
+        {
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
             var sections = new List<Legacy3dcFile>();
-
-            using (MemoryStream stream = new MemoryStream(bytes, false))
-            using (BinaryReader reader = new BinaryReader(stream))
+            using (var stream = new MemoryStream(bytes, false))
+            using (var reader = new BinaryReader(stream))
             {
                 while (reader.BaseStream.Position < reader.BaseStream.Length)
                 {
-                    if (OnlyZeroPaddingRemains(reader))
-                        break;
-
-                    long sectionStart = reader.BaseStream.Position;
-                    sections.Add(ParseSection(reader, sectionStart));
-
-                    if (reader.BaseStream.Position <= sectionStart)
-                        throw new InvalidDataException(
-                            "3DC parser made no forward progress.");
+                    if (OnlyZeroPaddingRemains(reader)) break;
+                    long start = reader.BaseStream.Position;
+                    Legacy3dcFile section = ParseSection(reader, start, repairNormals);
+                    if (repairNormals) LegacyMeshNormalRepair.Apply(section);
+                    sections.Add(section);
+                    if (reader.BaseStream.Position <= start) throw new InvalidDataException("3DC parser made no forward progress.");
                 }
             }
-
-            if (sections.Count == 0)
-                throw new InvalidDataException("3DC contains no mesh section.");
-
+            if (sections.Count == 0) throw new InvalidDataException("3DC contains no mesh section.");
             return sections;
         }
-
-        private static Legacy3dcFile ParseSection(
-            BinaryReader reader,
-            long sectionStart)
+        private static Legacy3dcFile ParseSection(BinaryReader reader, long start, bool repairNormals)
         {
             LegacyFormatPrimitives.EnsureRemaining(reader, 4);
-
-            int marker = reader.ReadInt32();
-            reader.BaseStream.Position = sectionStart;
-
+            int marker = reader.ReadInt32(); reader.BaseStream.Position = start;
             Exception standardFailure = null;
-
             if (marker == 0 || marker == 444)
             {
-                try
-                {
-                    return ReadStandard(reader);
-                }
-                catch (Exception ex)
-                    when (ex is InvalidDataException ||
-                          ex is EndOfStreamException)
-                {
-                    standardFailure = ex;
-                    reader.BaseStream.Position = sectionStart;
-                }
-
+                try { return ReadStandard(reader, repairNormals); }
+                catch (Exception ex) when (ex is InvalidDataException || ex is EndOfStreamException)
+                { standardFailure = ex; reader.BaseStream.Position = start; }
                 if (marker == 0)
                 {
-                    try
+                    try { return ReadSkeletonless(reader, repairNormals); }
+                    catch (Exception ex) when (ex is InvalidDataException || ex is EndOfStreamException)
                     {
-                        return ReadSkeletonless(reader);
-                    }
-                    catch (Exception ex)
-                        when (ex is InvalidDataException ||
-                              ex is EndOfStreamException)
-                    {
-                        reader.BaseStream.Position = sectionStart;
-                        throw new InvalidDataException(
-                            "3DC section is neither standard nor " +
-                            "skeletonless.",
-                            standardFailure ?? ex);
+                        reader.BaseStream.Position = start;
+                        throw new InvalidDataException("3DC section is neither standard nor skeletonless.", standardFailure ?? ex);
                     }
                 }
             }
-
-            if (marker > 0 &&
-                marker <= MaxEmbeddedTextureNameBytes)
+            if (marker > 0 && marker <= MaxEmbeddedTextureNameBytes)
             {
-                try
+                try { return ReadTexturePrefixed(reader, repairNormals); }
+                catch (Exception ex) when (ex is InvalidDataException || ex is EndOfStreamException)
                 {
-                    return ReadTexturePrefixed(reader);
-                }
-                catch (Exception ex)
-                    when (ex is InvalidDataException ||
-                          ex is EndOfStreamException)
-                {
-                    reader.BaseStream.Position = sectionStart;
-                    throw new InvalidDataException(
-                        "Unsupported texture-prefixed 3DC section.",
-                        ex);
+                    reader.BaseStream.Position = start;
+                    throw new InvalidDataException("Unsupported texture-prefixed 3DC section.", ex);
                 }
             }
-
-            throw new InvalidDataException(
-                "Unsupported 3DC section marker " + marker + ".");
+            throw new InvalidDataException("Unsupported 3DC section marker " + marker + ".");
         }
-
-        private static Legacy3dcFile ReadStandard(BinaryReader reader)
+        private static Legacy3dcFile ReadStandard(BinaryReader reader, bool repairNormals)
         {
             int version = reader.ReadInt32();
-
-            if (version != 0 && version != 444)
-                throw new InvalidDataException(
-                    "Unsupported standard 3DC version " + version + ".");
-
-            var result = new Legacy3dcFile
-            {
-                Version = version,
-                Layout = Legacy3dcLayout.Standard
-            };
-
-            int boneCount = LegacyFormatPrimitives.ReadCount(
-                reader,
-                "3DC bone",
-                MaxBones);
-
-            ReadBones(reader, result, boneCount);
-
-            int vertexCount = LegacyFormatPrimitives.ReadCount(
-                reader,
-                "3DC vertex",
-                MaxVertices);
-
-            ReadVertices(
-                reader,
-                result,
-                vertexCount,
-                boneCount,
-                validateBoneReferences: true);
-
-            ReadFaces(reader, result, vertexCount);
+            if (version != 0 && version != 444) throw new InvalidDataException("Unsupported standard 3DC version " + version + ".");
+            var result = new Legacy3dcFile { Version = version, Layout = Legacy3dcLayout.Standard };
+            int count = LegacyFormatPrimitives.ReadCount(reader, "3DC bone", MaxBones);
+            ReadBones(reader, result, count);
+            int vertices = LegacyFormatPrimitives.ReadCount(reader, "3DC vertex", MaxVertices);
+            ReadVertices(reader, result, vertices, count, true, repairNormals);
+            ReadFaces(reader, result, vertices);
             return result;
         }
-
-        private static Legacy3dcFile ReadSkeletonless(BinaryReader reader)
+        private static Legacy3dcFile ReadSkeletonless(BinaryReader reader, bool repairNormals)
         {
-            int version = reader.ReadInt32();
-            if (version != 0)
-                throw new InvalidDataException(
-                    "Skeletonless 3DC requires version marker 0.");
-
-            var result = new Legacy3dcFile
-            {
-                Version = 0,
-                Layout = Legacy3dcLayout.Skeletonless
-            };
-
-            int vertexCount = LegacyFormatPrimitives.ReadCount(
-                reader,
-                "skeletonless 3DC vertex",
-                MaxVertices);
-
-            ReadVertices(
-                reader,
-                result,
-                vertexCount,
-                0,
-                validateBoneReferences: false);
-
-            ReadFaces(reader, result, vertexCount);
+            if (reader.ReadInt32() != 0) throw new InvalidDataException("Skeletonless 3DC requires version marker 0.");
+            var result = new Legacy3dcFile { Version = 0, Layout = Legacy3dcLayout.Skeletonless };
+            int vertices = LegacyFormatPrimitives.ReadCount(reader, "skeletonless 3DC vertex", MaxVertices);
+            ReadVertices(reader, result, vertices, 0, false, repairNormals);
+            ReadFaces(reader, result, vertices);
             return result;
         }
-
-        private static Legacy3dcFile ReadTexturePrefixed(BinaryReader reader)
+        private static Legacy3dcFile ReadTexturePrefixed(BinaryReader reader, bool repairNormals)
         {
-            int stringBytes = reader.ReadInt32();
-
-            if (stringBytes <= 0 ||
-                stringBytes > MaxEmbeddedTextureNameBytes)
-            {
-                throw new InvalidDataException(
-                    "Invalid embedded 3DC texture name length " +
-                    stringBytes + ".");
-            }
-
-            LegacyFormatPrimitives.EnsureRemaining(reader, stringBytes + 4L);
-
-            string textureName =
-                Encoding.ASCII
-                    .GetString(reader.ReadBytes(stringBytes))
-                    .TrimEnd(' ');
-
-            if (string.IsNullOrWhiteSpace(textureName))
-                throw new InvalidDataException(
-                    "Texture-prefixed 3DC has an empty texture name.");
-
-            var result = new Legacy3dcFile
-            {
-                Version = 0,
-                Layout = Legacy3dcLayout.TexturePrefixed,
-                EmbeddedTextureName = textureName
-            };
-
-            int boneCount = LegacyFormatPrimitives.ReadCount(
-                reader,
-                "texture-prefixed 3DC bone",
-                MaxBones);
-
-            ReadBones(reader, result, boneCount);
-
-            int vertexCount = LegacyFormatPrimitives.ReadCount(
-                reader,
-                "texture-prefixed 3DC vertex",
-                MaxVertices);
-
-            ReadVertices(
-                reader,
-                result,
-                vertexCount,
-                boneCount,
-                validateBoneReferences: true);
-
-            ReadFaces(reader, result, vertexCount);
+            int bytes = reader.ReadInt32();
+            if (bytes <= 0 || bytes > MaxEmbeddedTextureNameBytes)
+                throw new InvalidDataException("Invalid embedded 3DC texture name length " + bytes + ".");
+            LegacyFormatPrimitives.EnsureRemaining(reader, bytes + 4L);
+            string name = Encoding.ASCII.GetString(reader.ReadBytes(bytes)).TrimEnd('\0');
+            if (string.IsNullOrWhiteSpace(name)) throw new InvalidDataException("Texture-prefixed 3DC has an empty texture name.");
+            var result = new Legacy3dcFile { Version = 0, Layout = Legacy3dcLayout.TexturePrefixed, EmbeddedTextureName = name };
+            int count = LegacyFormatPrimitives.ReadCount(reader, "texture-prefixed 3DC bone", MaxBones);
+            ReadBones(reader, result, count);
+            int vertices = LegacyFormatPrimitives.ReadCount(reader, "texture-prefixed 3DC vertex", MaxVertices);
+            ReadVertices(reader, result, vertices, count, true, repairNormals);
+            ReadFaces(reader, result, vertices);
             return result;
         }
-
-        private static void ReadBones(
-            BinaryReader reader,
-            Legacy3dcFile result,
-            int boneCount)
+        private static void ReadBones(BinaryReader reader, Legacy3dcFile result, int count)
         {
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                (long)boneCount * 64L + 4L);
-
-            for (int i = 0; i < boneCount; i++)
-            {
-                result.InverseBindMatrices.Add(
-                    LegacyFormatPrimitives.ReadMatrix4x4(reader));
-            }
+            LegacyFormatPrimitives.EnsureRemaining(reader, (long)count * 64 + 4);
+            for (int i = 0; i < count; i++) result.InverseBindMatrices.Add(LegacyFormatPrimitives.ReadMatrix4x4(reader));
         }
-
-        private static void ReadVertices(
-            BinaryReader reader,
-            Legacy3dcFile result,
-            int vertexCount,
-            int boneCount,
-            bool validateBoneReferences)
+        private static void ReadVertices(BinaryReader reader, Legacy3dcFile result, int count,
+            int boneCount, bool validateBones, bool repairNormals)
         {
-            int vertexStride = result.IsEp6 ? 48 : 40;
-
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                (long)vertexCount * vertexStride + 4L);
-
-            for (int i = 0; i < vertexCount; i++)
+            int stride = result.IsEp6 ? 48 : 40;
+            LegacyFormatPrimitives.EnsureRemaining(reader, (long)count * stride + 4);
+            for (int i = 0; i < count; i++)
             {
-                Legacy3dcVertex vertex = new Legacy3dcVertex
-                {
-                    Position = LegacyFormatPrimitives.ReadVector3(reader),
-                    Weight1 = LegacyFormatPrimitives.ReadFiniteSingle(reader)
-                };
-
+                var v = new Legacy3dcVertex { Position = LegacyFormatPrimitives.ReadVector3(reader),
+                    Weight1 = LegacyFormatPrimitives.ReadFiniteSingle(reader) };
                 if (result.IsEp6)
-                {
-                    vertex.Weight2 =
-                        LegacyFormatPrimitives.ReadFiniteSingle(reader);
-
-                    vertex.Weight3 =
-                        LegacyFormatPrimitives.ReadFiniteSingle(reader);
-                }
-                else
-                {
-                    vertex.Weight2 = 1f - vertex.Weight1;
-                    vertex.Weight3 = 0f;
-                }
-
+                { v.Weight2 = LegacyFormatPrimitives.ReadFiniteSingle(reader); v.Weight3 = LegacyFormatPrimitives.ReadFiniteSingle(reader); }
+                else { v.Weight2 = 1 - v.Weight1; v.Weight3 = 0; }
                 LegacyFormatPrimitives.EnsureRemaining(reader, 4);
-
-                vertex.Bone1 = reader.ReadByte();
-                vertex.Bone2 = reader.ReadByte();
-                vertex.Bone3 = reader.ReadByte();
-                vertex.Unknown = reader.ReadByte();
-
-                vertex.Normal =
+                v.Bone1 = reader.ReadByte(); v.Bone2 = reader.ReadByte(); v.Bone3 = reader.ReadByte(); v.Unknown = reader.ReadByte();
+                v.Normal = repairNormals ? new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()) :
                     LegacyFormatPrimitives.ReadVector3(reader);
-
-                vertex.UV =
-                    LegacyFormatPrimitives.ReadVector2(reader);
-
-                ValidateVertex(
-                    vertex,
-                    boneCount,
-                    result.IsEp6,
-                    validateBoneReferences,
-                    i);
-
-                result.Vertices.Add(vertex);
+                v.UV = LegacyFormatPrimitives.ReadVector2(reader);
+                ValidateVertex(v, boneCount, result.IsEp6, validateBones, i);
+                result.Vertices.Add(v);
             }
         }
-
-        private static void ReadFaces(
-            BinaryReader reader,
-            Legacy3dcFile result,
-            int vertexCount)
+        private static void ReadFaces(BinaryReader reader, Legacy3dcFile result, int vertexCount)
         {
-            int faceCount = LegacyFormatPrimitives.ReadCount(
-                reader,
-                "3DC face",
-                MaxFaces);
-
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                (long)faceCount * 6L);
-
-            for (int i = 0; i < faceCount; i++)
+            int count = LegacyFormatPrimitives.ReadCount(reader, "3DC face", MaxFaces);
+            LegacyFormatPrimitives.EnsureRemaining(reader, (long)count * 6);
+            for (int i = 0; i < count; i++)
             {
-                LegacyTriangle face = new LegacyTriangle
-                {
-                    A = reader.ReadUInt16(),
-                    B = reader.ReadUInt16(),
-                    C = reader.ReadUInt16()
-                };
-
-                if (face.A >= vertexCount ||
-                    face.B >= vertexCount ||
-                    face.C >= vertexCount)
-                {
-                    throw new InvalidDataException(
-                        "3DC face " + i +
-                        " references a vertex outside the mesh.");
-                }
-
+                var face = new LegacyTriangle { A = reader.ReadUInt16(), B = reader.ReadUInt16(), C = reader.ReadUInt16() };
+                if (face.A >= vertexCount || face.B >= vertexCount || face.C >= vertexCount)
+                    throw new InvalidDataException("3DC face " + i + " references a vertex outside the mesh.");
                 result.Faces.Add(face);
             }
         }
-
-        private static void ValidateVertex(
-            Legacy3dcVertex vertex,
-            int boneCount,
-            bool ep6,
-            bool validateBoneReferences,
-            int ordinal)
+        private static void ValidateVertex(Legacy3dcVertex v, int boneCount, bool ep6, bool validateBones, int ordinal)
         {
-            if (vertex.Unknown != 0)
-                throw new InvalidDataException(
-                    "3DC vertex " + ordinal +
-                    " has unexpected marker " + vertex.Unknown + ".");
-
-            if (validateBoneReferences &&
-                (vertex.Bone1 >= boneCount ||
-                 (vertex.Weight2 > 0.000001f &&
-                  vertex.Bone2 >= boneCount) ||
-                 (ep6 &&
-                  vertex.Weight3 > 0.000001f &&
-                  vertex.Bone3 >= boneCount)))
-            {
-                throw new InvalidDataException(
-                    "3DC vertex " + ordinal +
-                    " references an invalid bone.");
-            }
-
-            float total =
-                vertex.Weight1 +
-                vertex.Weight2 +
-                vertex.Weight3;
-
+            if (v.Unknown != 0) throw new InvalidDataException("3DC vertex " + ordinal + " has unexpected marker " + v.Unknown + ".");
+            if (validateBones && (v.Bone1 >= boneCount || (v.Weight2 > 0.000001f && v.Bone2 >= boneCount) ||
+                (ep6 && v.Weight3 > 0.000001f && v.Bone3 >= boneCount)))
+                throw new InvalidDataException("3DC vertex " + ordinal + " references an invalid bone.");
+            float total = v.Weight1 + v.Weight2 + v.Weight3;
             if (total < 0.999f || total > 1.001f)
-            {
-                throw new InvalidDataException(
-                    "3DC vertex " + ordinal +
-                    " has invalid skin weight sum " + total + ".");
-            }
+                throw new InvalidDataException("3DC vertex " + ordinal + " has invalid skin weight sum " + total + ".");
         }
-
         private static bool OnlyZeroPaddingRemains(BinaryReader reader)
         {
-            long start = reader.BaseStream.Position;
-            long remaining = reader.BaseStream.Length - start;
-
-            if (remaining <= 0)
-                return true;
-
-            if (remaining > 64)
-                return false;
-
-            byte[] tail = reader.ReadBytes((int)remaining);
-            reader.BaseStream.Position = start;
-
-            for (int i = 0; i < tail.Length; i++)
-            {
-                if (tail[i] != 0)
-                    return false;
-            }
-
+            long start = reader.BaseStream.Position, remaining = reader.BaseStream.Length - start;
+            if (remaining <= 0) return true;
+            if (remaining > 64) return false;
+            byte[] tail = reader.ReadBytes((int)remaining); reader.BaseStream.Position = start;
+            foreach (byte b in tail) if (b != 0) return false;
             reader.BaseStream.Position = reader.BaseStream.Length;
             return true;
         }
