@@ -1,4 +1,4 @@
-# Qualification revision 11: execute corrected pre-roll cases and full Map0 entity import.
+# Qualification revision 12: enhanced presentation, original content and camera safety.
 name: Playable Map0 qualification
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
           if ($env:WORLD_AVAILABLE -ne 'true') { throw 'Real Map0 corpus unavailable; synthetic fallback is forbidden.' }
       - name: Unity Personal preflight
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task preflight
-      - name: EditMode tests including real corpus
+      - name: EditMode tests including corpus and enhanced camera/rendering regressions
         id: unity-tests
         timeout-minutes: 20
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task test
@@ -59,7 +59,7 @@ jobs:
           path: TestResults/
           if-no-files-found: warn
           retention-days: 14
-      - name: Build preconverted real Map0 Player
+      - name: Build preconverted Map0 Player with enhanced presentation
         id: world-build
         timeout-minutes: 45
         run: ./Tools/CI/Invoke-WorldQualification.ps1 -Task build
@@ -93,10 +93,11 @@ jobs:
           WORLD_PLAY: ${{ steps.world-play.outcome }}
         run: |
           @(
-            '## Actual Map0 qualification'
+            '## Original Map0 content / enhanced presentation qualification'
             "Commit: $env:GITHUB_SHA"
             "EditMode: $env:EDITMODE"
             "Preconverted Map0 build: $env:WORLD_BUILD"
             "Actual walk/combat scenario: $env:WORLD_PLAY"
-            'Local integration only. Native visual equivalence and server combat rules remain separate gates.'
+            'Rendering profile: enhanced-pc-01. No gameplay, map identity or server rules changed.'
+            'Visual improvement requires inspecting new Player frames. Native Map1 references cannot certify Map0 equivalence.'
           ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
