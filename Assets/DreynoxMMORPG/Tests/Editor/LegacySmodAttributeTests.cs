@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Dreynox.Mmorpg.Editor.Corpus;
@@ -30,11 +29,13 @@ namespace Dreynox.Mmorpg.Tests.Editor
             Assert.Throws<InvalidDataException>(()=>LegacySmodParser.Parse(Fixture(usedUvNaN:true)));
         }
         [Test]
-        public void GeometryAndCollisionRemainStrict()
+        public void GeometryAndUnparsedDataRemainStrictWhileExistingZeroPaddingIsPreserved()
         {
             Assert.Throws<InvalidDataException>(()=>LegacySmodParser.Parse(Fixture(positionNaN:true)));
-            byte[] trailing=Fixture().Concat(new byte[]{0}).ToArray();
-            Assert.Throws<InvalidDataException>(()=>LegacySmodParser.Parse(trailing));
+            // The shared legacy reader explicitly permits zero alignment padding.
+            // Test unparsed data, rather than accidentally rejecting that existing contract.
+            Assert.Throws<InvalidDataException>(()=>LegacySmodParser.Parse(Fixture().Concat(new byte[]{1}).ToArray()));
+            Assert.DoesNotThrow(()=>LegacySmodParser.Parse(Fixture().Concat(new byte[]{0}).ToArray()));
         }
         [Test]
         public void CanonicalMap0AllReferencedStaticMeshesAreFiniteAfterBoundedRepairs()
@@ -79,7 +80,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 {
                     writer.Write(i==0&&positionNaN?float.NaN:p[i].x);writer.Write(p[i].y);writer.Write(p[i].z);
                     writer.Write(i==0&&normalNaN?float.NaN:0f);writer.Write(1f);writer.Write(0f);writer.Write(-1);
-                    writer.Write(i==0&&usedUvNaN||i==3&&unusedUvNaN?float.NaN:0f);writer.Write(0f);
+                    writer.Write((i==0&&usedUvNaN)||(i==3&&unusedUvNaN)?float.NaN:0f);writer.Write(0f);
                 }
                 writer.Write(1);writer.Write((ushort)0);writer.Write((ushort)1);writer.Write((ushort)2);
                 for(int i=0;i<6;i++)writer.Write(0f);
