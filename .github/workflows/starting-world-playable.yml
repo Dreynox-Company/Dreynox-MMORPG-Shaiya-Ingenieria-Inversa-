@@ -1,4 +1,4 @@
-# Revision 6: 261/281-character package paths broke managed Unity file IO.
+# Revision 10: explicit same-map travel and qualified executable-only delivery.
 name: Starting Map1 playable client
 on:
   push:
@@ -19,10 +19,11 @@ jobs:
       - run: dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
       - run: dotnet run --project Tools/CombatHarness/CombatHarness.csproj --configuration Release
       - run: dotnet run --project Tools/QuestHarness/QuestHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/DeliveryTests/DeliveryTests.csproj --configuration Release
   windows:
     needs: source
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 175
+    timeout-minutes: 185
     concurrency:
       group: starting-world-playable-${{ github.repository }}
       cancel-in-progress: false
@@ -75,7 +76,7 @@ jobs:
             $report=Get-Content Artifacts/StartingWorld/pipeline-resources.json -Raw | ConvertFrom-Json
             if(-not $report.passed){throw $report.failure}
           } finally {if(-not $p.HasExited){Stop-Process -Id $p.Id -Force}}
-      - name: Unity tests and original quest corpus gates
+      - name: Unity tests including original corpus and local portal regressions
         id: tests
         timeout-minutes: 32
         run: |
@@ -99,6 +100,15 @@ jobs:
         run: |
           Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
           ./Tools/StartingWorld/Run-StartingWorld.ps1 -Task Qualify
+      - name: Create ready-to-run EXE only from the qualified real Player
+        id: package
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference='Stop'
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          $reports=@(Get-ChildItem -LiteralPath 'Artifacts/StartingWorld' -Filter 'starting-world-qualification.json' -File -Recurse)
+          if($reports.Count -ne 1){throw 'Expected exactly one current-run Player qualification report.'}
+          ./Tools/Delivery/Build-PortablePlayer.ps1 -PlayerDirectory 'Builds/WindowsStartingWorld' -QualificationReport $reports[0].FullName -OutputDirectory 'Deliveries/Map1'
       - name: Record independent results
         if: always() && steps.project.outcome == 'success'
         env:
@@ -106,13 +116,14 @@ jobs:
           PREPARE_RESULT: ${{ steps.prepare.outcome }}
           BUILD_RESULT: ${{ steps.build.outcome }}
           PLAY_RESULT: ${{ steps.play.outcome }}
+          PACKAGE_RESULT: ${{ steps.package.outcome }}
         run: |
           Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
           New-Item -ItemType Directory -Force -Path Artifacts/StartingWorld | Out-Null
           @{
             commit=$env:GITHUB_SHA; run=$env:GITHUB_RUN_ID; project=$env:DREYNOX_BUILD_ROOT;
             tests=$env:TEST_RESULT; prepare=$env:PREPARE_RESULT;
-            build=$env:BUILD_RESULT; play=$env:PLAY_RESULT;
+            build=$env:BUILD_RESULT; play=$env:PLAY_RESULT; package=$env:PACKAGE_RESULT;
             scope='Local original Map1 quest integration; not full game.exe parity'
           } | ConvertTo-Json | Set-Content -LiteralPath Artifacts/StartingWorld/ci-result.json -Encoding UTF8
       - name: Preserve logs and real Player captures
@@ -126,11 +137,21 @@ jobs:
             ${{ env.DREYNOX_BUILD_ROOT }}/TestResults/
           retention-days: 14
           if-no-files-found: warn
-      - name: Publish compiled game only after actual executable exists
+      - name: Preserve complete compiled payload for internal diagnosis
         if: always() && steps.build.outcome == 'success'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: Dreynox-Mmorpg-Map1-Windows-x64-${{ github.run_number }}
           path: ${{ env.DREYNOX_BUILD_ROOT }}/Builds/WindowsStartingWorld/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Publish qualified one-file executable
+        if: success() && steps.play.outcome == 'success' && steps.package.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-Map1-ReadyToRun-${{ github.run_number }}
+          path: |
+            ${{ env.DREYNOX_BUILD_ROOT }}/Deliveries/Map1/Dreynox-Mmorpg-Map1-Play.exe
+            ${{ env.DREYNOX_BUILD_ROOT }}/Deliveries/Map1/portable-manifest.json
           retention-days: 14
           if-no-files-found: error
