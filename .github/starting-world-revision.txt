@@ -1,6 +1,7 @@
-Map1 qualification 13: managed skinned DDS conversion plus portal fixtures that do not replace unsaved Editor scenes.
-Includes direct original NPC137 texture regression, grouped geometry persistence and same-map portal interaction.
-Run11 passed 196 tests; ten portal cases failed in fixture setup before any portal assertion. All ten assertions are retained.
-No test suppression or synthetic world fallback. Actual Player and quest/kill/reward evidence remain required.
-Qualified delivery is a single executable containing the verified original preconverted Unity Player.
+Map1 qualification 14: original NPC/mob texture compatibility, grouped geometry and same-map portals.
+Managed DDS loading covers BC1/BC2/BC3 plus explicit byte-channel RGB24/RGBA32, without passing raw DDS into skinned native imports.
+Original NPC texture regression, two original uncompressed NPC examples, nine additional standalone checks and all prior corpus tests remain required.
+Five indexed-palette pet textures in the full source remain unsupported; do not fabricate their colors or claim all-resource coverage.
+Portal fixture tests preserve unsaved Editor scenes. No assertion suppression or synthetic world fallback.
+Require actual Map1 walking, NPC interaction, quest acceptance, five original fox kills and reward delivery before distributing one executable.
 Main and original DATA remain unchanged.
