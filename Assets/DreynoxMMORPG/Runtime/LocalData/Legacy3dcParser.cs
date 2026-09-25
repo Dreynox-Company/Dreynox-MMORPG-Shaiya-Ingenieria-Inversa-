@@ -25,8 +25,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         public Vector3 Position;
         public Vector3 Normal;
         public Vector2 UV;
-        public float Weight1, Weight2, Weight3;
+        public float Weight1, Weight2, Weight3, Weight4;
+        // The DWORD contains four packed matrix indices, not a zero marker.
+        // The 40-byte vertex uses only its first two indices. EP6 uses all four.
         public byte Bone1, Bone2, Bone3, Unknown;
+        public byte Bone4 { get => Unknown; set => Unknown = value; }
     }
     public struct LegacyTriangle { public ushort A, B, C; }
 
@@ -40,7 +43,9 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         public static Legacy3dcFile Parse(string path)
         {
             if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("3DC path is required.", nameof(path));
-            return Parse(File.ReadAllBytes(path));
+            try { return Parse(File.ReadAllBytes(path)); }
+            catch (InvalidDataException ex)
+            { throw new InvalidDataException("3DC '" + path + "': " + ex.Message, ex); }
         }
         public static Legacy3dcFile Parse(byte[] bytes)
         {
@@ -98,7 +103,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     catch (Exception ex) when (ex is InvalidDataException || ex is EndOfStreamException)
                     {
                         reader.BaseStream.Position = start;
-                        throw new InvalidDataException("3DC section is neither standard nor skeletonless.", standardFailure ?? ex);
+                        throw new InvalidDataException("3DC section at " + start + " is neither standard nor skeletonless: " + (standardFailure ?? ex).Message, standardFailure ?? ex);
                     }
                 }
             }
@@ -111,6 +116,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     throw new InvalidDataException("Unsupported texture-prefixed 3DC section.", ex);
                 }
             }
+            if (standardFailure != null) throw new InvalidDataException("Invalid standard 3DC at " + start + ": " + standardFailure.Message, standardFailure);
             throw new InvalidDataException("Unsupported 3DC section marker " + marker + ".");
         }
         private static Legacy3dcFile ReadStandard(BinaryReader reader, bool repairNormals)
@@ -169,6 +175,11 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 else { v.Weight2 = 1 - v.Weight1; v.Weight3 = 0; }
                 LegacyFormatPrimitives.EnsureRemaining(reader, 4);
                 v.Bone1 = reader.ReadByte(); v.Bone2 = reader.ReadByte(); v.Bone3 = reader.ReadByte(); v.Unknown = reader.ReadByte();
+                // D3D's final influence is the complement of the explicit weights.
+                float explicitTotal = v.Weight1 + v.Weight2 + v.Weight3;
+                if (result.IsEp6 && explicitTotal > 1.00001f)
+                    throw new InvalidDataException("3DC vertex " + i + " has weights exceeding one.");
+                v.Weight4 = result.IsEp6 ? Mathf.Max(0f, 1f - explicitTotal) : 0f;
                 v.Normal = repairNormals ? new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()) :
                     LegacyFormatPrimitives.ReadVector3(reader);
                 v.UV = LegacyFormatPrimitives.ReadVector2(reader);
@@ -190,11 +201,14 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         }
         private static void ValidateVertex(Legacy3dcVertex v, int boneCount, bool ep6, bool validateBones, int ordinal)
         {
-            if (v.Unknown != 0) throw new InvalidDataException("3DC vertex " + ordinal + " has unexpected marker " + v.Unknown + ".");
-            if (validateBones && (v.Bone1 >= boneCount || (v.Weight2 > 0.000001f && v.Bone2 >= boneCount) ||
-                (ep6 && v.Weight3 > 0.000001f && v.Bone3 >= boneCount)))
-                throw new InvalidDataException("3DC vertex " + ordinal + " references an invalid bone.");
-            float total = v.Weight1 + v.Weight2 + v.Weight3;
+            if (v.Weight1 < 0f || v.Weight2 < 0f || v.Weight3 < 0f || v.Weight4 < 0f)
+                throw new InvalidDataException("3DC vertex " + ordinal + " has a negative skin weight.");
+            if (validateBones && ((v.Weight1 > 0.000001f && v.Bone1 >= boneCount) ||
+                (v.Weight2 > 0.000001f && v.Bone2 >= boneCount) ||
+                (ep6 && v.Weight3 > 0.000001f && v.Bone3 >= boneCount) ||
+                (ep6 && v.Weight4 > 0.000001f && v.Bone4 >= boneCount)))
+                throw new InvalidDataException("3DC vertex " + ordinal + " references an invalid weighted bone.");
+            float total = v.Weight1 + v.Weight2 + v.Weight3 + v.Weight4;
             if (total < 0.999f || total > 1.001f)
                 throw new InvalidDataException("3DC vertex " + ordinal + " has invalid skin weight sum " + total + ".");
         }

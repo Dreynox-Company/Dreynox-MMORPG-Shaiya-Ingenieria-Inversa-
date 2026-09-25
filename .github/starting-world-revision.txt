@@ -1,5 +1,4 @@
-Map1 qualification 7: validate every placed SMOD before preparing original world.
-Source correction: 9be57a2fac3dc1b0acad2705d8812f410c099cdd.
-Preserve empty-material submesh topology and collision; never manufacture UVs for textured faces.
-Required: real DATA, Unity tests, prepared Map1, compiled Player, NPC/quest/combat screenshots.
-No main changes; no capsule fallback.
+Map1 qualification 8: packed 3DC matrix indices and complete MON model preflight.
+Original boar resources preserve unused packed bytes; EP6 uses complementary fourth influence.
+Validate all placed Map1 monsters and NPC rigs before preparing world assets.
+Required: actual DATA, Unity tests, Map1 Player, NPC/quest/combat execution evidence.
