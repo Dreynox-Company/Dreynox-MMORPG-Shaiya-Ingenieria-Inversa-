@@ -1,4 +1,4 @@
-# Qualification revision 7: preserve SMOD zero-padding contract; all authored statics required.
+# Qualification revision 8: fortress bitmap lightmaps, full Map0 import and animated combat.
 name: Playable Map0 qualification
 on:
   push:
