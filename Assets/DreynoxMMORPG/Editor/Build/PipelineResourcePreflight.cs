@@ -6,7 +6,6 @@ using UnityEngine;
 
 namespace Dreynox.Mmorpg.Editor.Build
 {
-    /// <summary>Warm package dependencies outside asset-postprocessor and test callbacks.</summary>
     public static class PipelineResourcePreflight
     {
         private static readonly string[] Required =
@@ -16,7 +15,7 @@ namespace Dreynox.Mmorpg.Editor.Build
         };
         [Serializable] private sealed class Record
         {
-            public string path, diskPath, guid, loadedType;
+            public string path, diskPath, guid, loadedType, initialType, importerType;
             public long bytes;
             public bool forcedImport;
         }
@@ -47,17 +46,24 @@ namespace Dreynox.Mmorpg.Editor.Build
                     if (!File.Exists(row.diskPath)) throw new FileNotFoundException("Installed package resource missing.", row.diskPath);
                     row.bytes = new FileInfo(row.diskPath).Length;
                     var resource = AssetDatabase.LoadMainAssetAtPath(path);
-                    if (resource == null)
+                    row.initialType = resource != null ? resource.GetType().FullName : "null";
+                    // A generic DefaultAsset proves only that a file exists, not that
+                    // the package's ScriptedImporter produced a usable graphics resource.
+                    if (resource == null || resource is DefaultAsset)
                     {
                         row.forcedImport = true;
-                        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
+                        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate |
+                            ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.DontDownloadFromCacheServer);
                         resource = AssetDatabase.LoadMainAssetAtPath(path);
                     }
+                    var importer = AssetImporter.GetAtPath(path);
+                    row.importerType = importer != null ? importer.GetType().FullName : "null";
                     row.guid = AssetDatabase.AssetPathToGUID(path);
                     row.loadedType = resource != null ? resource.GetType().FullName : "null";
-                    Debug.Log("DREYNOX_PACKAGE_RESOURCE " + path + " type=" + row.loadedType + " bytes=" + row.bytes);
-                    if (resource == null || string.IsNullOrWhiteSpace(row.guid))
-                        throw new InvalidOperationException("Installed package resource remains unloadable: " + path);
+                    Debug.Log("DREYNOX_PACKAGE_RESOURCE " + path + " type=" + row.loadedType +
+                        " importer=" + row.importerType + " bytes=" + row.bytes);
+                    if (resource == null || resource is DefaultAsset || string.IsNullOrWhiteSpace(row.guid))
+                        throw new InvalidOperationException("Package resource was not imported by its graphics importer: " + path + " (" + row.loadedType + ")");
                     if (resource is Shader shader && ShaderUtil.ShaderHasError(shader))
                         throw new InvalidOperationException("Package shader compilation failed: " + path);
                 }
