@@ -7,6 +7,7 @@ using Dreynox.Mmorpg.Gameplay.AnimationSystem;
 using Dreynox.Mmorpg.Gameplay.CameraSystem;
 using Dreynox.Mmorpg.Gameplay.Client;
 using Dreynox.Mmorpg.Gameplay.Combat;
+using Dreynox.Mmorpg.Gameplay.Equipment;
 using Dreynox.Mmorpg.UI;
 using Dreynox.Mmorpg.Quests;
 using Dreynox.Mmorpg.World;
@@ -22,6 +23,9 @@ namespace Dreynox.Mmorpg.Parity
             public string scope="map1-local-integration-not-native-equivalence", failure="";
             public bool passed, originalEthanOpened, questAccepted, questDelivered, inputIsScripted=true, combatRelocated=true;
             public int mapId=1, questId=3400, npcPositions, monsterInstances, kills, attackAnimations;
+            public bool starterWeaponEquipped;
+            public string starterWeaponResource="";
+            public int starterWeaponVertices;
             public long rewardGold, rewardExperience;
             public float walkedDistance, directionDot, cameraYawBefore, cameraYawAfter;
             public Vector3 entry;
@@ -73,6 +77,18 @@ namespace Dreynox.Mmorpg.Parity
             {Finish("The native starting map or authored entry is not the expected Map1.");yield break;}
             if(!actor.GetComponentsInChildren<SkinnedMeshRenderer>().Any(r=>r.sharedMesh!=null))
             {Finish("Original character mesh missing.");yield break;}
+            var starter=actor.GetComponent<LocalStarterEquipment>();
+            var attachments=actor.GetComponent<EquipmentAttachmentController>();
+            evidence.starterWeaponEquipped=starter!=null&&starter.Equipped&&attachments!=null&&attachments.Has(EquipmentSlot.MainHand);
+            if(!evidence.starterWeaponEquipped||!attachments.TryGetInstance(EquipmentSlot.MainHand,out var weapon)||
+                !attachments.TryGetDefinition(EquipmentSlot.MainHand,out var weaponDefinition))
+            {Finish("Original starter weapon was not equipped through the actor attachment system.");yield break;}
+            var weaponMesh=weapon.GetComponentInChildren<MeshFilter>();
+            evidence.starterWeaponVertices=weaponMesh!=null&&weaponMesh.sharedMesh!=null?weaponMesh.sharedMesh.vertexCount:0;
+            evidence.starterWeaponResource=weaponDefinition.legacyResourceId;
+            if(evidence.starterWeaponVertices!=169||weapon.transform.parent.name!="Bone_021")
+            {Finish("Starter sword visual or original hand binding is missing.");yield break;}
+            evidence.steps.Add("Original item 1/1 resolved through DBItemData and IT2; 169-vertex sword attached to authored HUMF hand.");
             yield return Capture("01-map1-entry-hud");
             evidence.cameraYawBefore=camera.Yaw;camera.AddLookInput(new Vector2(10,0));
             yield return null;yield return null;

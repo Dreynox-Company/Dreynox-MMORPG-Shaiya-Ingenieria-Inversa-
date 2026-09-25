@@ -52,6 +52,7 @@ namespace Dreynox.Mmorpg.Editor.Build
             var camera=Camera.main;
             if(actor==null||monsters==null||npcs==null||camera==null||Terrain.activeTerrain==null)
                 throw new BuildFailedException("Incomplete real starting world.");
+            Stage("authored-starter-sword",()=>CanonicalStarterSwordImporter.Configure(corpus,actor));
             if(monsters.LogicalSpawnCount!=1186||npcs.LogicalSpawnCount!=307)
                 throw new BuildFailedException("Map1 instance population mismatch.");
             if(!npcs.Spawns.Any(n=>n.npcType==7&&n.typeId==1081)||!npcs.Spawns.Any(n=>n.npcType==7&&n.typeId==1167))
