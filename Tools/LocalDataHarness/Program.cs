@@ -27,6 +27,33 @@ Check(LegacyDdsDecoder.Decode(bc3).Pixels[3]==180,"BC3 alpha endpoint");
 Throws<EndOfStreamException>(()=>LegacyDdsDecoder.Decode(bc1[..^1]),"reject truncated mip");
 Throws<NotSupportedException>(()=>LegacyDdsDecoder.Decode(Header("DX10",16)),"reject unimplemented DDS variant");
 Throws<OperationCanceledException>(()=>LegacyDdsDecoder.Decode(bc1,new CancellationToken(true)),"DDS cancellation");
+
+void Word(byte[] d, int offset, uint value) { Array.Copy(BitConverter.GetBytes(value), 0, d, offset, 4); }
+byte[] Rgb(bool alpha, bool pitched)
+{
+    byte[] d = Header("NONE",8);
+    Word(d,8,pitched?0x100fu:0x81007u);Word(d,12,2);Word(d,16,1);Word(d,20,pitched?4u:8u);
+    Word(d,80,alpha?0x41u:0x40u);Word(d,84,0);Word(d,88,alpha?32u:24u);
+    Word(d,92,0xff0000);Word(d,96,0xff00);Word(d,100,0xff);Word(d,104,alpha?0xff000000u:0u);
+    Array.Copy(new byte[]{30,20,10,40,70,60,50,80},0,d,128,8);
+    return d;
+}
+byte[] raw = Rgb(true,false);
+Check(LegacyDdsDecoder.Decode(raw).Pixels.SequenceEqual(new byte[]{50,60,70,80,10,20,30,40}),"original BGRA channels alpha and bottom-first rows");
+byte[] rawRgba=(byte[])raw.Clone();Word(rawRgba,92,0xff);Word(rawRgba,100,0xff0000);
+Check(LegacyDdsDecoder.Decode(rawRgba).Pixels.SequenceEqual(new byte[]{70,60,50,80,30,20,10,40}),"RGBA mask channel order");
+Check(LegacyDdsDecoder.Decode(Rgb(false,true)).Pixels.SequenceEqual(new byte[]{50,60,70,255,10,20,30,255}),"24-bit RGB row padding and opaque alpha");
+byte[] opaque=(byte[])raw.Clone();Word(opaque,80,0x40);Word(opaque,104,0);
+Check(LegacyDdsDecoder.Decode(opaque).Pixels[3]==255,"RGBX padding is not alpha");
+byte[] overlap=(byte[])raw.Clone();Word(overlap,96,0xff0000);
+Throws<InvalidDataException>(()=>LegacyDdsDecoder.Decode(overlap),"reject overlapping channel masks");
+byte[] pitch=(byte[])raw.Clone();Word(pitch,8,0x100f);Word(pitch,20,2);
+Throws<InvalidDataException>(()=>LegacyDdsDecoder.Decode(pitch),"reject shorter than pixel row pitch");
+Throws<EndOfStreamException>(()=>LegacyDdsDecoder.Decode(raw[..^1]),"reject truncated uncompressed pixels");
+Throws<OperationCanceledException>(()=>LegacyDdsDecoder.Decode(raw,new CancellationToken(true)),"uncompressed cancellation");
+byte[] palette=(byte[])raw.Clone();Word(palette,80,0x20);Word(palette,88,8);
+Throws<NotSupportedException>(()=>LegacyDdsDecoder.Decode(palette),"unimplemented palette remains explicit not fabricated");
+
 string root=Path.Combine(Path.GetTempPath(),"dx-local-test-"+Guid.NewGuid().ToString("N"));
 try
 {

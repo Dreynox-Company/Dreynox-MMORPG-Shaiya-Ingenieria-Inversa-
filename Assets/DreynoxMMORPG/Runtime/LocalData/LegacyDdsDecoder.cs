@@ -10,7 +10,7 @@ namespace Dreynox.Mmorpg.LocalData
         /// <summary>RGBA8, bottom row first for Unity; only the source base mip.</summary>
         public byte[] Pixels;
     }
-    /// <summary>Portable BC1/BC2/BC3 decoder. No Unity API or native dependency on worker threads.</summary>
+    /// <summary>Portable BC1/BC2/BC3 and byte-channel RGB(A) decoder. No Unity API on worker threads.</summary>
     public static class LegacyDdsDecoder
     {
         public static DecodedDds Decode(byte[] data, CancellationToken token = default)
@@ -20,11 +20,13 @@ namespace Dreynox.Mmorpg.LocalData
             int width = checked((int)U32(data, 16)), height = checked((int)U32(data, 12));
             if (width < 1 || height < 1 || width > 4096 || height > 4096)
                 throw new InvalidDataException("Dimensiones DDS fuera del límite 4096.");
-            if ((U32(data, 80) & 4) == 0 || U32(data, 112) != 0 || U32(data, 24) > 1)
-                throw new NotSupportedException("Solo DDS 2D BC1/BC2/BC3; no arrays, cubemaps o volúmenes.");
+            if (U32(data, 112) != 0 || U32(data, 24) > 1)
+                throw new NotSupportedException("Solo DDS 2D; no cubemaps o volúmenes.");
+            if ((U32(data, 80) & 4) == 0)
+                return DecodeRgb(data, width, height, token);
             uint format = U32(data, 84);
             int kind = format == 0x31545844 ? 1 : format == 0x33545844 ? 3 : format == 0x35545844 ? 5 : 0;
-            if (kind == 0) throw new NotSupportedException("DDS: se esperaba DXT1, DXT3 o DXT5.");
+            if (kind == 0) throw new NotSupportedException("DDS comprimido: se esperaba DXT1, DXT3 o DXT5.");
             int stride = kind == 1 ? 8 : 16, cols = (width + 3) / 4, rows = (height + 3) / 4;
             long required = 128L + (long)cols * rows * stride;
             if (required > data.Length) throw new EndOfStreamException("DDS base mip truncado.");
@@ -73,6 +75,46 @@ namespace Dreynox.Mmorpg.LocalData
                 }
             }
             return new DecodedDds { Width = width, Height = height, Pixels = pixels };
+        }
+        private static DecodedDds DecodeRgb(byte[] data, int width, int height, CancellationToken token)
+        {
+            uint flags = U32(data, 80), bits = U32(data, 88);
+            if ((flags & 0x40) == 0 || (flags & (0x20 | 0x200 | 0x20000)) != 0 || (bits != 24 && bits != 32))
+                throw new NotSupportedException("DDS sin comprimir: se requiere RGB de 24/32 bits con canales de ocho bits; paletas/YUV/luminancia no implementados.");
+            int bytes = (int)bits / 8;
+            int red = ByteChannel(U32(data, 92), bytes), green = ByteChannel(U32(data, 96), bytes), blue = ByteChannel(U32(data, 100), bytes);
+            int alpha = (flags & 1) != 0 ? ByteChannel(U32(data, 104), bytes) : -1;
+            if (red == green || red == blue || green == blue || alpha == red || alpha == green || alpha == blue)
+                throw new InvalidDataException("DDS contiene máscaras de canales superpuestas.");
+            int rowBytes = checked(width * bytes);
+            // Original legacy files sometimes store whole-image size in this
+            // field. It is a row pitch ONLY when DDSD_PITCH is explicitly set.
+            long pitch = (U32(data, 8) & 8) != 0 ? U32(data, 20) : rowBytes;
+            if (pitch < rowBytes || pitch > Int32.MaxValue)
+                throw new InvalidDataException("DDS row pitch inválido.");
+            long required = 128L + (height - 1L) * pitch + rowBytes;
+            if (required > data.Length) throw new EndOfStreamException("DDS RGB base mip truncado.");
+            token.ThrowIfCancellationRequested();
+            byte[] pixels = new byte[checked(width * height * 4)];
+            for (int y = 0; y < height; y++)
+            {
+                token.ThrowIfCancellationRequested();
+                int source = checked((int)(128L + y * pitch));
+                int destination = (height - 1 - y) * width * 4;
+                for (int x = 0; x < width; x++, source += bytes, destination += 4)
+                {
+                    pixels[destination] = data[source + red];
+                    pixels[destination + 1] = data[source + green];
+                    pixels[destination + 2] = data[source + blue];
+                    pixels[destination + 3] = alpha < 0 ? (byte)255 : data[source + alpha];
+                }
+            }
+            return new DecodedDds { Width = width, Height = height, Pixels = pixels };
+        }
+        private static int ByteChannel(uint mask, int byteCount)
+        {
+            for (int i = 0; i < byteCount; i++) if (mask == (0xffu << (8 * i))) return i;
+            throw new NotSupportedException("DDS: máscara no implementada; se requieren canales completos de ocho bits.");
         }
         private static void Color565(ushort c, byte[] target, int o)
         {
