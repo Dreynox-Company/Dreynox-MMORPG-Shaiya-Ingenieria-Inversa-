@@ -1,6 +1,6 @@
-Map1 qualification 17: VANI diffuse ARGB confirmed from original game.exe FVF0x152/stride36.
-Run16 passed222 Unity tests then rejected fish_02 gray vertex colors as false BoneId values.
-Preserve every original diffuse RGBA in baked meshes and the dedicated instanced lit/fog/alpha-clip shader.
-Keep original eagle tests; add original fish all-frame colors/prefab reload, channel checks and actual placed-Map1 VANI preflight.
-Serialized placement counts survive scene reload. Original DATA and main remain unchanged.
-Require actual Map1 Player walking, NPC dialogue, quest acceptance, five fox kills and reward before ready-to-run executable delivery.
+Map1 qualification18: original fighter starter sword resolved by explicit item1/1 to image0, IT2 mesh/texture and HUMF hand21.
+Thirty new original-resource/parser/attachment tests cover all18 canonical weapon descriptor files including pandaIT2's24 numeric transform pairs.
+Preserve source geometry, UV, authored quaternion and read-only DATA; the local loadout is not an authoritative inventory implementation.
+Player qualification requires the actual equipped169-vertex sword before camera/walking/NPC/quest/five-fox/reward checks.
+Includes native VANI diffuse-color fix and persistence regressions. Do not cancel immutable run17.
+Publish one-file executable only after the real Player loop passes. Main and original DATA remain unchanged.
