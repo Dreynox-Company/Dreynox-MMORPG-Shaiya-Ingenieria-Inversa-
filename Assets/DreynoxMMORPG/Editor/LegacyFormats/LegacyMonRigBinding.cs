@@ -14,7 +14,6 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         public LegacyAniFile Source, Bound;
         public int ExtraTracks, ReparentedBones;
     }
-
     internal sealed class LegacyMonRigPlan
     {
         public Legacy3dcFile[] Parts;
@@ -23,7 +22,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         public List<LegacyMonClipBinding> Clips;
     }
 
-    /// <summary>Bind all MON parts and semantic slots before any assets are written.</summary>
+    /// <summary>Bind every MON part and semantic slot before assets are written.</summary>
     internal static class LegacyMonRigBinding
     {
         public static LegacyMonRigPlan Prepare(Legacy3dcFile[] parts,
@@ -33,7 +32,6 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 throw new InvalidDataException("MON requires parsed mesh parts.");
             if (clips == null || clips.Count == 0)
                 throw new InvalidDataException("MON has no authored animation.");
-            // A multipart entity need not put its most complete bind table first.
             int referencePart = 0;
             for (int i = 1; i < parts.Length; i++)
                 if (parts[i].InverseBindMatrices.Count > parts[referencePart].InverseBindMatrices.Count)
@@ -52,6 +50,27 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                     break;
                 }
                 catch (InvalidDataException) { /* Try the next authored hierarchy, never fabricate bones. */ }
+            }
+            if (reference == null)
+            {
+                // All NPC clips may carry independent, unused tracks beyond the
+                // mesh bind table. Select its closed authored prefix, not fake bones.
+                int count = parts[referencePart].InverseBindMatrices.Count;
+                foreach (var candidate in clips)
+                {
+                    if (count == 0 || candidate.Source.Bones.Count < count) continue;
+                    try
+                    {
+                        ValidateParents(candidate.Source, count);
+                        foreach (var part in parts) LegacyRuntimeSkinnedBuilder.ValidateMeshForSkeleton(part, count);
+                        if (effects != null && effects.Any(e => e.BoneId < 0 || e.BoneId >= count)) continue;
+                        reference = new LegacyAniFile { IsV2 = candidate.Source.IsV2,
+                            StartKeyframe = candidate.Source.StartKeyframe, EndKeyframe = candidate.Source.EndKeyframe };
+                        for (int i = 0; i < count; i++) reference.Bones.Add(candidate.Source.Bones[i]);
+                        break;
+                    }
+                    catch (InvalidDataException) { /* No compatible closed prefix; try next authored clip. */ }
+                }
             }
             if (reference == null)
                 throw new InvalidDataException("No authored ANI hierarchy covers every weighted MON bone and effect anchor.");
@@ -75,8 +94,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 if (source.Bones[i].ParentBoneIndex != reference.Bones[i].ParentBoneIndex) reparented++;
             if (reparented == 0) return LegacyAniRigBinding.BodyClip(source, reference);
 
-            // Rend walk/run changes the parent of two body bones. Keep world poses
-            // instead of writing that clip's local channels into the wrong parent.
+            // Convert changed-parent local channels into the selected hierarchy
+            // while preserving evaluated world poses at authored frame times.
             uint span = source.EndKeyframe - source.StartKeyframe;
             if (span > 10000) throw new InvalidDataException("MON hierarchy rebake exceeds the sample budget.");
             var result = new LegacyAniFile { IsV2 = source.IsV2,
@@ -128,7 +147,6 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             }
             return result;
         }
-
         private static void ValidateParents(LegacyAniFile source, int count)
         {
             if (count == 0 || source.Bones.Count < count)
