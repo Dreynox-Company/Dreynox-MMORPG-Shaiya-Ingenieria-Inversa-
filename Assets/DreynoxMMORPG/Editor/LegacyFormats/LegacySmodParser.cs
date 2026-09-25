@@ -20,6 +20,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
         public int ReconstructedNormals { get; internal set; }
         public int InactiveNormalDefaults { get; internal set; }
         public int UnreferencedUvDefaults { get; internal set; }
+        public int UntexturedUvDefaults { get; internal set; }
     }
     public sealed class LegacySmodCollisionMesh
     {
@@ -119,9 +120,14 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 LegacySmodVertex vertex = mesh.Vertices[i];
                 if (!Finite(vertex.UV))
                 {
-                    if (used[i]) throw new InvalidDataException("SMOD mesh " + ordinal + " has non-finite UV on referenced vertex " + i + ".");
+                    // A UV channel has no meaning on a submesh with no authored
+                    // texture. Preserve its vertices/faces and the independent
+                    // collision mesh; never fabricate UVs on visible textured faces.
+                    if (used[i] && !string.IsNullOrWhiteSpace(mesh.TextureName))
+                        throw new InvalidDataException("SMOD mesh " + ordinal + " has non-finite UV on referenced textured vertex " + i + ".");
                     vertex.UV = Vector2.zero;
-                    mesh.UnreferencedUvDefaults++;
+                    if (used[i]) mesh.UntexturedUvDefaults++;
+                    else mesh.UnreferencedUvDefaults++;
                 }
                 if (!Finite(vertex.Normal))
                 {
