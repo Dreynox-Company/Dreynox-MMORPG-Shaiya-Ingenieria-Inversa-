@@ -1,4 +1,4 @@
-# Qualification revision 8: fortress bitmap lightmaps, full Map0 import and animated combat.
+# Qualification revision 9: preflight all 52 MON models and their 441 animation slots.
 name: Playable Map0 qualification
 on:
   push:
