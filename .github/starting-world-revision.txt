@@ -1,7 +1,7 @@
-Map1 qualification 14: original NPC/mob texture compatibility, grouped geometry and same-map portals.
-Managed DDS loading covers BC1/BC2/BC3 plus explicit byte-channel RGB24/RGBA32, without passing raw DDS into skinned native imports.
-Original NPC texture regression, two original uncompressed NPC examples, nine additional standalone checks and all prior corpus tests remain required.
-Five indexed-palette pet textures in the full source remain unsupported; do not fabricate their colors or claim all-resource coverage.
-Portal fixture tests preserve unsaved Editor scenes. No assertion suppression or synthetic world fallback.
-Require actual Map1 walking, NPC interaction, quest acceptance, five original fox kills and reward delivery before distributing one executable.
-Main and original DATA remain unchanged.
+Map1 qualification 15: check all textures referenced by the 30 monster and 54 resolved NPC models actually placed in Map1.
+Decode exact original DDS before scene generation; collect unsupported/missing resources with model and path. Do not substitute a same-named texture from another directory.
+Retain the explicit source gap for four guard positions without NpcQuest definition. No fabricated NPC or texture.
+Managed BC1/BC2/BC3 and RGB24/RGBA32 paths plus original image pixel checks remain required.
+Keep source/runtime identical to run14 apart from additional preflight tests. Never cancel that running revision.
+Full Player walking, NPC dialogue, quest acceptance, five fox deaths and reward are still required before one-file EXE delivery.
+Original DATA and main are unchanged.
