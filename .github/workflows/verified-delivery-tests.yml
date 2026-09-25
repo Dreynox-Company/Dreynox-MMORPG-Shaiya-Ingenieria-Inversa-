@@ -1,0 +1,44 @@
+name: Verified executable delivery tests
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['Tools/Delivery/**', 'Tools/DeliveryTests/**', '.github/workflows/verified-delivery-tests.yml']
+  pull_request:
+    paths: ['Tools/Delivery/**', 'Tools/DeliveryTests/**', '.github/workflows/verified-delivery-tests.yml']
+permissions:
+  contents: read
+jobs:
+  archive-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with: {dotnet-version: '8.0.x'}
+      - run: dotnet run --project Tools/DeliveryTests/DeliveryTests.csproj --configuration Release
+  windows-compatibility:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Compile the delivery wrapper with the installed Windows Framework
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=Join-Path $env:RUNNER_TEMP ('delivery-'+[Guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $identity=Join-Path $root 'PayloadIdentity.cs'
+          'namespace Dreynox.Delivery { internal static class PayloadIdentity { public const string Sha256 = "intentionally-invalid-fixture"; } }' | Set-Content $identity
+          $payload=Join-Path $root 'invalid-payload.bin'
+          [IO.File]::WriteAllBytes($payload,[byte[]](1,2,3))
+          $exe=Join-Path $root 'DeliveryTest.exe'
+          $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+          & $compiler /nologo /target:winexe /platform:x64 /langversion:5 "/out:$exe" "/resource:$payload,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity Tools/Delivery/VerifiedPlayerArchive.cs Tools/Delivery/PortablePlayerLauncher.cs
+          if($LASTEXITCODE -ne 0){throw 'Windows delivery wrapper compilation failed.'}
+          $p=Start-Process -FilePath $exe -ArgumentList '--verify-only' -PassThru
+          if(-not $p.WaitForExit(30000)){Stop-Process -Id $p.Id -Force;throw 'Fixture timed out.'}
+          $p.Refresh()
+          if($p.ExitCode -ne 1){throw 'The invalid embedded payload was not rejected.'}
+          Write-Host 'DELIVERY_WINDOWS_COMPATIBILITY_OK; invalid payload rejected. No game or player artifact generated.'
