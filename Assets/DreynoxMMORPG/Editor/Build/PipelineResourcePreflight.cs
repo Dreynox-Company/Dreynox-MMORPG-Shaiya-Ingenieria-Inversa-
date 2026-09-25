@@ -33,16 +33,17 @@ namespace Dreynox.Mmorpg.Editor.Build
             Directory.CreateDirectory("Artifacts/StartingWorld");
             try
             {
-                // Initial refresh completes package-specific scripted importers before
-                // URP global settings are populated by subsequent native asset saves.
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
                 foreach (string path in Required)
                 {
                     var package = PackageInfo.FindForAssetPath(path);
                     if (package == null) throw new InvalidOperationException("Package not resolved for " + path);
                     string prefix = "Packages/" + package.name + "/";
-                    var row = new Record { path = path,
-                        diskPath = Path.Combine(package.resolvedPath, path.Substring(prefix.Length)) };
+                    var row = new Record
+                    {
+                        path = path,
+                        diskPath = Path.Combine(package.resolvedPath, path.Substring(prefix.Length))
+                    };
                     report.resources.Add(row);
                     if (!File.Exists(row.diskPath)) throw new FileNotFoundException("Installed package resource missing.", row.diskPath);
                     row.bytes = new FileInfo(row.diskPath).Length;
@@ -68,6 +69,10 @@ namespace Dreynox.Mmorpg.Editor.Build
                 Debug.Log("DREYNOX_PIPELINE_RESOURCE_PREFLIGHT_OK");
             }
             catch (Exception ex) { report.failure = ex.ToString(); throw; }
-            finally { File.WriteAllText("Artifacts/StartingWorld/pipeline-resources.json", JsonUtility.ToJson(report, true)); }
+            finally
+            {
+                File.WriteAllText("Artifacts/StartingWorld/pipeline-resources.json", JsonUtility.ToJson(report, true));
+            }
         }
     }
+}
