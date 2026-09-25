@@ -1,4 +1,4 @@
-# Revision 2: qualify installed URP resources before test asset callbacks.
+# Revision 3: corrected resource preflight, exact original-corpus quest gate.
 name: Starting Map1 playable client
 on:
   push:
