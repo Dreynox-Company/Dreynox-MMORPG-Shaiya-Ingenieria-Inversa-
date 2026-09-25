@@ -1,0 +1,52 @@
+name: World corpus read-only audit
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['.github/workflows/world-corpus-audit.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'Dreynox-Company/Dreynox-MMORPG-Shaiya-Ingenieria-Inversa-'
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 5
+    steps:
+      - name: Recover previous NUnit failures before any workspace cleanup
+        shell: powershell
+        run: |
+          $xml = Join-Path $env:GITHUB_WORKSPACE 'TestResults\editmode-results.xml'
+          if (Test-Path -LiteralPath $xml) {
+            [xml]$report = Get-Content -LiteralPath $xml -Raw
+            $root = $report.DocumentElement
+            Write-Host "NUnit total=$($root.GetAttribute('total')) pass=$($root.GetAttribute('passed')) fail=$($root.GetAttribute('failed')) skip=$($root.GetAttribute('skipped'))"
+            foreach ($case in $report.SelectNodes("//test-case[@result='Failed']")) {
+              Write-Host "FAILED: $($case.GetAttribute('fullname'))"
+              if ($null -ne $case.failure) { Write-Host $case.failure.InnerText }
+            }
+          } else { Write-Host 'Previous NUnit XML is not present.' }
+      - name: Inspect only user-authorized DATA location
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $data = 'C:\Juegos\Dreynox\DATA'
+          if (-not (Test-Path -LiteralPath $data -PathType Container)) {
+            Write-Host 'AUTHORIZED_DATA_NOT_FOUND'
+            exit 0
+          }
+          Write-Host "AUTHORIZED_DATA_FOUND=$data"
+          $controls = @('excelxml\wingposition.xml', 'world\Login.wld', 'world\0.wld', 'world\0.svmap', 'character\human\ani6\humf_019_select.ani')
+          foreach ($relative in $controls) {
+            $path = Join-Path $data $relative
+            if (Test-Path -LiteralPath $path -PathType Leaf) {
+              $sha = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+              Write-Host "RESOURCE $relative bytes=$((Get-Item -LiteralPath $path).Length) sha256=$sha"
+            } else { Write-Host "MISSING $relative" }
+          }
+          foreach ($relative in @('game.exe', 'Game.exe')) {
+            $path = Join-Path (Split-Path -Parent $data) $relative
+            if (Test-Path -LiteralPath $path -PathType Leaf) {
+              Write-Host "REFERENCE_EXE bytes=$((Get-Item -LiteralPath $path).Length) sha256=$((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant())"
+              break
+            }
+          }
+          Write-Host 'Read-only audit complete. No corpus files copied, renamed, executed or modified.'
