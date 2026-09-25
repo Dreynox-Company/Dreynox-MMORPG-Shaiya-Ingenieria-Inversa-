@@ -53,7 +53,6 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             var mon = LegacyMonParser.Parse(LegacyUiAssetImporter.ResolveCaseInsensitive(corpus.RootPath, catalog.MonPath));
             if (recordIndex < 0 || recordIndex >= mon.Records.Count) throw new ArgumentOutOfRangeException(nameof(recordIndex));
             var record = mon.Records[recordIndex];
-            // Preflight every part and every named semantic before generating a prefab.
             var plan = ValidateRigOnly(corpus, kind, record);
             var attachAnalysis = ResolveAttachEffectAnalysis(corpus, catalog, mon);
             string safeName = Sanitize(record.Name);
@@ -112,29 +111,29 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             LegacyMonCatalogKind kind, LegacyMonRecord record)
         {
             var catalog = Catalogs[kind];
-            var parts = new Legacy3dcFile[record.Objects.Count];
-            for (int i = 0; i < parts.Length; i++)
+            try
             {
-                string path = ResolveResource(corpus, catalog.ResourceRoot, "3dc", record.Objects[i].MeshName);
-                parts[i] = Legacy3dcParser.ParseWithTopologyNormals(File.ReadAllBytes(path));
+                var meshBytes = record.Objects.Select(o => File.ReadAllBytes(
+                    ResolveResource(corpus, catalog.ResourceRoot, "3dc", o.MeshName))).ToArray();
+                var specs = BuildAnimationSpecs(record).Where(s => IsResourceName(s.FileName)).ToArray();
+                string[] clipNames = specs.Select(s => s.FileName).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+                var aniBytes = clipNames.Select(n => File.ReadAllBytes(
+                    ResolveResource(corpus, catalog.ResourceRoot, "ani", n))).ToArray();
+                var normalized = LegacyMonUnusedBoneTail.Normalize(meshBytes, aniBytes, record.Effects);
+                if (normalized.RemovedBones > 0)
+                    Debug.Log("DREYNOX_MON_UNUSED_HELPER_SUFFIX " + kind + "/" + record.Name +
+                        " body=" + normalized.RetainedBones + " removedUnweightedRoots=" + normalized.RemovedBones);
+                var parts = normalized.Meshes.Select(Legacy3dcParser.ParseWithTopologyNormals).ToArray();
+                var parsed = new Dictionary<string, LegacyAniFile>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < clipNames.Length; i++)
+                    parsed.Add(clipNames[i], LegacyAniParser.Parse(normalized.Animations[i]));
+                var clips = specs.Select(spec => new LegacyMonClipBinding {
+                    Semantic = spec.Semantic, FileName = spec.FileName, Loop = spec.Loop,
+                    Source = parsed[spec.FileName] }).ToList();
+                return LegacyMonRigBinding.Prepare(parts, clips, record.Effects);
             }
-            var parsed = new Dictionary<string, LegacyAniFile>(StringComparer.OrdinalIgnoreCase);
-            var clips = new List<LegacyMonClipBinding>();
-            foreach (var spec in BuildAnimationSpecs(record))
-            {
-                if (!IsResourceName(spec.FileName)) continue;
-                if (!parsed.TryGetValue(spec.FileName, out LegacyAniFile ani))
-                {
-                    ani = LegacyAniParser.Parse(ResolveResource(corpus, catalog.ResourceRoot, "ani", spec.FileName));
-                    parsed.Add(spec.FileName, ani);
-                }
-                // File caching is not semantic deduplication: idle/breath can share one file.
-                clips.Add(new LegacyMonClipBinding { Semantic = spec.Semantic, FileName = spec.FileName,
-                    Loop = spec.Loop, Source = ani });
-            }
-            try { return LegacyMonRigBinding.Prepare(parts, clips, record.Effects); }
-            catch (InvalidDataException ex)
-            { throw new InvalidDataException("MON '" + record.Name + "': " + ex.Message, ex); }
+            catch (Exception ex) when (ex is InvalidDataException || ex is EndOfStreamException)
+            { throw new InvalidDataException("MON " + kind + " '" + record.Name + "': " + ex.Message, ex); }
         }
 
         private static void ImportParts(CanonicalClientCorpus corpus, CatalogSpec catalog, LegacyMonRecord record,

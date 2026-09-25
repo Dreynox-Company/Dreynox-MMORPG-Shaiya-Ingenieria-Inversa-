@@ -19,11 +19,8 @@ namespace Dreynox.Mmorpg.Tests.Editor
         {
             var mesh = Legacy3dcParser.Parse(Fixture(false, 0.25f, 0, 0, 255));
             var v = mesh.Vertices[0];
-            Assert.AreEqual(255, v.Unknown);
-            Assert.AreEqual(2, v.Bone3);
-            Assert.AreEqual(0.75f, v.Weight2);
-            Assert.AreEqual(0, v.Weight3);
-            Assert.AreEqual(0, v.Weight4);
+            Assert.AreEqual(255, v.Unknown); Assert.AreEqual(2, v.Bone3);
+            Assert.AreEqual(0.75f, v.Weight2); Assert.AreEqual(0, v.Weight3); Assert.AreEqual(0, v.Weight4);
             Assert.DoesNotThrow(() => LegacyRuntimeSkinnedBuilder.ValidateMeshForSkeleton(mesh, 2));
         }
         [Test]
@@ -32,16 +29,14 @@ namespace Dreynox.Mmorpg.Tests.Editor
             var source = Legacy3dcParser.Parse(Fixture(true, 0.1f, 0.2f, 0.3f, 3));
             Assert.AreEqual(0.4f, source.Vertices[0].Weight4, 0.000001f);
             Assert.Throws<InvalidDataException>(() => LegacyRuntimeSkinnedBuilder.ValidateMeshForSkeleton(source, 3));
-            var root = new GameObject("four-weight-fixture");
-            Mesh mesh = null;
+            var root = new GameObject("four-weight-fixture"); Mesh mesh = null;
             try
             {
                 var bones = new Transform[4];
                 for (int i=0; i<4; i++) { bones[i]=new GameObject("b"+i).transform; bones[i].SetParent(root.transform,false); }
                 mesh = LegacyRuntimeSkinnedBuilder.BuildMesh(source,bones,root.transform,"four weights");
                 BoneWeight weight = mesh.boneWeights[0];
-                Assert.AreEqual(3,weight.boneIndex0);
-                Assert.AreEqual(0.4f,weight.weight0,0.000001f);
+                Assert.AreEqual(3,weight.boneIndex0); Assert.AreEqual(0.4f,weight.weight0,0.000001f);
                 Assert.AreEqual(1f,weight.weight0+weight.weight1+weight.weight2+weight.weight3,0.000001f);
             }
             finally { if(mesh!=null)Object.DestroyImmediate(mesh);Object.DestroyImmediate(root); }
@@ -89,22 +84,33 @@ namespace Dreynox.Mmorpg.Tests.Editor
             foreach(var spawn in map.MonsterAreas.SelectMany(a=>a.Monsters).Where(s=>s.Count>0))
             { Assert.IsTrue(db.TryGet(spawn.MobId,out var row));ids.Add(checked((int)row.Image)); }
             var errors=new List<string>();
+            Assert.AreEqual(30,ids.Count);
             foreach(int id in ids)Check(corpus,LegacyMonCatalogKind.Monster,id,monsters,errors);
             TestContext.WriteLine("Map1 monster models: "+ids.Count);
             var definitions=LegacyNpcQuestHeaderParser.ParseEncrypted(corpus.Resolve("DATA_Español/npc/NpcQuest.SData"));
             var npcs=LegacyMonParser.Parse(corpus.Resolve("DATA_Español/npc/npc.mon"));
-            ids.Clear();
+            ids.Clear(); int unresolved=0;
             foreach(var npc in map.Npcs)
-            { if(definitions.TryGet(npc.NpcType,npc.NpcId,out var row))ids.Add(row.Model);
-              else Assert.IsTrue(npc.NpcType==0&&npc.NpcId==0,"Unresolved NPC definition."); }
+            {
+                if(definitions.TryGet(npc.NpcType,npc.NpcId,out var row)) ids.Add(row.Model);
+                else
+                {
+                    // Already documented by the world importer: four Guard 8/169
+                    // positions have no original NpcQuest definition. Never invent a model.
+                    Assert.IsTrue(npc.NpcType==8&&npc.NpcId==169,"Unexpected unresolved NPC definition.");
+                    unresolved+=npc.Positions.Count;
+                }
+            }
+            Assert.AreEqual(4,unresolved,"Known source-unresolved guard positions changed.");
+            Assert.AreEqual(54,ids.Count);
             foreach(int id in ids)Check(corpus,LegacyMonCatalogKind.Npc,id,npcs,errors);
-            TestContext.WriteLine("Map1 NPC models: "+ids.Count);
+            TestContext.WriteLine("Map1 NPC models: "+ids.Count+"; source-unresolved guard positions="+unresolved);
             Assert.IsEmpty(errors,string.Join("\n",errors));
         }
-        private static void Check(CanonicalClientCorpus corpus,LegacyMonCatalogKind kind,int id,LegacyMonFile mon,List<string> errors)
+        private static void Check(CanonicalClientCorpus corpus,LegacyMonCatalogKind kind,int id,LegacyMonFile catalog,List<string> errors)
         {
-            try { LegacyMonPrefabImporter.ValidateRigOnly(corpus,kind,mon.Records[id]); }
-            catch(Exception ex) { errors.Add(kind+"/"+id+" "+mon.Records[id].Name+": "+ex); }
+            try { LegacyMonPrefabImporter.ValidateRigOnly(corpus,kind,catalog.Records[id]); }
+            catch(Exception ex) { errors.Add(kind+"/"+id+" "+catalog.Records[id].Name+": "+ex); }
         }
         private static byte[] Fixture(bool ep6,float a,float b,float c,byte fourth)
         {
