@@ -308,6 +308,27 @@ jobs:
           $expected = "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d"
           $explicit = $env:DREYNOX_CORPUS_ROOT
 
+          function Test-PathSafe(
+            [string]$candidate,
+            [string]$pathType
+          ) {
+            if ([string]::IsNullOrWhiteSpace($candidate)) {
+              return $false
+            }
+
+            try {
+              return Test-Path -LiteralPath $candidate -PathType $pathType -ErrorAction Stop
+            }
+            catch [System.UnauthorizedAccessException] {
+              Write-Host "Ruta inaccesible omitida: $candidate"
+              return $false
+            }
+            catch {
+              Write-Host "Ruta no utilizable omitida: $candidate · $($_.Exception.Message)"
+              return $false
+            }
+          }
+
           function Test-CanonicalCorpus([string]$candidate) {
             if ([string]::IsNullOrWhiteSpace($candidate)) {
               return $null
@@ -320,15 +341,15 @@ jobs:
               return $null
             }
 
-            if (-not (Test-Path -LiteralPath $candidate -PathType Container)) {
+            if (-not (Test-PathSafe $candidate "Container")) {
               return $null
             }
 
             $gameExe = Join-Path $candidate "game.exe"
             $dataRoot = Join-Path $candidate "DATA_Español"
 
-            if (-not (Test-Path -LiteralPath $gameExe -PathType Leaf) -or
-                -not (Test-Path -LiteralPath $dataRoot -PathType Container)) {
+            if (-not (Test-PathSafe $gameExe "Leaf") -or
+                -not (Test-PathSafe $dataRoot "Container")) {
               return $null
             }
 
@@ -361,7 +382,7 @@ jobs:
               (Join-Path $env:USERPROFILE "Downloads"),
               (Join-Path $env:USERPROFILE "Documents")
             ) | ForEach-Object {
-              if (Test-Path -LiteralPath $_ -PathType Container) {
+              if (Test-PathSafe $_ "Container") {
                 $candidates.Add($_)
 
                 Get-ChildItem -LiteralPath $_ -Directory -ErrorAction SilentlyContinue | ForEach-Object {
@@ -428,15 +449,15 @@ jobs:
           foreach ($relative in $requiredCharacter) {
             $path = Join-Path $resolved $relative
 
-            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            if (-not (Test-PathSafe $path "Leaf")) {
               throw "Corpus ps0032 detectado, pero falta un recurso de Character parity: $relative"
             }
           }
 
           $worldWld = Join-Path $resolved "DATA_Español\world\0.wld"
           $worldSvmap = Join-Path $resolved "DATA_Español\world\0.svmap"
-          $worldAvailable = (Test-Path -LiteralPath $worldWld -PathType Leaf) -and
-                            (Test-Path -LiteralPath $worldSvmap -PathType Leaf)
+          $worldAvailable = (Test-PathSafe $worldWld "Leaf") -and
+                            (Test-PathSafe $worldSvmap "Leaf")
 
           "DREYNOX_CORPUS_ROOT=$resolved" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "character_available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
@@ -540,17 +561,38 @@ jobs:
         run: |
           $explicit = $env:DREYNOX_NATIVE_REFERENCE_ROOT
 
+          function Test-PathSafe(
+            [string]$candidate,
+            [string]$pathType
+          ) {
+            if ([string]::IsNullOrWhiteSpace($candidate)) {
+              return $false
+            }
+
+            try {
+              return Test-Path -LiteralPath $candidate -PathType $pathType -ErrorAction Stop
+            }
+            catch [System.UnauthorizedAccessException] {
+              Write-Host "Ruta inaccesible omitida: $candidate"
+              return $false
+            }
+            catch {
+              Write-Host "Ruta no utilizable omitida: $candidate · $($_.Exception.Message)"
+              return $false
+            }
+          }
+
           function Test-NativeReference([string]$candidate) {
             if ([string]::IsNullOrWhiteSpace($candidate) -or
-                -not (Test-Path -LiteralPath $candidate -PathType Container)) {
+                -not (Test-PathSafe $candidate "Container")) {
               return $null
             }
 
             $directEditor = Join-Path $candidate "05-character-editor.png"
             $directSelect = Join-Path $candidate "08-character-selection.png"
 
-            if ((Test-Path -LiteralPath $directEditor -PathType Leaf) -and
-                (Test-Path -LiteralPath $directSelect -PathType Leaf)) {
+            if ((Test-PathSafe $directEditor "Leaf") -and
+                (Test-PathSafe $directSelect "Leaf")) {
               return [System.IO.Path]::GetFullPath($candidate)
             }
 
@@ -558,8 +600,8 @@ jobs:
             $nestedEditor = Join-Path $nested "05-character-editor.png"
             $nestedSelect = Join-Path $nested "08-character-selection.png"
 
-            if ((Test-Path -LiteralPath $nestedEditor -PathType Leaf) -and
-                (Test-Path -LiteralPath $nestedSelect -PathType Leaf)) {
+            if ((Test-PathSafe $nestedEditor "Leaf") -and
+                (Test-PathSafe $nestedSelect "Leaf")) {
               return [System.IO.Path]::GetFullPath($nested)
             }
 
