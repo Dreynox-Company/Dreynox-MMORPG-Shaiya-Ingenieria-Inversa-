@@ -1,6 +1,6 @@
-Map1 qualification 11: group numeric meshes and ANI assets without suspending material or prefab imports.
-Includes local original return portal, safe combat cleanup, and qualified single-executable delivery.
-Three import persistence/recovery tests join original corpus and local portal tests.
-Do not cancel the already running immutable Map1 build; this revision is queued after it.
-Only a real Player that passes NPC/mission/five-enemy/reward verification may be delivered.
-No synthetic world fallback. Main and original DATA remain unchanged.
+Map1 qualification 12: native crash in NPC 137 DDS import isolated; decode skinned albedo before Unity import.
+Exact source texture: npc/dds/elmr_torso010_2.dds SHA256 b089857babb7ab69bd24ca456b82a3af902e5304a1eb32be51b4bcf336ddd014.
+Three regression cases: no raw DDS import, truncated-data rejection, original texture pixel/alpha roundtrip.
+Includes grouped geometry persistence, original same-map portal and qualified one-file executable delivery.
+Retain original meshes, textures, positions, collision and authored quest data. Original DATA and main stay untouched.
+A completed build is not sufficient: require actual Player walking, NPC interaction, mission, five kills and reward before delivery.
