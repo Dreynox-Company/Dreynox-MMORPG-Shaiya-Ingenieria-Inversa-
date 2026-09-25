@@ -1,0 +1,62 @@
+name: Apply audited playable world integration
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['.github/workflows/apply-world-integration.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 2
+      - name: Apply exact reviewed source patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/work/unity-client-parity-v0.4.0'
+          test "$(git rev-parse HEAD^)" = 'f55f2fe391b802177f6871afe2886e2e08c276aa'
+          python - <<'PY'
+          import gzip, hashlib, pathlib, subprocess, tempfile
+          packed = b''.join(pathlib.Path('.github/source-world.patch.gz.' + str(i)).read_bytes() for i in range(4))
+          assert len(packed) == 19871
+          assert hashlib.sha256(packed).hexdigest() == '03318f776fa8f26439e52742908057291b5a87848d75d7feeee4423a643206b2'
+          patch = gzip.decompress(packed)
+          assert len(patch) == 78200
+          assert hashlib.sha256(patch).hexdigest() == '880b77ce447511a22bc26a2af90794fc624f0faff7f7142d6bd77eca8bca4983'
+          with tempfile.NamedTemporaryFile(suffix='.patch') as handle:
+              handle.write(patch); handle.flush()
+              subprocess.run(['git','apply','--check','--index',handle.name], check=True)
+              subprocess.run(['git','apply','--index','--whitespace=error',handle.name], check=True)
+          names = subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+          assert names and all(n.startswith(('Assets/','Tools/','docs/')) for n in names)
+          PY
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test before committing source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python Tools/validate_project.py
+          dotnet run --project Tools/ParityHarness/ParityHarness.csproj --configuration Release
+          dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
+          pwsh -NoProfile -File Tools/CI/Test-CharacterParityDiscovery.ps1
+      - name: Commit on work branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch='work/unity-client-parity-v0.4.0'
+          test "$GITHUB_REF" = "refs/heads/$branch"
+          test "$(git ls-remote origin "refs/heads/$branch" | cut -f1)" = "$GITHUB_SHA"
+          git restore --worktree SOURCE_SHA256.txt
+          git rm .github/source-world.patch.gz.{0,1,2,3}
+          test -z "$(git diff --cached --name-only -- .github/workflows)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(world): qualify actual Map0 movement camera and melee with local DATA'
+          git push origin "HEAD:refs/heads/$branch"
+          git rev-parse HEAD
