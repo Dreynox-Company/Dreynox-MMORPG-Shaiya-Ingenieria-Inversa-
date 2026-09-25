@@ -1,4 +1,4 @@
-# Qualification revision 4: independent queue; the general CI cannot cancel the Map0 run.
+# Qualification revision 5: real attack/death playback, exact phase-clock regression.
 name: Playable Map0 qualification
 on:
   push:
@@ -20,6 +20,7 @@ jobs:
       - run: python Tools/validate_project.py
       - run: dotnet run --project Tools/ParityHarness/ParityHarness.csproj --configuration Release
       - run: dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/CombatHarness/CombatHarness.csproj --configuration Release
   windows-world:
     needs: source-gate
     if: github.event_name == 'push' && github.repository == 'Dreynox-Company/Dreynox-MMORPG-Shaiya-Ingenieria-Inversa-'
@@ -103,5 +104,5 @@ jobs:
             "EditMode: $env:EDITMODE"
             "Preconverted Map0 build: $env:WORLD_BUILD"
             "Actual walk/combat scenario: $env:WORLD_PLAY"
-            'This is a local integration test. Native visual equivalence and server combat rules remain separate gates.'
+            'Local integration only. Native visual equivalence and server combat rules remain separate gates.'
           ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
