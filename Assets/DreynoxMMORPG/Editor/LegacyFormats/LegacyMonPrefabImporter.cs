@@ -626,14 +626,14 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             LegacyEftFile library =
                 LegacyEftPrefabImporter.ParseCanonical(
                     corpus,
-                    record.AttachEffect);
+                    LegacyMonAttachEffectResolver.ResolveBindingLibraryName(record));
 
             if (library == null)
             {
                 throw new FileNotFoundException(
                     "Attached EFT library not found for MON record '" +
                     record.Name + "': " +
-                    record.AttachEffect);
+                    LegacyMonAttachEffectResolver.ResolveBindingLibraryName(record));
             }
 
             LegacyEftInvocationKind invocationKind =
@@ -645,7 +645,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             GameObject effectPrefab =
                 LegacyEftPrefabImporter.Import(
                     corpus,
-                    record.AttachEffect);
+                    LegacyMonAttachEffectResolver.ResolveBindingLibraryName(record));
 
             if (effectPrefab == null)
             {

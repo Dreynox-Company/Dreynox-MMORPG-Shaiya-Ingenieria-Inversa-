@@ -685,6 +685,18 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 string authored =
                     source.TextureNames[i];
 
+                if (string.IsNullOrWhiteSpace(authored))
+                {
+                    var untextured = new Material(shader) { name = "DG_AuthoredEmptyTexture_" + i };
+                    if (untextured.HasProperty("_Smoothness")) untextured.SetFloat("_Smoothness", 0f);
+                    string untexturedPath = outputRoot + "/Materials/Material_" + i.ToString("D2") + ".mat";
+                    AssetDatabase.DeleteAsset(untexturedPath);
+                    AssetDatabase.CreateAsset(untextured, untexturedPath);
+                    result[i] = untextured;
+                    Debug.LogWarning("DG authored empty texture slot " + i + " retained as untextured/lightmapped. Native fallback shading is not yet calibrated.");
+                    continue;
+                }
+
                 string ddsName =
                     Path.GetFileNameWithoutExtension(
                         authored) +

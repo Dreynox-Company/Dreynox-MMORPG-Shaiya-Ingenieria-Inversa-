@@ -338,6 +338,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
                     innerPath);
 
             Assert.AreEqual(31, outer.TextureNames.Count);
+            Assert.AreEqual(string.Empty, outer.TextureNames[21], "Authored empty slot must keep its index.");
             Assert.AreEqual(5, outer.LightmapCount);
             Assert.AreEqual(52, outer.NodeCount);
             Assert.AreEqual(457, outer.MeshGroupCount);

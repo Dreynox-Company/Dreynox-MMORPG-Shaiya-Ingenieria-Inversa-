@@ -150,13 +150,9 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 string name =
                     ReadFixedAscii(reader);
 
-                if (string.IsNullOrWhiteSpace(name))
-                {
-                    throw new InvalidDataException(
-                        "DG texture " +
-                        i +
-                        " has an empty name.");
-                }
+                // An empty authored texture slot is not a truncated table.
+                // Fortress00 slot 21 is empty and is referenced by four faces.
+                // Preserve its index; do not shift the material table or invent a filename.
 
                 result.TextureNames.Add(name);
             }

@@ -517,54 +517,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             string root,
             string relativePath)
         {
-            string current = root;
-
-            string[] parts =
-                relativePath
-                    .Replace('\\', '/')
-                    .Split(
-                        new[] { '/' },
-                        StringSplitOptions.RemoveEmptyEntries);
-
-            for (int i = 0;
-                 i < parts.Length;
-                 i++)
-            {
-                if (!Directory.Exists(current))
-                {
-                    return Path.Combine(
-                        current,
-                        parts[i]);
-                }
-
-                string[] entries =
-                    Directory.GetFileSystemEntries(
-                        current);
-
-                string match = null;
-
-                for (int j = 0;
-                     j < entries.Length;
-                     j++)
-                {
-                    if (string.Equals(
-                            Path.GetFileName(entries[j]),
-                            parts[i],
-                            StringComparison.OrdinalIgnoreCase))
-                    {
-                        match = entries[j];
-                        break;
-                    }
-                }
-
-                current =
-                    match ??
-                    Path.Combine(
-                        current,
-                        parts[i]);
-            }
-
-            return current;
+            return CanonicalCorpusPaths.Resolve(root, relativePath);
         }
 
         private static void EnsureFolder(

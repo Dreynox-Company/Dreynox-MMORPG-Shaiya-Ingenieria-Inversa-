@@ -110,17 +110,10 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 "DUN_LOGIN.dg",
                 wld.InnerLayout);
 
-            CollectionAssert.Contains(
-                wld.Buildings.Names,
-                "Dragon.SMOD");
-
-            CollectionAssert.Contains(
-                wld.Buildings.Names,
-                "Starlighting.SMOD");
-
-            CollectionAssert.Contains(
-                wld.Buildings.Names,
-                "login_A.SMOD");
+            // DUN Login.wld has zero Buildings. Dragon/Starlighting belong
+            // to Shapes and login_A to Grass (asserted separately below).
+            Assert.AreEqual(0, wld.Buildings.Names.Count);
+            Assert.AreEqual(0, wld.Buildings.Coordinates.Count);
 
             Assert.AreEqual(
                 "login.EFT",

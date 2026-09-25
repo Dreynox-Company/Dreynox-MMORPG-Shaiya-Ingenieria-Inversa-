@@ -27,159 +27,39 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 
     public static class LegacyMonAttachEffectResolver
     {
-        public static LegacyMonAttachEffectCatalogAnalysis Analyze(
-            CanonicalClientCorpus corpus,
-            LegacyMonFile mon)
+        public const string Ps0032BindingLibrary = "monster.EFT";
+
+        public static string ResolveBindingLibraryName(LegacyMonRecord record)
         {
-            if (corpus == null)
-                throw new ArgumentNullException(nameof(corpus));
-            if (mon == null)
-                throw new ArgumentNullException(nameof(mon));
+            if (record == null) throw new ArgumentNullException(nameof(record));
+            // ps0032 0x521D73 reads binding EffectId and 0x521D78 selects
+            // global 0x8E9498, initialized with data/Effect/monster.EFT at 0x4C4847.
+            // The named AttachEffect field is NOT the library for this raw binding array.
+            return Ps0032BindingLibrary;
+        }
 
-            var result =
-                new LegacyMonAttachEffectCatalogAnalysis();
-
-            var libraries =
-                new Dictionary<string, LegacyEftFile>(
-                    StringComparer.OrdinalIgnoreCase);
-
-            for (int recordIndex = 0;
-                 recordIndex < mon.Records.Count;
-                 recordIndex++)
+        public static LegacyMonAttachEffectCatalogAnalysis Analyze(
+            CanonicalClientCorpus corpus, LegacyMonFile mon)
+        {
+            if (corpus == null) throw new ArgumentNullException(nameof(corpus));
+            if (mon == null) throw new ArgumentNullException(nameof(mon));
+            var result = new LegacyMonAttachEffectCatalogAnalysis();
+            LegacyEftFile library = null;
+            foreach (LegacyMonRecord record in mon.Records)
             {
-                LegacyMonRecord record =
-                    mon.Records[recordIndex];
-
-                if (record == null ||
-                    record.Effects.Count == 0)
-                    continue;
-
+                if (record == null || record.Effects.Count == 0) continue;
                 result.RecordsWithBindings++;
-
-                string libraryName =
-                    LegacyMonEntityDescriptor
-                        .NormalizeResourceName(
-                            record.AttachEffect);
-
-                if (string.IsNullOrWhiteSpace(
-                        libraryName))
-                {
-                    throw new InvalidDataException(
-                        "MON record " + recordIndex +
-                        " ('" + record.Name +
-                        "') declares " +
-                        record.Effects.Count +
-                        " attached effects but has no AttachEffect library.");
-                }
-
-                LegacyEftFile library;
-                if (!libraries.TryGetValue(
-                        libraryName,
-                        out library))
-                {
-                    library =
-                        LegacyEftPrefabImporter
-                            .ParseCanonical(
-                                corpus,
-                                libraryName);
-
-                    if (library != null)
-                    {
-                        libraries.Add(
-                            libraryName,
-                            library);
-                    }
-                }
-
                 if (library == null)
-                {
-                    throw new FileNotFoundException(
-                        "MON record " + recordIndex +
-                        " ('" + record.Name +
-                        "') references missing attached effect library '" +
-                        libraryName + "'.");
-                }
-
+                    library = LegacyEftPrefabImporter.ParseCanonical(corpus, Ps0032BindingLibrary);
+                if (library == null)
+                    throw new FileNotFoundException("Missing ps0032 global attached-effect library: " + Ps0032BindingLibrary);
+                if (!Fits(record, library.Effects.Count))
+                    throw new InvalidDataException("MON binding outside global monster.EFT raw table: " + record.Name);
                 result.ResolvedLibraries++;
-
-                bool fitsSequences =
-                    Fits(
-                        record,
-                        library.Sequences.Count);
-
-                bool fitsRawEffects =
-                    Fits(
-                        record,
-                        library.Effects.Count);
-
-                if (!fitsSequences &&
-                    !fitsRawEffects)
-                {
-                    throw new InvalidDataException(
-                        "MON record " + recordIndex +
-                        " ('" + record.Name +
-                        "') contains attached EffectId values outside both " +
-                        "EFT sequences (" +
-                        library.Sequences.Count +
-                        ") and raw effects (" +
-                        library.Effects.Count +
-                        ") in '" + libraryName + "'.");
-                }
-
-                if (fitsSequences &&
-                    !fitsRawEffects)
-                {
-                    result
-                        .SequenceExclusiveEvidence++;
-                }
-                else if (fitsRawEffects &&
-                         !fitsSequences)
-                {
-                    result
-                        .RawEffectExclusiveEvidence++;
-                }
-                else
-                {
-                    result.AmbiguousEvidence++;
-                }
+                result.RawEffectExclusiveEvidence++;
             }
-
-            if (result.RecordsWithBindings == 0)
-            {
-                result.Mode =
-                    LegacyMonAttachEffectIndexMode.None;
-
-                return result;
-            }
-
-            if (result.SequenceExclusiveEvidence > 0 &&
-                result.RawEffectExclusiveEvidence > 0)
-            {
-                throw new InvalidDataException(
-                    "MON attached-effect semantics are inconsistent across " +
-                    "the catalog: " +
-                    result.SequenceExclusiveEvidence +
-                    " sequence-exclusive records and " +
-                    result.RawEffectExclusiveEvidence +
-                    " raw-effect-exclusive records.");
-            }
-
-            if (result.SequenceExclusiveEvidence > 0)
-            {
-                result.Mode =
-                    LegacyMonAttachEffectIndexMode.Sequence;
-            }
-            else if (result.RawEffectExclusiveEvidence > 0)
-            {
-                result.Mode =
-                    LegacyMonAttachEffectIndexMode.RawEffect;
-            }
-            else
-            {
-                result.Mode =
-                    LegacyMonAttachEffectIndexMode.Ambiguous;
-            }
-
+            result.Mode = result.RecordsWithBindings == 0
+                ? LegacyMonAttachEffectIndexMode.None : LegacyMonAttachEffectIndexMode.RawEffect;
             return result;
         }
 

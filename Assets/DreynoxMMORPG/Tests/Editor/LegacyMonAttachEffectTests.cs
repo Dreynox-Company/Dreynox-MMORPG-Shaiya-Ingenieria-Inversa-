@@ -173,7 +173,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 LegacyEftFile library =
                     LegacyEftPrefabImporter.ParseCanonical(
                         corpus,
-                        record.AttachEffect);
+                        LegacyMonAttachEffectResolver.ResolveBindingLibraryName(record));
 
                 Assert.IsNotNull(
                     library,
@@ -188,6 +188,16 @@ namespace Dreynox.Mmorpg.Tests.Editor
                                 analysis.Mode),
                     record.Name);
             }
+        }
+
+        [Test]
+        public void Ps0032BindingsUseGlobalRawLibraryEvenWhenNamedFieldIsLoadOrCustom()
+        {
+            var record = RecordWithEffectId(274);
+            record.AttachEffect = "LOAD";
+            Assert.AreEqual("monster.EFT", LegacyMonAttachEffectResolver.ResolveBindingLibraryName(record));
+            record.AttachEffect = "M_lapis_extractor_attch.EFT";
+            Assert.AreEqual("monster.EFT", LegacyMonAttachEffectResolver.ResolveBindingLibraryName(record));
         }
 
         private static LegacyMonRecord RecordWithEffectId(
