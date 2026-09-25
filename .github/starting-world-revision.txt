@@ -1,4 +1,5 @@
-Map1 qualification 8: packed 3DC matrix indices and complete MON model preflight.
-Original boar resources preserve unused packed bytes; EP6 uses complementary fourth influence.
-Validate all placed Map1 monsters and NPC rigs before preparing world assets.
-Required: actual DATA, Unity tests, Map1 Player, NPC/quest/combat execution evidence.
+Map1 qualification 9: original NPC body retained; invalid independent unused helper roots excluded only after complete influence/channel/anchor validation.
+Source: 104ed07fd5c5dd3c5560d4e6dfbf2e5a97343823.
+All 30 monster and 54 resolved NPC models must pass, with four original missing Guard8/169 definitions explicitly reported.
+Required: actual DATA, Unity tests, prepared Map1, compiled Player, NPC dialogue / mission / real mob death / reward evidence.
+No main changes, no original DATA mutation, no synthetic scene or guessed texture fallback.
