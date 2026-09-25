@@ -1,4 +1,4 @@
-# Qualification revision 6: all 197 Map0 SMOD resources, actual combat playback.
+# Qualification revision 7: preserve SMOD zero-padding contract; all authored statics required.
 name: Playable Map0 qualification
 on:
   push:
