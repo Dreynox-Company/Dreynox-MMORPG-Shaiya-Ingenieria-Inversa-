@@ -1,4 +1,4 @@
-# Qualification revision 5: real attack/death playback, exact phase-clock regression.
+# Qualification revision 6: all 197 Map0 SMOD resources, actual combat playback.
 name: Playable Map0 qualification
 on:
   push:
@@ -12,11 +12,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
+        with: {persist-credentials: false}
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
-        with:
-          dotnet-version: '8.0.x'
+        with: {dotnet-version: '8.0.x'}
       - run: python Tools/validate_project.py
       - run: dotnet run --project Tools/ParityHarness/ParityHarness.csproj --configuration Release
       - run: dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
@@ -30,14 +28,10 @@ jobs:
       group: unity-map0-qualification-${{ github.repository }}-${{ github.ref }}
       cancel-in-progress: false
     defaults:
-      run:
-        shell: powershell
+      run: {shell: powershell}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          lfs: true
-          clean: false
-          persist-credentials: false
+        with: {lfs: true, clean: false, persist-credentials: false}
       - name: Clean generated outputs in CI workspace only
         run: |
           git reset --hard HEAD
