@@ -1,0 +1,61 @@
+name: Apply audited quest integration
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['.github/workflows/apply-quest-integration.yml', '.audit/quest-source.*']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {fetch-depth: 2}
+      - name: Verify and apply source delta for this branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/work/unity-client-parity-v0.4.0'
+          test "$(git rev-parse HEAD^)" = 'a92c222169d07e23ff6b58db998f459f6dd47a36'
+          python - <<'PY'
+          import pathlib, hashlib, gzip, tempfile, subprocess
+          root=pathlib.Path('.audit')
+          data=b''.join((root/f'quest-source.{i:02d}').read_bytes() for i in range(13))
+          assert len(data)==32315
+          assert hashlib.sha256(data).hexdigest()=='d1fb6a875ef7e32ef7ee04f758b5fe58bfffd98f90292ec1f09a0fc8ef17548a'
+          patch=gzip.decompress(data)
+          assert len(patch)==120527
+          assert hashlib.sha256(patch).hexdigest()=='220465a45339f9bc4f2bb526f94b2f6f6e203bc8acc09252640ee4a6fa92c618'
+          with tempfile.NamedTemporaryFile(suffix='.patch') as f:
+              f.write(patch); f.flush()
+              subprocess.run(['git','apply','--check','--index',f.name],check=True)
+              subprocess.run(['git','apply','--index','--whitespace=error',f.name],check=True)
+          PY
+          test -z "$(git diff --cached --name-only -- .github/workflows)"
+          git diff --cached --stat
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with: {dotnet-version: '8.0.x'}
+      - name: Validate source and deterministic systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          python Tools/validate_project.py
+          dotnet run --project Tools/ParityHarness/ParityHarness.csproj --configuration Release
+          dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
+          dotnet run --project Tools/CombatHarness/CombatHarness.csproj --configuration Release
+          dotnet run --project Tools/QuestHarness/QuestHarness.csproj --configuration Release
+      - name: Commit validated source without changing main or workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch='work/unity-client-parity-v0.4.0'
+          test "$(git ls-remote origin refs/heads/$branch | cut -f1)" = "$GITHUB_SHA"
+          git restore --worktree SOURCE_SHA256.txt
+          git rm .audit/quest-source.*
+          test -z "$(git diff --cached --name-only -- .github/workflows)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(world): integrate native Map1 quest journal NPCs and reward persistence'
+          git push origin "HEAD:refs/heads/$branch"
+          git rev-parse HEAD
