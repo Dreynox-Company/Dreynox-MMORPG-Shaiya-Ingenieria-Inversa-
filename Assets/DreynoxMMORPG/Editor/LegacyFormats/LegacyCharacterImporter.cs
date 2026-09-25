@@ -277,9 +277,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 Legacy3dcParser.Parse(
                     ResolveCaseInsensitive(corpus.RootPath, Parts[0].MeshPath));
 
-            if (referenceMesh.InverseBindMatrices.Count != referenceAni.Bones.Count)
-                throw new InvalidDataException(
-                    "Canonical mesh/ANI bone count mismatch.");
+            Dreynox.Mmorpg.LocalData.LegacyRuntimeSkinnedBuilder.ValidateMeshForSkeleton(
+                referenceMesh, referenceAni.Bones.Count);
 
             GameObject actor = new GameObject("HumanMale003_Canonical");
             try
@@ -356,50 +355,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             Legacy3dcFile mesh,
             LegacyAniFile ani)
         {
-            int boneCount = mesh.InverseBindMatrices.Count;
-            Transform[] bones = new Transform[boneCount];
-            Matrix4x4[] bindWorld = new Matrix4x4[boneCount];
-
-            GameObject skeletonObject = new GameObject("Skeleton");
-            skeletonObject.transform.SetParent(actorRoot, false);
-
-            for (int i = 0; i < boneCount; i++)
-            {
-                Matrix4x4 shaiyaWorld =
-                    mesh.InverseBindMatrices[i].inverse;
-
-                bindWorld[i] =
-                    LegacyCoordinateBridge.Matrix(shaiyaWorld);
-            }
-
-            for (int i = 0; i < boneCount; i++)
-            {
-                int parentIndex = ani.Bones[i].ParentBoneIndex;
-
-                GameObject boneObject =
-                    new GameObject("Bone_" + i.ToString("D3"));
-
-                Transform parent =
-                    parentIndex < 0
-                        ? skeletonObject.transform
-                        : bones[parentIndex];
-
-                if (parent == null)
-                    throw new InvalidDataException(
-                        "ANI hierarchy is not parent-before-child at bone " + i + ".");
-
-                boneObject.transform.SetParent(parent, false);
-
-                Matrix4x4 local =
-                    parentIndex < 0
-                        ? bindWorld[i]
-                        : bindWorld[parentIndex].inverse * bindWorld[i];
-
-                ApplyLocalMatrix(boneObject.transform, local);
-                bones[i] = boneObject.transform;
-            }
-
-            return bones;
+            return Dreynox.Mmorpg.LocalData.LegacyRuntimeSkinnedBuilder.BuildSkeleton(actorRoot, mesh, ani);
         }
 
         private static void AddVerifiedSockets(Transform[] bones)
@@ -429,11 +385,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             Legacy3dcFile source =
                 Legacy3dcParser.Parse(meshSource);
 
-            if (source.InverseBindMatrices.Count != bones.Length)
-                throw new InvalidDataException(
-                    spec.Name + " has " +
-                    source.InverseBindMatrices.Count +
-                    " bones; expected " + bones.Length + ".");
+            Dreynox.Mmorpg.LocalData.LegacyRuntimeSkinnedBuilder.ValidateMeshForSkeleton(source, bones.Length);
 
             Mesh mesh = BuildMesh(source, bones, actorRoot);
             string meshPath =
@@ -466,67 +418,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             Transform[] bones,
             Transform actorRoot)
         {
-            int vertexCount = source.Vertices.Count;
-
-            Vector3[] positions = new Vector3[vertexCount];
-            Vector3[] normals = new Vector3[vertexCount];
-            Vector2[] uvs = new Vector2[vertexCount];
-            BoneWeight[] weights = new BoneWeight[vertexCount];
-
-            for (int i = 0; i < vertexCount; i++)
-            {
-                Legacy3dcVertex vertex = source.Vertices[i];
-
-                positions[i] =
-                    LegacyCoordinateBridge.Position(vertex.Position);
-
-                normals[i] =
-                    LegacyCoordinateBridge.Direction(vertex.Normal).normalized;
-
-                uvs[i] = vertex.UV;
-                weights[i] = BuildBoneWeight(vertex);
-            }
-
-            int[] triangles =
-                new int[source.Faces.Count * 3];
-
-            for (int i = 0; i < source.Faces.Count; i++)
-            {
-                LegacyTriangle face = source.Faces[i];
-
-                // Z reflection changes handedness, therefore winding is reversed.
-                triangles[i * 3] = face.A;
-                triangles[i * 3 + 1] = face.C;
-                triangles[i * 3 + 2] = face.B;
-            }
-
-            Matrix4x4[] bindPoses =
-                new Matrix4x4[bones.Length];
-
-            for (int i = 0; i < bones.Length; i++)
-            {
-                bindPoses[i] =
-                    bones[i].worldToLocalMatrix *
-                    actorRoot.localToWorldMatrix;
-            }
-
-            Mesh mesh = new Mesh
-            {
-                name = "Legacy3DC",
-                indexFormat =
-                    vertexCount > 65535
-                        ? IndexFormat.UInt32
-                        : IndexFormat.UInt16
-            };
-
-            mesh.vertices = positions;
-            mesh.normals = normals;
-            mesh.uv = uvs;
-            mesh.boneWeights = weights;
-            mesh.bindposes = bindPoses;
-            mesh.triangles = triangles;
-            mesh.RecalculateBounds();
-            return mesh;
+            return Dreynox.Mmorpg.LocalData.LegacyRuntimeSkinnedBuilder.BuildMesh(source, bones, actorRoot, "Legacy3DC");
         }
 
         private static BoneWeight BuildBoneWeight(

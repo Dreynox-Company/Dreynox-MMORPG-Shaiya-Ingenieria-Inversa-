@@ -16,8 +16,8 @@ required = [
     'Assets/DreynoxMMORPG/Runtime/Gameplay/Client/ShaiyaClientActor.cs',
     'Assets/DreynoxMMORPG/Runtime/Gameplay/Animation/SemanticAnimationPlayer.cs',
     'Assets/DreynoxMMORPG/Editor/Parity/VisualParityComparatorWindow.cs',
-    'Assets/DreynoxMMORPG/Editor/LegacyFormats/Legacy3dcParser.cs',
-    'Assets/DreynoxMMORPG/Editor/LegacyFormats/LegacyAniParser.cs',
+    'Assets/DreynoxMMORPG/Runtime/LocalData/Legacy3dcParser.cs',
+    'Assets/DreynoxMMORPG/Runtime/LocalData/LegacyAniParser.cs',
     'Assets/DreynoxMMORPG/Editor/LegacyFormats/LegacyCharacterImporter.cs',
     'Assets/DreynoxMMORPG/Editor/LegacyFormats/LegacyWldTerrainParser.cs',
     'Assets/DreynoxMMORPG/Editor/LegacyFormats/LegacyWorldTerrainImporter.cs',
@@ -97,8 +97,12 @@ for source in ROOT.rglob('*.cs'):
             str(source.relative_to(ROOT))
         )
 
+for source in (ROOT / 'Assets/DreynoxMMORPG/Runtime/LocalData').glob('*.cs'):
+    if re.search(r'^\s*using\s+UnityEditor(?:\.|;)', source.read_text(encoding='utf-8'), re.MULTILINE):
+        errors.append('UnityEditor dependency in Player loader: ' + str(source.relative_to(ROOT)))
+
 manifest = []
-for file in sorted(x for x in ROOT.rglob('*') if x.is_file() and '.git' not in x.parts):
+for file in sorted(x for x in ROOT.rglob('*') if x.is_file() and '.git' not in x.parts and x.name != 'SOURCE_SHA256.txt'):
     digest = hashlib.sha256(file.read_bytes()).hexdigest()
     manifest.append(f'{digest}  {file.relative_to(ROOT).as_posix()}')
 

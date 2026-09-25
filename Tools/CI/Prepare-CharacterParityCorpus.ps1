@@ -1,6 +1,7 @@
-param(
+﻿param(
     [string]$ShZipPath = "",
-    [string]$CacheRoot = ""
+    [string]$CacheRoot = "",
+    [switch]$FunctionsOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,7 +11,34 @@ $ExpectedZipSha = "78136f45ee45d3b0c6e03b829412189cab4d32ae5670a8d8b65892154673c
 $ExpectedGameSha = "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d"
 
 if ([string]::IsNullOrWhiteSpace($CacheRoot)) {
-    $CacheRoot = Join-Path $env:LOCALAPPDATA "DreynoxMmorpg\ps0032-character-parity"
+    $baseCache = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    $CacheRoot = Join-Path $baseCache "DreynoxMmorpg\ps0032-character-parity-v2"
+}
+
+function Test-DreynoxPath {
+    param([AllowEmptyString()][string]$LiteralPath, [ValidateSet("Leaf", "Container", "Any")][string]$PathType = "Any")
+    if ([string]::IsNullOrWhiteSpace($LiteralPath)) { return $false }
+    try { return [bool](Test-Path -LiteralPath $LiteralPath -PathType $PathType -ErrorAction Stop) }
+    catch [System.UnauthorizedAccessException] { return $false }
+    catch [System.IO.IOException] { return $false }
+    catch [System.Management.Automation.ItemNotFoundException] { return $false }
+}
+
+function Test-PreparedCache {
+    param([string]$Root)
+    $manifest = Join-Path $Root ".resource-manifest.json"
+    try {
+        if (-not (Test-DreynoxPath -LiteralPath $manifest -PathType Leaf)) { return $false }
+        $entries = @(Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json)
+        if ($entries.Count -lt 200) { return $false }
+        foreach ($entry in $entries) {
+            $path = Join-Path $Root $entry.path
+            if (-not (Test-DreynoxPath -LiteralPath $path -PathType Leaf)) { return $false }
+            $info = Get-Item -LiteralPath $path -ErrorAction Stop
+            if ($info.Length -ne $entry.bytes) { return $false }
+        }
+        return $true
+    } catch { return $false }
 }
 
 function Get-DreynoxSearchRoots {
@@ -19,27 +47,17 @@ function Get-DreynoxSearchRoots {
     if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
         foreach ($name in @("Desktop", "Downloads", "Documents")) {
             $candidate = Join-Path $env:USERPROFILE $name
-            if (Test-Path -LiteralPath $candidate -PathType Container) {
+            if (Test-DreynoxPath -LiteralPath $candidate -PathType Container) {
                 $roots.Add([System.IO.Path]::GetFullPath($candidate))
             }
         }
     }
 
-    $systemDrive = [Environment]::GetEnvironmentVariable("SystemDrive")
-    if ([string]::IsNullOrWhiteSpace($systemDrive)) {
-        $systemDrive = "C:"
-    }
-
-    $usersRoot = Join-Path $systemDrive "Users"
-    if (Test-Path -LiteralPath $usersRoot -PathType Container) {
-        Get-ChildItem -LiteralPath $usersRoot -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-            foreach ($name in @("Desktop", "Downloads", "Documents")) {
-                $candidate = Join-Path $_.FullName $name
-                if (Test-Path -LiteralPath $candidate -PathType Container) {
-                    $roots.Add([System.IO.Path]::GetFullPath($candidate))
-                }
-            }
-        }
+    # Never enumerate other Windows accounts. Explicit paths can be supplied
+    # through DREYNOX_SH_ZIP, otherwise search only this account's known folders.
+    foreach ($kind in @([Environment+SpecialFolder]::DesktopDirectory, [Environment+SpecialFolder]::MyDocuments)) {
+        $candidate = [Environment]::GetFolderPath($kind)
+        if (Test-DreynoxPath -LiteralPath $candidate -PathType Container) { $roots.Add($candidate) }
     }
 
     return @($roots | Select-Object -Unique)
@@ -47,19 +65,21 @@ function Get-DreynoxSearchRoots {
 
 function Find-ShZip {
     if (-not [string]::IsNullOrWhiteSpace($env:DREYNOX_SH_ZIP) -and
-        (Test-Path -LiteralPath $env:DREYNOX_SH_ZIP -PathType Leaf)) {
+        (Test-DreynoxPath -LiteralPath $env:DREYNOX_SH_ZIP -PathType Leaf)) {
         return [System.IO.Path]::GetFullPath($env:DREYNOX_SH_ZIP)
     }
 
+    $cachedSource = Join-Path $env:LOCALAPPDATA "DreynoxMmorpg\ps0032-source\Sh.zip"
+    if (Test-DreynoxPath -LiteralPath $cachedSource -PathType Leaf) { return $cachedSource }
     $roots = @(Get-DreynoxSearchRoots)
 
     foreach ($root in $roots) {
-        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+        if (-not (Test-DreynoxPath -LiteralPath $root -PathType Container)) {
             continue
         }
 
         $direct = Join-Path $root "Sh.zip"
-        if (Test-Path -LiteralPath $direct -PathType Leaf) {
+        if (Test-DreynoxPath -LiteralPath $direct -PathType Leaf) {
             return $direct
         }
 
@@ -70,7 +90,7 @@ function Find-ShZip {
         foreach ($directory in $levelOne) {
             $candidate = Join-Path $directory.FullName "Sh.zip"
 
-            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            if (Test-DreynoxPath -LiteralPath $candidate -PathType Leaf) {
                 return $candidate
             }
 
@@ -81,7 +101,7 @@ function Find-ShZip {
             foreach ($nestedDirectory in $levelTwo) {
                 $nested = Join-Path $nestedDirectory.FullName "Sh.zip"
 
-                if (Test-Path -LiteralPath $nested -PathType Leaf) {
+                if (Test-DreynoxPath -LiteralPath $nested -PathType Leaf) {
                     return $nested
                 }
             }
@@ -97,7 +117,7 @@ function Find-ShMultipart {
     $directories = New-Object System.Collections.Generic.List[string]
 
     foreach ($root in $roots) {
-        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+        if (-not (Test-DreynoxPath -LiteralPath $root -PathType Container)) {
             continue
         }
 
@@ -115,7 +135,7 @@ function Find-ShMultipart {
     foreach ($directory in ($directories | Select-Object -Unique)) {
         $part1 = Join-Path $directory "Sh.part1.rar"
 
-        if (-not (Test-Path -LiteralPath $part1 -PathType Leaf)) {
+        if (-not (Test-DreynoxPath -LiteralPath $part1 -PathType Leaf)) {
             continue
         }
 
@@ -124,7 +144,7 @@ function Find-ShMultipart {
         for ($part = 2; $part -le 7; $part++) {
             $candidate = Join-Path $directory ("Sh.part{0}.rar" -f $part)
 
-            if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            if (-not (Test-DreynoxPath -LiteralPath $candidate -PathType Leaf)) {
                 $complete = $false
                 break
             }
@@ -140,7 +160,7 @@ function Find-ShMultipart {
 
 function Resolve-7Zip {
     if (-not [string]::IsNullOrWhiteSpace($env:DREYNOX_7ZIP) -and
-        (Test-Path -LiteralPath $env:DREYNOX_7ZIP -PathType Leaf)) {
+        (Test-DreynoxPath -LiteralPath $env:DREYNOX_7ZIP -PathType Leaf)) {
         return [System.IO.Path]::GetFullPath($env:DREYNOX_7ZIP)
     }
 
@@ -156,7 +176,7 @@ function Resolve-7Zip {
     }
 
     foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+        if (Test-DreynoxPath -LiteralPath $candidate -PathType Leaf) {
             return [System.IO.Path]::GetFullPath($candidate)
         }
     }
@@ -183,7 +203,7 @@ function Prepare-ShZipFromMultipart {
     $sourceCache = Join-Path $env:LOCALAPPDATA "DreynoxMmorpg\ps0032-source"
     $cachedZip = Join-Path $sourceCache "Sh.zip"
 
-    if (Test-Path -LiteralPath $cachedZip -PathType Leaf) {
+    if (Test-DreynoxPath -LiteralPath $cachedZip -PathType Leaf) {
         $cachedSha = (Get-FileHash -LiteralPath $cachedZip -Algorithm SHA256).Hash.ToLowerInvariant()
 
         if ($cachedSha -eq $ExpectedZipSha) {
@@ -212,8 +232,8 @@ function Prepare-ShZipFromMultipart {
         "-bd",
         "-bso1",
         "-bsp0",
-        ("-o{0}" -f $sourceCache),
-        $Part1Path,
+        ('-o"{0}"' -f $sourceCache),
+        ('"{0}"' -f $Part1Path),
         "Sh.zip"
     )
 
@@ -224,7 +244,7 @@ function Prepare-ShZipFromMultipart {
         throw "7-Zip no pudo extraer Sh.zip desde multipart. ExitCode=$code"
     }
 
-    if (-not (Test-Path -LiteralPath $cachedZip -PathType Leaf)) {
+    if (-not (Test-DreynoxPath -LiteralPath $cachedZip -PathType Leaf)) {
         throw "7-Zip finalizó sin generar Sh.zip: $cachedZip"
     }
 
@@ -239,12 +259,14 @@ function Prepare-ShZipFromMultipart {
     return $cachedZip
 }
 
+if ($FunctionsOnly) { return }
+
 if ([string]::IsNullOrWhiteSpace($ShZipPath)) {
     $ShZipPath = Find-ShZip
 }
 
 if ([string]::IsNullOrWhiteSpace($ShZipPath) -or
-    -not (Test-Path -LiteralPath $ShZipPath -PathType Leaf)) {
+    -not (Test-DreynoxPath -LiteralPath $ShZipPath -PathType Leaf)) {
     $part1 = Find-ShMultipart
 
     if (-not [string]::IsNullOrWhiteSpace($part1)) {
@@ -253,7 +275,7 @@ if ([string]::IsNullOrWhiteSpace($ShZipPath) -or
 }
 
 if ([string]::IsNullOrWhiteSpace($ShZipPath) -or
-    -not (Test-Path -LiteralPath $ShZipPath -PathType Leaf)) {
+    -not (Test-DreynoxPath -LiteralPath $ShZipPath -PathType Leaf)) {
     Write-Host "Sh.zip ni el multipart Sh.part1.rar..Sh.part7.rar fueron encontrados/preparados en rutas locales acotadas."
     return
 }
@@ -269,15 +291,15 @@ $markerPath = Join-Path $CacheRoot ".source-sha256"
 $cachedGame = Join-Path $CacheRoot "game.exe"
 $cachedData = Join-Path $CacheRoot "DATA_Español"
 
-if ((Test-Path -LiteralPath $markerPath -PathType Leaf) -and
-    (Test-Path -LiteralPath $cachedGame -PathType Leaf) -and
-    (Test-Path -LiteralPath $cachedData -PathType Container)) {
+if ((Test-DreynoxPath -LiteralPath $markerPath -PathType Leaf) -and
+    (Test-DreynoxPath -LiteralPath $cachedGame -PathType Leaf) -and
+    (Test-DreynoxPath -LiteralPath $cachedData -PathType Container)) {
     $marker = (Get-Content -LiteralPath $markerPath -Raw).Trim()
 
     if ($marker -eq $zipSha) {
         $gameSha = (Get-FileHash -LiteralPath $cachedGame -Algorithm SHA256).Hash.ToLowerInvariant()
 
-        if ($gameSha -eq $ExpectedGameSha) {
+        if ($gameSha -eq $ExpectedGameSha -and (Test-PreparedCache -Root $CacheRoot)) {
             Write-Host "Character parity corpus cache reutilizado: $CacheRoot"
             Write-Output ([System.IO.Path]::GetFullPath($CacheRoot))
             exit 0
@@ -285,11 +307,16 @@ if ((Test-Path -LiteralPath $markerPath -PathType Leaf) -and
     }
 }
 
-if (Test-Path -LiteralPath $CacheRoot) {
-    Remove-Item -LiteralPath $CacheRoot -Recurse -Force
+# Never recursively delete a caller-supplied directory. Only reuse a managed cache.
+$ownerMarker = Join-Path $CacheRoot ".dreynox-managed-cache"
+if ((Test-DreynoxPath -LiteralPath $CacheRoot -PathType Container) -and
+    -not (Test-DreynoxPath -LiteralPath $ownerMarker -PathType Leaf) -and
+    @(Get-ChildItem -LiteralPath $CacheRoot -Force -ErrorAction Stop).Count -gt 0) {
+    throw "La carpeta de caché contiene datos ajenos; no se borrará. Indique una carpeta nueva."
 }
-
 New-Item -ItemType Directory -Force -Path $CacheRoot | Out-Null
+Set-Content -LiteralPath $ownerMarker -Value "dreynox-ps0032-v2" -Encoding ascii
+$resourceManifest = New-Object System.Collections.Generic.List[object]
 
 $exactPaths = @(
     "game.exe",
@@ -438,7 +465,15 @@ try {
         }
 
         $relative = $name.Replace("/", [System.IO.Path]::DirectorySeparatorChar)
-        $destination = Join-Path $CacheRoot $relative
+        if ([System.IO.Path]::IsPathRooted($relative) -or
+            $name.Split('/') -contains '..' -or $name.Contains(':')) {
+            throw "Ruta de archivo ZIP no permitida: $name"
+        }
+        $destination = [System.IO.Path]::GetFullPath((Join-Path $CacheRoot $relative))
+        $boundary = [System.IO.Path]::GetFullPath($CacheRoot).TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+        if (-not $destination.StartsWith($boundary, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "El recurso ZIP sale de la carpeta de caché: $name"
+        }
         $directory = Split-Path -Parent $destination
 
         if (-not [string]::IsNullOrWhiteSpace($directory)) {
@@ -451,6 +486,7 @@ try {
             $true
         )
 
+        $resourceManifest.Add(@{path = $relative; bytes = $entry.Length})
         $extracted++
         $totalBytes += $entry.Length
     }
@@ -491,11 +527,12 @@ foreach ($rig in $previewRigs) {
 
 foreach ($relative in ($required | Select-Object -Unique)) {
     $path = Join-Path $CacheRoot $relative
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+    if (-not (Test-DreynoxPath -LiteralPath $path -PathType Leaf)) {
         throw "El corpus mínimo no contiene un recurso requerido: $relative"
     }
 }
 
+$resourceManifest | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $CacheRoot ".resource-manifest.json") -Encoding utf8
 Set-Content -LiteralPath $markerPath -Value $zipSha -Encoding ascii
 
 Write-Host ("Character parity corpus preparado: {0} archivos · {1:N1} MB" -f $extracted, ($totalBytes / 1MB))

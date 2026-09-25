@@ -74,6 +74,17 @@ namespace Dreynox.Mmorpg.Editor.Build
         public static void BuildParityBatch()
         {
             BuildParityLab(ParityOutput);
+            BuildLocalDataLab();
+        }
+
+        [MenuItem("Dreynox MMORPG/Build/Windows x64/Local DATA (external folder)")]
+        public static void BuildLocalDataLab()
+        {
+            LocalDataSceneBuilder.Build();
+            ConfigureIdentity();
+            PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+            Build(new[] { LocalDataSceneBuilder.ScenePath },
+                "Builds/WindowsParity/LocalData/DreynoxMmorpg-LocalData.exe", "local-data-character-qualification");
         }
 
         public static void BuildReleaseBatch()

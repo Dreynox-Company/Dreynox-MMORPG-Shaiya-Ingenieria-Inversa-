@@ -104,6 +104,7 @@ namespace Dreynox.Mmorpg.Parity
 
         private void Start()
         {
+            if (_instance != null) return; // UI may have selected a rig before Start.
             Apply(
                 initialFamily,
                 initialJob,
@@ -150,6 +151,8 @@ namespace Dreynox.Mmorpg.Parity
                 _currentRigIndex ==
                     selection.NativeRigIndex)
             {
+                if (CurrentFaceIndex == faceIndex && CurrentHairIndex == hairIndex)
+                    return _instance;
                 ApplyAppearance(
                     _instance,
                     faceIndex,
@@ -161,7 +164,7 @@ namespace Dreynox.Mmorpg.Parity
                 CurrentHairIndex =
                     hairIndex;
 
-                PlaySelect();
+                // Appearance-only changes keep the current animation phase.
                 return _instance;
             }
 
@@ -180,49 +183,44 @@ namespace Dreynox.Mmorpg.Parity
                     ").");
             }
 
-            DestroyPreviewInstance();
+            GameObject candidate = null;
+            GameObject staging = new GameObject("PreviewStaging");
+            staging.SetActive(false);
+            try
+            {
+                candidate = Instantiate(rigPrefabs[selection.NativeRigIndex], staging.transform, false);
+                candidate.name = "Preview_" + selection.Prefix;
+                candidate.transform.localPosition = localPosition;
+                candidate.transform.localRotation = Quaternion.Euler(localEulerAngles);
+                candidate.transform.localScale = Vector3.one;
+                ApplyAppearance(candidate, faceIndex, hairIndex);
+                candidate.transform.SetParent(transform, false);
+                candidate.SetActive(true);
+                var nextAnimation = candidate.GetComponent<SemanticAnimationPlayer>();
+                if (nextAnimation != null) nextAnimation.PlaySemantic("select");
 
-            _instance =
-                Instantiate(
-                    rigPrefabs[
-                        selection.NativeRigIndex],
-                    transform,
-                    false);
+                GameObject previous = _instance;
+                _instance = candidate;
+                _currentRigIndex = selection.NativeRigIndex;
+                CurrentAnimation = nextAnimation;
+                CurrentFaceIndex = faceIndex;
+                CurrentHairIndex = hairIndex;
+                candidate = null;
+                Release(previous);
+                return _instance;
+            }
+            finally
+            {
+                Release(candidate);
+                Release(staging);
+            }
+        }
 
-            _instance.name =
-                "Preview_" +
-                selection.Prefix;
-
-            _instance.transform.localPosition =
-                localPosition;
-
-            _instance.transform.localRotation =
-                Quaternion.Euler(
-                    localEulerAngles);
-
-            _instance.transform.localScale =
-                Vector3.one;
-
-            _currentRigIndex =
-                selection.NativeRigIndex;
-
-            CurrentFaceIndex =
-                faceIndex;
-
-            CurrentHairIndex =
-                hairIndex;
-
-            CurrentAnimation =
-                _instance.GetComponent<
-                    SemanticAnimationPlayer>();
-
-            ApplyAppearance(
-                _instance,
-                faceIndex,
-                hairIndex);
-
-            PlaySelect();
-            return _instance;
+        private static void Release(GameObject value)
+        {
+            if (value == null) return;
+            value.SetActive(false);
+            if (Application.isPlaying) Destroy(value); else DestroyImmediate(value);
         }
 
         private void DestroyPreviewInstance()

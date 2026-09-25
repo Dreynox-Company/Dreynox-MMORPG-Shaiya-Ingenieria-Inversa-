@@ -105,6 +105,31 @@ namespace Dreynox.Mmorpg.Tests.Editor
             }
         }
 
+        [Test]
+        public void FailedReplacementPreservesCurrentModelAndSelection()
+        {
+            var root = new GameObject("TransactionalPreview");
+            var prefabs = new GameObject[16];
+            try
+            {
+                for (int i = 0; i < 16; i++) prefabs[i] = CreatePreviewPrefab("Rig_" + i);
+                Object.DestroyImmediate(prefabs[1].GetComponent<LegacyCharacterAppearanceVariants>());
+                var switcher = root.AddComponent<LegacyCharacterPreviewSwitcher>();
+                switcher.Configure(prefabs, Vector3.zero, Vector3.zero, 0, 0, 0);
+                GameObject valid = switcher.Apply(0, 0, 0, 0, 0);
+                Assert.Throws<System.InvalidOperationException>(() => switcher.Apply(0, 5, 0, 1, 1));
+                Assert.AreSame(valid, switcher.CurrentInstance);
+                Assert.AreEqual(0, switcher.CurrentRigIndex);
+                Assert.AreEqual(0, switcher.CurrentFaceIndex);
+                Assert.IsTrue(valid.activeSelf);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                foreach (var prefab in prefabs) if (prefab != null) Object.DestroyImmediate(prefab);
+            }
+        }
+
         private static GameObject CreatePreviewPrefab(
             string name)
         {

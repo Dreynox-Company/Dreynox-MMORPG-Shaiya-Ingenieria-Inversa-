@@ -161,13 +161,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 Legacy3dcParser.Parse(
                     upperMeshPath);
 
-            if (referenceMesh.InverseBindMatrices.Count !=
-                selectAni.Bones.Count)
-            {
-                throw new InvalidDataException(
-                    selection.Prefix +
-                    " preview mesh/ANI bone count mismatch.");
-            }
+            Dreynox.Mmorpg.LocalData.LegacyRuntimeSkinnedBuilder.ValidateMeshForSkeleton(
+                referenceMesh, selectAni.Bones.Count);
 
             var actor =
                 new GameObject(

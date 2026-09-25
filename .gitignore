@@ -17,3 +17,6 @@ Assets/DreynoxMMORPG/Game/Scenes/Generated/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local DATA qualification scene; reproducible from Editor builder.
+Assets/DreynoxMMORPG/LocalDataGenerated/

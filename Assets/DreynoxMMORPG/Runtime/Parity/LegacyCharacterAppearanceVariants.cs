@@ -99,6 +99,11 @@ namespace Dreynox.Mmorpg.Parity
                         " is missing.");
                 }
 
+            }
+
+            // Validate the entire selection before toggling any renderer.
+            for (int i = 0; i < 5; i++)
+            {
                 faceVariants[i].enabled =
                     i == faceIndex;
 
