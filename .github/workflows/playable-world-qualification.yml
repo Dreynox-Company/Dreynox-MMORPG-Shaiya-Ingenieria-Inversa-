@@ -1,4 +1,4 @@
-# Qualification revision 10: signed ANI pre-roll and all monster/NPC rig preflights.
+# Qualification revision 11: execute corrected pre-roll cases and full Map0 entity import.
 name: Playable Map0 qualification
 on:
   push:
