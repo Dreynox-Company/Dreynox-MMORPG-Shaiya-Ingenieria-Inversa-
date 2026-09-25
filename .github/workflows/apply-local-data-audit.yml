@@ -20,7 +20,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = 'refs/heads/work/unity-client-parity-v0.4.0'
-          test "$(git rev-parse HEAD^)" = '8e980d61ff8f101c53910d0fb831a8e3ad4d6991'
+          test "$(git rev-parse HEAD^)" = 'dd8c7b2eddff96565f9edbd5beba8f1989626aef'
           python - <<'PY'
           import pathlib, hashlib, gzip, subprocess, tempfile
           root = pathlib.Path('Tools/AuditTransport')
@@ -57,7 +57,11 @@ jobs:
           remote_sha=$(git ls-remote origin "refs/heads/$branch" | cut -f1)
           test "$remote_sha" = "$GITHUB_SHA"
           git restore --worktree SOURCE_SHA256.txt
-          git rm .github/workflows/apply-local-data-audit.yml Tools/AuditTransport/local-data.patch.gz.{0,1,2,3}
+          # The Actions token may write source, not workflow definitions.
+          # Workflow updates are performed separately through the authorized connector.
+          git restore --source=HEAD --staged --worktree .github/workflows/unity-windows-build.yml
+          git rm Tools/AuditTransport/local-data.patch.gz.{0,1,2,3}
+          test -z "$(git diff --cached --name-only -- .github/workflows)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat(client): load local DATA and repair multirig bind compatibility'
