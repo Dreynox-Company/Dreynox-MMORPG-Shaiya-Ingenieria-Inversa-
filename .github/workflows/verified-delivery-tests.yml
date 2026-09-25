@@ -35,7 +35,9 @@ jobs:
           [IO.File]::WriteAllBytes($payload,[byte[]](1,2,3))
           $exe=Join-Path $root 'DeliveryTest.exe'
           $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-          & $compiler /nologo /target:winexe /platform:x64 /langversion:5 "/out:$exe" "/resource:$payload,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity Tools/Delivery/VerifiedPlayerArchive.cs Tools/Delivery/PortablePlayerLauncher.cs
+          $core=(Resolve-Path -LiteralPath 'Tools/Delivery/VerifiedPlayerArchive.cs').Path
+          $launcher=(Resolve-Path -LiteralPath 'Tools/Delivery/PortablePlayerLauncher.cs').Path
+          & $compiler /nologo /target:winexe /platform:x64 /langversion:5 "/out:$exe" "/resource:$payload,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity $core $launcher
           if($LASTEXITCODE -ne 0){throw 'Windows delivery wrapper compilation failed.'}
           $p=Start-Process -FilePath $exe -ArgumentList '--verify-only' -PassThru
           if(-not $p.WaitForExit(30000)){Stop-Process -Id $p.Id -Force;throw 'Fixture timed out.'}
