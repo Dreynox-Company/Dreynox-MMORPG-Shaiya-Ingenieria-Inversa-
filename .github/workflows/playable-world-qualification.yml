@@ -1,4 +1,4 @@
-# Qualification revision 3: bind canonical ANI body tracks before building Map0.
+# Qualification revision 4: independent queue; the general CI cannot cancel the Map0 run.
 name: Playable Map0 qualification
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 75
     concurrency:
-      group: unity-windows-${{ github.repository }}-${{ github.ref }}
+      group: unity-map0-qualification-${{ github.repository }}-${{ github.ref }}
       cancel-in-progress: false
     defaults:
       run:
