@@ -60,7 +60,14 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
     {
         public Vector3 Position;
         public Vector3 Normal;
+        // Historical public field name retained for source compatibility. This
+        // DWORD is D3DCOLOR diffuse ARGB, NOT a skeleton index: the original
+        // VANI renderer uses FVF 0x152 (XYZ|NORMAL|DIFFUSE|TEX1), stride 36.
         public int BoneId;
+        public uint DiffuseArgb => unchecked((uint)BoneId);
+        public Color32 DiffuseColor => new Color32(
+            (byte)(DiffuseArgb >> 16), (byte)(DiffuseArgb >> 8),
+            (byte)DiffuseArgb, (byte)(DiffuseArgb >> 24));
         public Vector2 UV;
     }
 

@@ -73,7 +73,16 @@ namespace Dreynox.Mmorpg.World
         public IReadOnlyList<LegacyVaniResourceRuntime> Resources =>
             resources;
 
-        public int LogicalPlacementCount { get; private set; }
+        public int LogicalPlacementCount
+        {
+            get
+            {
+                int total = 0;
+                foreach (var resource in resources)
+                    if (resource != null) total = checked(total + resource.logicalPlacementCount);
+                return total;
+            }
+        }
         public int RenderedBatchCount { get; private set; }
         public int RenderedInstanceCount { get; private set; }
         public bool DrawDistanceCalibrated => drawDistanceCalibrated;
@@ -96,7 +105,6 @@ namespace Dreynox.Mmorpg.World
                 distanceCalibrated;
 
             resources.Clear();
-            LogicalPlacementCount = 0;
 
             if (source == null)
                 return;
@@ -106,9 +114,6 @@ namespace Dreynox.Mmorpg.World
                 ValidateResource(resource);
 
                 resources.Add(resource);
-
-                LogicalPlacementCount +=
-                    resource.logicalPlacementCount;
 
                 for (int partIndex = 0;
                      partIndex < resource.meshParts.Length;

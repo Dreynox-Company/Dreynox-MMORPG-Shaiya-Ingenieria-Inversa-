@@ -165,14 +165,14 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             var positions = new Vector3[vertexCount];
             var normals = new Vector3[vertexCount];
             var uv = new Vector2[vertexCount];
+            var diffuse = new Color32[vertexCount];
             for (int vertexIndex = 0; vertexIndex < vertexCount; vertexIndex++)
             {
                 var vertex = source.Vertices[vertexIndex];
                 if (frame < 0 || frame >= vertex.Frames.Count)
                     throw new InvalidDataException("VANI frame index " + frame + " is invalid for vertex " + vertexIndex + ".");
                 var value = vertex.Frames[frame];
-                if (value.BoneId != -1)
-                    throw new InvalidDataException("VANI '" + resourceName + "' frame " + frame + " contains unexpected BoneId " + value.BoneId + ".");
+                diffuse[vertexIndex] = value.DiffuseColor;
                 positions[vertexIndex] = value.Position;
                 normals[vertexIndex] = value.Normal.sqrMagnitude > 0.000001f ? value.Normal.normalized : Vector3.up;
                 uv[vertexIndex] = value.UV;
@@ -187,7 +187,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             {
                 name = resourceName + "_Frame_" + frame.ToString("D3"),
                 indexFormat = vertexCount > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16,
-                vertices = positions, normals = normals, uv = uv, triangles = triangles
+                vertices = positions, normals = normals, uv = uv, colors32 = diffuse, triangles = triangles
             };
             mesh.RecalculateBounds();
             return mesh;
@@ -204,9 +204,8 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             // This is albedo, not a normal map/lightmap. Never feed raw DDS to IHV import.
             Texture2D texture = LegacyColorTextureImporter.Import(sourcePath, assetPath, TextureWrapMode.Repeat);
             if (texture == null) throw new InvalidDataException("Unity did not import VANI color texture: " + assetPath);
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null) shader = Shader.Find("Standard");
-            if (shader == null) throw new InvalidOperationException("No compatible lit shader is available.");
+            Shader shader = Shader.Find("Dreynox/Enhanced/LegacyVaniDiffuse");
+            if (shader == null) throw new InvalidOperationException("The VANI vertex-diffuse shader is required; a shader ignoring original colors is not a valid fallback.");
             var material = new Material(shader) { name = "VANI_Material_" + meshIndex.ToString("D2"), enableInstancing = true };
             if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
             else material.mainTexture = texture;
