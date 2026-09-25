@@ -2,12 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
-using UnityEditor.PackageManager;
 using UnityEngine;
 
 namespace Dreynox.Mmorpg.Editor.Build
 {
-    /// <summary>Warm package-import dependencies outside an asset postprocess/test callback.</summary>
+    /// <summary>Warm package dependencies outside asset-postprocessor and test callbacks.</summary>
     public static class PipelineResourcePreflight
     {
         private static readonly string[] Required =
@@ -36,7 +35,7 @@ namespace Dreynox.Mmorpg.Editor.Build
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
                 foreach (string path in Required)
                 {
-                    var package = PackageInfo.FindForAssetPath(path);
+                    var package = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(path);
                     if (package == null) throw new InvalidOperationException("Package not resolved for " + path);
                     string prefix = "Packages/" + package.name + "/";
                     var row = new Record
