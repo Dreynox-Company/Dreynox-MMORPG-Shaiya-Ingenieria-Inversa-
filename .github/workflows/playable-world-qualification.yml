@@ -1,4 +1,4 @@
-# Qualification revision 9: preflight all 52 MON models and their 441 animation slots.
+# Qualification revision 10: signed ANI pre-roll and all monster/NPC rig preflights.
 name: Playable Map0 qualification
 on:
   push:
