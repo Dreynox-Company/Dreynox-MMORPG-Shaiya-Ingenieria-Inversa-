@@ -1,0 +1,106 @@
+name: Playable Map0 qualification
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['.github/workflows/playable-world-qualification.yml']
+permissions:
+  contents: read
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: '8.0.x'
+      - run: python Tools/validate_project.py
+      - run: dotnet run --project Tools/ParityHarness/ParityHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
+  windows-world:
+    needs: source-gate
+    if: github.event_name == 'push' && github.repository == 'Dreynox-Company/Dreynox-MMORPG-Shaiya-Ingenieria-Inversa-'
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 75
+    concurrency:
+      group: unity-windows-${{ github.repository }}-${{ github.ref }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          lfs: true
+          clean: false
+          persist-credentials: false
+      - name: Clean generated outputs in CI workspace only
+        run: |
+          git reset --hard HEAD
+          git clean -ffdx -e Library/
+          if ($LASTEXITCODE -ne 0) { throw 'Workspace cleanup failed.' }
+      - name: Locate and verify user-authorized extracted DATA
+        id: corpus
+        run: ./Tools/CI/Prepare-ExtractedCorpus.ps1
+      - name: Require actual Map0 inputs
+        env:
+          WORLD_AVAILABLE: ${{ steps.corpus.outputs.world_available }}
+        run: |
+          if ($env:WORLD_AVAILABLE -ne 'true') { throw 'Real Map0 corpus unavailable; synthetic fallback is forbidden.' }
+      - name: Unity Personal preflight
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task preflight
+      - name: EditMode tests including real corpus
+        id: unity-tests
+        timeout-minutes: 20
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task test
+      - name: Upload exact test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-Map0-Unity-Tests
+          path: TestResults/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Build preconverted real Map0 Player
+        id: world-build
+        timeout-minutes: 45
+        run: ./Tools/CI/Invoke-WorldQualification.ps1 -Task build
+      - name: Exercise movement camera and mob death in actual Player
+        id: world-play
+        timeout-minutes: 5
+        run: ./Tools/CI/Invoke-WorldQualification.ps1 -Task play
+      - name: Upload real-world diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-Map0-Qualification
+          path: |
+            Artifacts/WorldQualification/
+            BuildLogs/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload Map0 Player only when actually built
+        if: always() && steps.world-build.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-Mmorpg-PlayableMap0-Windows-x64
+          path: Builds/WindowsPlayableMap0/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Summary of independent gates
+        if: always()
+        env:
+          EDITMODE: ${{ steps.unity-tests.outcome }}
+          WORLD_BUILD: ${{ steps.world-build.outcome }}
+          WORLD_PLAY: ${{ steps.world-play.outcome }}
+        run: |
+          @(
+            '## Actual Map0 qualification'
+            "Commit: $env:GITHUB_SHA"
+            "EditMode: $env:EDITMODE"
+            "Preconverted Map0 build: $env:WORLD_BUILD"
+            "Actual walk/combat scenario: $env:WORLD_PLAY"
+            'This is a local integration test. Native visual equivalence and server combat rules remain separate gates.'
+          ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
