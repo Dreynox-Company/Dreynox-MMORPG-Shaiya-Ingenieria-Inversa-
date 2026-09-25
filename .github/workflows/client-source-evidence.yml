@@ -1,0 +1,27 @@
+name: Client source evidence
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Record exact tracked source, without local corpus or credentials
+        shell: bash
+        run: |
+          mkdir -p source-evidence
+          git archive --format=zip --output=source-evidence/client-source.zip HEAD
+          git rev-parse HEAD > source-evidence/commit.txt
+          sha256sum source-evidence/client-source.zip > source-evidence/SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-Client-Source-${{ github.sha }}
+          path: source-evidence/
+          retention-days: 7
+          if-no-files-found: error
