@@ -1,10 +1,10 @@
+# Revision 2: qualify installed URP resources before test asset callbacks.
 name: Starting Map1 playable client
 on:
   push:
     branches: ['work/unity-client-parity-v0.4.0']
     paths: ['.github/workflows/starting-world-playable.yml']
-permissions:
-  contents: read
+permissions: {contents: read}
 jobs:
   source:
     runs-on: ubuntu-latest
@@ -22,7 +22,7 @@ jobs:
   windows:
     needs: source
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 170
+    timeout-minutes: 175
     concurrency:
       group: starting-world-playable-${{ github.repository }}
       cancel-in-progress: false
@@ -40,6 +40,25 @@ jobs:
         run: ./Tools/CI/Prepare-ExtractedCorpus.ps1
       - name: Unity Personal entitlement
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task preflight
+      - name: Qualify shadergraph and ray-tracing package resources outside tests
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=(Get-Location).Path
+          $line=Get-Content ProjectSettings/ProjectVersion.txt | Where-Object {$_ -match '^m_EditorVersion:'} | Select-Object -First 1
+          $version=($line -split ':',2)[1].Trim()
+          $editor=Join-Path $env:ProgramFiles "Unity\Hub\Editor\$version\Editor\Unity.exe"
+          New-Item -ItemType Directory -Force -Path BuildLogs/StartingWorld,Artifacts/StartingWorld | Out-Null
+          $log=Join-Path $root 'BuildLogs/StartingWorld/pipeline-preflight.log'
+          $p=Start-Process -FilePath $editor -ArgumentList @('-batchmode','-force-d3d11','-projectPath',('"'+$root+'"'),'-executeMethod','Dreynox.Mmorpg.Editor.Build.PipelineResourcePreflight.Run','-logFile',('"'+$log+'"'),'-quit') -PassThru
+          try {
+            if(-not $p.WaitForExit(480000)){throw 'Package-resource preflight timed out.'}
+            $p.Refresh()
+            if(Test-Path $log){Get-Content $log -Tail 80 | Write-Host}
+            if($p.ExitCode -ne 0){throw "Package preflight exit $($p.ExitCode)"}
+            $report=Get-Content Artifacts/StartingWorld/pipeline-resources.json -Raw | ConvertFrom-Json
+            if(-not $report.passed){throw $report.failure}
+          } finally {if(-not $p.HasExited){Stop-Process -Id $p.Id -Force}}
       - name: Unity tests and original quest corpus gates
         id: tests
         timeout-minutes: 32
