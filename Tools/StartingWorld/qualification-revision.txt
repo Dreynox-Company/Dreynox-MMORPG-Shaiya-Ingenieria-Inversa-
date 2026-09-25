@@ -1,0 +1,4 @@
+5
+Original Map1 TGA names resolve to their same-basename shipped DDS.
+Prepare all terrain color textures in one batch, retaining original UV scale.
+Graphics preflight rejects generic DefaultAsset and explicitly reimports invalid package resources.
