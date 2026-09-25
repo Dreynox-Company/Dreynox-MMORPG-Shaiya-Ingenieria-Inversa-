@@ -8,303 +8,184 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
 {
     public struct LegacySmodVertex
     {
-        public Vector3 Position;
-        public Vector3 Normal;
+        public Vector3 Position, Normal;
         public int BoneId;
         public Vector2 UV;
     }
-
     public sealed class LegacySmodMesh
     {
         public string TextureName;
-        public List<LegacySmodVertex> Vertices { get; } =
-            new List<LegacySmodVertex>();
-        public List<LegacyTriangle> Faces { get; } =
-            new List<LegacyTriangle>();
+        public List<LegacySmodVertex> Vertices { get; } = new List<LegacySmodVertex>();
+        public List<LegacyTriangle> Faces { get; } = new List<LegacyTriangle>();
+        public int ReconstructedNormals { get; internal set; }
+        public int InactiveNormalDefaults { get; internal set; }
+        public int UnreferencedUvDefaults { get; internal set; }
     }
-
     public sealed class LegacySmodCollisionMesh
     {
-        public List<Vector3> Vertices { get; } =
-            new List<Vector3>();
-        public List<LegacyTriangle> Faces { get; } =
-            new List<LegacyTriangle>();
+        public List<Vector3> Vertices { get; } = new List<Vector3>();
+        public List<LegacyTriangle> Faces { get; } = new List<LegacyTriangle>();
     }
-
     public sealed class LegacySmodFile
     {
         public Vector3 Center;
         public float DistanceToCenter;
-        public LegacyBounds ViewBox;
-        public List<LegacySmodMesh> Meshes { get; } =
-            new List<LegacySmodMesh>();
-        public LegacyBounds CollisionBox;
-        public List<LegacySmodCollisionMesh> CollisionMeshes { get; } =
-            new List<LegacySmodCollisionMesh>();
+        public LegacyBounds ViewBox, CollisionBox;
+        public List<LegacySmodMesh> Meshes { get; } = new List<LegacySmodMesh>();
+        public List<LegacySmodCollisionMesh> CollisionMeshes { get; } = new List<LegacySmodCollisionMesh>();
     }
-
     public static class LegacySmodParser
     {
-        private const int MaxMeshes = 10000;
-        private const int MaxVertices = 5000000;
-        private const int MaxFaces = 5000000;
-        private const int MaxTextureNameBytes = 4096;
-
+        private const int MaxMeshes = 10000, MaxVertices = 5000000, MaxFaces = 5000000;
         public static LegacySmodFile Parse(string path)
         {
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException(
-                    "SMOD path is required.",
-                    nameof(path));
-
-            using (FileStream stream = File.OpenRead(path))
-            using (BinaryReader reader = new BinaryReader(stream))
-                return Parse(reader);
+            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("SMOD path is required.", nameof(path));
+            try
+            {
+                using (var stream = File.OpenRead(path))
+                using (var reader = new BinaryReader(stream)) return Parse(reader);
+            }
+            catch (InvalidDataException ex) { throw new InvalidDataException("SMOD '" + path + "': " + ex.Message, ex); }
         }
-
         public static LegacySmodFile Parse(byte[] bytes)
         {
-            if (bytes == null)
-                throw new ArgumentNullException(nameof(bytes));
-
-            using (MemoryStream stream = new MemoryStream(bytes, false))
-            using (BinaryReader reader = new BinaryReader(stream))
-                return Parse(reader);
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
+            using (var stream = new MemoryStream(bytes, false))
+            using (var reader = new BinaryReader(stream)) return Parse(reader);
         }
-
         private static LegacySmodFile Parse(BinaryReader reader)
         {
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                12L + 4L + 24L + 4L);
-
+            LegacyFormatPrimitives.EnsureRemaining(reader, 44);
             var result = new LegacySmodFile
             {
-                Center =
-                    LegacyFormatPrimitives.ReadVector3(reader),
-                DistanceToCenter =
-                    LegacyFormatPrimitives.ReadFiniteSingle(reader),
-                ViewBox =
-                    ReadBounds(reader)
+                Center = LegacyFormatPrimitives.ReadVector3(reader),
+                DistanceToCenter = LegacyFormatPrimitives.ReadFiniteSingle(reader),
+                ViewBox = Bounds(reader)
             };
-
-            int meshCount =
-                LegacyFormatPrimitives.ReadCount(
-                    reader,
-                    "SMOD textured mesh",
-                    MaxMeshes);
-
-            for (int i = 0; i < meshCount; i++)
-                result.Meshes.Add(ReadMesh(reader, i));
-
-            result.CollisionBox =
-                ReadBounds(reader);
-
-            int collisionCount =
-                LegacyFormatPrimitives.ReadCount(
-                    reader,
-                    "SMOD collision mesh",
-                    MaxMeshes);
-
-            for (int i = 0; i < collisionCount; i++)
-            {
-                result.CollisionMeshes.Add(
-                    ReadCollisionMesh(reader, i));
-            }
-
-            LegacyFormatPrimitives.EnsureFullyConsumed(
-                reader,
-                "SMOD");
-
+            int count = Count(reader, "textured mesh", MaxMeshes);
+            for (int i = 0; i < count; i++) result.Meshes.Add(ReadMesh(reader, i));
+            result.CollisionBox = Bounds(reader);
+            count = Count(reader, "collision mesh", MaxMeshes);
+            for (int i = 0; i < count; i++) result.CollisionMeshes.Add(ReadCollision(reader, i));
+            LegacyFormatPrimitives.EnsureFullyConsumed(reader, "SMOD");
             return result;
         }
-
-        private static LegacySmodMesh ReadMesh(
-            BinaryReader reader,
-            int ordinal)
+        private static LegacySmodMesh ReadMesh(BinaryReader reader, int ordinal)
         {
-            var mesh = new LegacySmodMesh
+            var mesh = new LegacySmodMesh { TextureName = ReadString(reader) };
+            int count = Count(reader, "vertex", MaxVertices);
+            LegacyFormatPrimitives.EnsureRemaining(reader, (long)count * 36 + 4);
+            for (int i = 0; i < count; i++)
             {
-                TextureName = ReadLengthPrefixedAscii(reader)
-            };
-
-            int vertexCount =
-                LegacyFormatPrimitives.ReadCount(
-                    reader,
-                    "SMOD vertex",
-                    MaxVertices);
-
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                (long)vertexCount * 36L + 4L);
-
-            for (int i = 0; i < vertexCount; i++)
-            {
-                LegacySmodVertex vertex =
-                    new LegacySmodVertex
-                    {
-                        Position =
-                            LegacyFormatPrimitives.ReadVector3(reader),
-                        Normal =
-                            LegacyFormatPrimitives.ReadVector3(reader),
-                        BoneId =
-                            reader.ReadInt32(),
-                        UV =
-                            LegacyFormatPrimitives.ReadVector2(reader)
-                    };
-
-                mesh.Vertices.Add(vertex);
+                // Positions remain strict. Normal/UV validity needs face topology:
+                // the canonical corpus contains NaN normals and unused UV slots.
+                mesh.Vertices.Add(new LegacySmodVertex
+                {
+                    Position = LegacyFormatPrimitives.ReadVector3(reader),
+                    Normal = new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()),
+                    BoneId = reader.ReadInt32(),
+                    UV = new Vector2(reader.ReadSingle(), reader.ReadSingle())
+                });
             }
-
-            int faceCount =
-                LegacyFormatPrimitives.ReadCount(
-                    reader,
-                    "SMOD face",
-                    MaxFaces);
-
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                (long)faceCount * 6L);
-
-            for (int i = 0; i < faceCount; i++)
-            {
-                LegacyTriangle face =
-                    new LegacyTriangle
-                    {
-                        A = reader.ReadUInt16(),
-                        B = reader.ReadUInt16(),
-                        C = reader.ReadUInt16()
-                    };
-
-                ValidateFace(
-                    face,
-                    vertexCount,
-                    "SMOD mesh " + ordinal,
-                    i);
-
-                mesh.Faces.Add(face);
-            }
-
+            ReadFaces(reader, mesh.Faces, count, "mesh " + ordinal);
+            RepairDerivedAttributes(mesh, ordinal);
             return mesh;
         }
-
-        private static LegacySmodCollisionMesh ReadCollisionMesh(
-            BinaryReader reader,
-            int ordinal)
+        private static void RepairDerivedAttributes(LegacySmodMesh mesh, int ordinal)
         {
-            var mesh =
-                new LegacySmodCollisionMesh();
+            int count = mesh.Vertices.Count;
+            bool needsRepair = false;
+            for (int i = 0; i < count; i++)
+                needsRepair |= !Finite(mesh.Vertices[i].Normal) || !Finite(mesh.Vertices[i].UV);
+            if (!needsRepair) return;
 
-            int vertexCount =
-                LegacyFormatPrimitives.ReadCount(
-                    reader,
-                    "SMOD collision vertex",
-                    MaxVertices);
-
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                (long)vertexCount * 12L + 4L);
-
-            for (int i = 0; i < vertexCount; i++)
+            var used = new bool[count];
+            var sums = new Vector3[count];
+            var strongest = new Vector3[count];
+            foreach (LegacyTriangle face in mesh.Faces)
             {
-                mesh.Vertices.Add(
-                    LegacyFormatPrimitives.ReadVector3(reader));
+                int a = face.A, b = face.B, c = face.C;
+                used[a] = used[b] = used[c] = true;
+                Vector3 normal = Vector3.Cross(mesh.Vertices[b].Position - mesh.Vertices[a].Position,
+                    mesh.Vertices[c].Position - mesh.Vertices[a].Position);
+                if (!Finite(normal) || !Finite(normal.sqrMagnitude))
+                    throw new InvalidDataException("SMOD face geometry overflow in mesh " + ordinal + ".");
+                Accumulate(a, normal, sums, strongest);
+                Accumulate(b, normal, sums, strongest);
+                Accumulate(c, normal, sums, strongest);
             }
-
-            int faceCount =
-                LegacyFormatPrimitives.ReadCount(
-                    reader,
-                    "SMOD collision face",
-                    MaxFaces);
-
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                (long)faceCount * 6L);
-
-            for (int i = 0; i < faceCount; i++)
+            for (int i = 0; i < count; i++)
             {
-                LegacyTriangle face =
-                    new LegacyTriangle
+                LegacySmodVertex vertex = mesh.Vertices[i];
+                if (!Finite(vertex.UV))
+                {
+                    if (used[i]) throw new InvalidDataException("SMOD mesh " + ordinal + " has non-finite UV on referenced vertex " + i + ".");
+                    vertex.UV = Vector2.zero;
+                    mesh.UnreferencedUvDefaults++;
+                }
+                if (!Finite(vertex.Normal))
+                {
+                    if (!Finite(sums[i]) || !Finite(sums[i].sqrMagnitude))
+                        throw new InvalidDataException("SMOD normal accumulation overflow.");
+                    Vector3 derived = sums[i].sqrMagnitude > 1e-20f ? sums[i] : strongest[i];
+                    if (derived.sqrMagnitude > 1e-20f)
                     {
-                        A = reader.ReadUInt16(),
-                        B = reader.ReadUInt16(),
-                        C = reader.ReadUInt16()
-                    };
-
-                ValidateFace(
-                    face,
-                    vertexCount,
-                    "SMOD collision mesh " + ordinal,
-                    i);
-
-                mesh.Faces.Add(face);
+                        // Derive only invalid normals; preserve all valid authored normals.
+                        vertex.Normal = derived / Mathf.Sqrt(derived.sqrMagnitude);
+                        mesh.ReconstructedNormals++;
+                    }
+                    else
+                    {
+                        // Unreferenced vertices / zero-area triangles do not render.
+                        vertex.Normal = Vector3.up;
+                        mesh.InactiveNormalDefaults++;
+                    }
+                }
+                mesh.Vertices[i] = vertex;
             }
-
+        }
+        private static void Accumulate(int i, Vector3 normal, Vector3[] sums, Vector3[] strongest)
+        {
+            sums[i] += normal;
+            if (normal.sqrMagnitude > strongest[i].sqrMagnitude) strongest[i] = normal;
+        }
+        private static bool Finite(float value) { return !float.IsNaN(value) && !float.IsInfinity(value); }
+        private static bool Finite(Vector3 v) { return Finite(v.x) && Finite(v.y) && Finite(v.z); }
+        private static bool Finite(Vector2 v) { return Finite(v.x) && Finite(v.y); }
+        private static LegacySmodCollisionMesh ReadCollision(BinaryReader reader, int ordinal)
+        {
+            var mesh = new LegacySmodCollisionMesh();
+            int count = Count(reader, "collision vertex", MaxVertices);
+            LegacyFormatPrimitives.EnsureRemaining(reader, (long)count * 12 + 4);
+            for (int i = 0; i < count; i++) mesh.Vertices.Add(LegacyFormatPrimitives.ReadVector3(reader));
+            ReadFaces(reader, mesh.Faces, count, "collision " + ordinal);
             return mesh;
         }
-
-        private static string ReadLengthPrefixedAscii(
-            BinaryReader reader)
+        private static void ReadFaces(BinaryReader reader, List<LegacyTriangle> output, int vertices, string label)
         {
-            int length =
-                LegacyFormatPrimitives.ReadCount(
-                    reader,
-                    "SMOD texture string byte",
-                    MaxTextureNameBytes);
-
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                length);
-
-            byte[] bytes =
-                reader.ReadBytes(length);
-
-            int nullIndex =
-                Array.IndexOf(bytes, (byte)0);
-
-            int decodedLength =
-                nullIndex >= 0
-                    ? nullIndex
-                    : bytes.Length;
-
-            return Encoding.ASCII
-                .GetString(
-                    bytes,
-                    0,
-                    decodedLength)
-                .Trim();
-        }
-
-        private static LegacyBounds ReadBounds(
-            BinaryReader reader)
-        {
-            LegacyFormatPrimitives.EnsureRemaining(
-                reader,
-                24L);
-
-            return new LegacyBounds
+            int count = Count(reader, "face", MaxFaces);
+            LegacyFormatPrimitives.EnsureRemaining(reader, (long)count * 6);
+            for (int i = 0; i < count; i++)
             {
-                Lower =
-                    LegacyFormatPrimitives.ReadVector3(reader),
-                Upper =
-                    LegacyFormatPrimitives.ReadVector3(reader)
-            };
-        }
-
-        private static void ValidateFace(
-            LegacyTriangle face,
-            int vertexCount,
-            string label,
-            int ordinal)
-        {
-            if (face.A >= vertexCount ||
-                face.B >= vertexCount ||
-                face.C >= vertexCount)
-            {
-                throw new InvalidDataException(
-                    label + " face " + ordinal +
-                    " references a vertex outside the mesh.");
+                var face = new LegacyTriangle { A = reader.ReadUInt16(), B = reader.ReadUInt16(), C = reader.ReadUInt16() };
+                if (face.A >= vertices || face.B >= vertices || face.C >= vertices)
+                    throw new InvalidDataException("SMOD " + label + " face " + i + " references a missing vertex.");
+                output.Add(face);
             }
+        }
+        private static int Count(BinaryReader reader, string label, int max)
+        { return LegacyFormatPrimitives.ReadCount(reader, "SMOD " + label, max); }
+        private static string ReadString(BinaryReader reader)
+        {
+            int length = Count(reader, "texture name bytes", 4096);
+            LegacyFormatPrimitives.EnsureRemaining(reader, length);
+            byte[] bytes = reader.ReadBytes(length);
+            int end = Array.IndexOf(bytes, (byte)0);
+            return Encoding.ASCII.GetString(bytes, 0, end < 0 ? bytes.Length : end).Trim();
+        }
+        private static LegacyBounds Bounds(BinaryReader reader)
+        {
+            return new LegacyBounds { Lower = LegacyFormatPrimitives.ReadVector3(reader), Upper = LegacyFormatPrimitives.ReadVector3(reader) };
         }
     }
 }
