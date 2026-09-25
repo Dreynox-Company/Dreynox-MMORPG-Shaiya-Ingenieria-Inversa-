@@ -1,4 +1,4 @@
-# Qualification revision 2: actual DG/WLD/MON compatibility and explicit URP.
+# Qualification revision 3: bind canonical ANI body tracks before building Map0.
 name: Playable Map0 qualification
 on:
   push:
