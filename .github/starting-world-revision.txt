@@ -1,7 +1,6 @@
-Map1 qualification 16: fix generated-folder deletion ordering and persistent VANI frame/material references.
-Run15 passed 213 Unity tests then failed creating an eagle frame because its parent directory had been deleted during flush.
-Missing-path deletes are no-ops; existing-folder deletes run before recreation; pending references are persisted before use.
-VANI uses the selected map output and shares original resources across both WLD groups without invalidating earlier references.
-Seven ordering/abort/path cases and two original-eagle persistence/reload cases join all prior tests. No test suppression.
-Original DATA and main remain unchanged. No synthetic replacement world, removed objects or fake success.
-Require real Map1 Player walking, NPC dialogue, quest, five fox kills and reward before one-file executable delivery.
+Map1 qualification 17: VANI diffuse ARGB confirmed from original game.exe FVF0x152/stride36.
+Run16 passed222 Unity tests then rejected fish_02 gray vertex colors as false BoneId values.
+Preserve every original diffuse RGBA in baked meshes and the dedicated instanced lit/fog/alpha-clip shader.
+Keep original eagle tests; add original fish all-frame colors/prefab reload, channel checks and actual placed-Map1 VANI preflight.
+Serialized placement counts survive scene reload. Original DATA and main remain unchanged.
+Require actual Map1 Player walking, NPC dialogue, quest acceptance, five fox kills and reward before ready-to-run executable delivery.
