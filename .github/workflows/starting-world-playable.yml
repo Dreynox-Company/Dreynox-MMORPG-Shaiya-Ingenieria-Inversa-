@@ -1,0 +1,92 @@
+name: Starting Map1 playable client
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['.github/workflows/starting-world-playable.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with: {dotnet-version: '8.0.x'}
+      - run: python Tools/validate_project.py
+      - run: dotnet run --project Tools/ParityHarness/ParityHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/CombatHarness/CombatHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/QuestHarness/QuestHarness.csproj --configuration Release
+  windows:
+    needs: source
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 170
+    concurrency:
+      group: starting-world-playable-${{ github.repository }}
+      cancel-in-progress: false
+    defaults:
+      run: {shell: powershell}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {lfs: true, clean: false, persist-credentials: false}
+      - name: Clean generated workspace only
+        run: |
+          git reset --hard HEAD
+          git clean -ffdx -e Library/
+          if ($LASTEXITCODE -ne 0) { throw 'Workspace cleanup failed.' }
+      - name: Verify user-authorized original DATA
+        run: ./Tools/CI/Prepare-ExtractedCorpus.ps1
+      - name: Unity Personal entitlement
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task preflight
+      - name: Unity tests and original quest corpus gates
+        id: tests
+        timeout-minutes: 32
+        run: ./Tools/StartingWorld/Run-StartingWorld.ps1 -Task Test
+      - name: Prepare original Map1 scene and integrated quest content
+        id: prepare
+        timeout-minutes: 80
+        run: ./Tools/StartingWorld/Run-StartingWorld.ps1 -Task Prepare -PreparationMinutes 75
+      - name: Build actual Map1 executable from verified prepared content
+        id: build
+        timeout-minutes: 42
+        run: ./Tools/StartingWorld/Run-StartingWorld.ps1 -Task Build -BuildMinutes 40
+      - name: Walk interact accept mission defeat foxes and claim reward
+        id: play
+        timeout-minutes: 8
+        run: ./Tools/StartingWorld/Run-StartingWorld.ps1 -Task Qualify
+      - name: Record independent results
+        if: always()
+        env:
+          TEST_RESULT: ${{ steps.tests.outcome }}
+          PREPARE_RESULT: ${{ steps.prepare.outcome }}
+          BUILD_RESULT: ${{ steps.build.outcome }}
+          PLAY_RESULT: ${{ steps.play.outcome }}
+        run: |
+          New-Item -ItemType Directory -Force -Path Artifacts/StartingWorld | Out-Null
+          @{
+            commit=$env:GITHUB_SHA; run=$env:GITHUB_RUN_ID;
+            tests=$env:TEST_RESULT; prepare=$env:PREPARE_RESULT;
+            build=$env:BUILD_RESULT; play=$env:PLAY_RESULT;
+            scope='Local original Map1 quest integration; not full game.exe parity'
+          } | ConvertTo-Json | Set-Content -LiteralPath Artifacts/StartingWorld/ci-result.json -Encoding UTF8
+      - name: Preserve logs and real Player captures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-StartingWorld-Evidence-${{ github.run_number }}
+          path: |
+            Artifacts/StartingWorld/
+            BuildLogs/StartingWorld/
+            TestResults/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Publish compiled game only after actual executable exists
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-Mmorpg-Map1-Windows-x64-${{ github.run_number }}
+          path: Builds/WindowsStartingWorld/
+          retention-days: 14
+          if-no-files-found: error
