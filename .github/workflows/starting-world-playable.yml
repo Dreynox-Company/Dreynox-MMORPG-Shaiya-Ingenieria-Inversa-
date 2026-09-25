@@ -1,9 +1,9 @@
-# Revision 3: corrected resource preflight, exact original-corpus quest gate.
+# Revision 4: package-manager namespace fixed; no disabled tests.
 name: Starting Map1 playable client
 on:
   push:
     branches: ['work/unity-client-parity-v0.4.0']
-    paths: ['.github/workflows/starting-world-playable.yml']
+    paths: ['.github/workflows/starting-world-playable.yml', 'Tools/StartingWorld/qualification-revision.txt']
 permissions: {contents: read}
 jobs:
   source:
@@ -40,7 +40,7 @@ jobs:
         run: ./Tools/CI/Prepare-ExtractedCorpus.ps1
       - name: Unity Personal entitlement
         run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task preflight
-      - name: Qualify shadergraph and ray-tracing package resources outside tests
+      - name: Qualify package resources outside test callbacks
         timeout-minutes: 10
         run: |
           $ErrorActionPreference='Stop'
