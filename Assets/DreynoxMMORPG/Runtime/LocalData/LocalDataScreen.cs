@@ -1,3 +1,8 @@
+// Raw DATA loading is an opt-in developer tool, never a shipping-client feature.
+#if DREYNOX_DEV_DATA && !DEVELOPMENT_BUILD && !UNITY_EDITOR
+#error DREYNOX_DEV_DATA requires a Development Player build.
+#endif
+#if UNITY_EDITOR || (DEVELOPMENT_BUILD && DREYNOX_DEV_DATA)
 using System;
 using System.IO;
 using Dreynox.Mmorpg.ParityCore;
@@ -62,8 +67,8 @@ namespace Dreynox.Mmorpg.LocalData
         private void OnGUI()
         {
             GUILayout.BeginArea(new Rect(12, 12, Mathf.Min(430, Screen.width - 24), Screen.height - 24), GUI.skin.box);
-            GUILayout.Label("Dreynox MMORPG · DATA local / validación");
-            GUILayout.Label("Personajes 3DC + ANI + DDS. No es el cliente completo.");
+            GUILayout.Label("Dreynox MMORPG · DESARROLLADOR · DATA local");
+            GUILayout.Label("Herramienta opcional de pruebas. No estará en la entrega final.");
             folder = GUILayout.TextField(folder);
             if (GUILayout.Button("Explorar carpeta")) { browse = !browse; if (browse) ListFolder(Directory.Exists(folder) ? folder : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)); }
             if (browse)
@@ -113,3 +118,4 @@ namespace Dreynox.Mmorpg.LocalData
         }
     }
 }
+#endif

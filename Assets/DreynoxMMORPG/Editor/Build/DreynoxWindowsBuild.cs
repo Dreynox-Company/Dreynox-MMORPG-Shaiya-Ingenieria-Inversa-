@@ -77,14 +77,14 @@ namespace Dreynox.Mmorpg.Editor.Build
             BuildLocalDataLab();
         }
 
-        [MenuItem("Dreynox MMORPG/Build/Windows x64/Local DATA (external folder)")]
+        [MenuItem("Dreynox MMORPG/Build/Windows x64/Developer tools/Local DATA (external folder)")]
         public static void BuildLocalDataLab()
         {
             LocalDataSceneBuilder.Build();
             ConfigureIdentity();
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
             Build(new[] { LocalDataSceneBuilder.ScenePath },
-                "Builds/WindowsParity/LocalData/DreynoxMmorpg-LocalData.exe", "local-data-character-qualification");
+                "Builds/WindowsParity/LocalData/DreynoxMmorpg-LocalData.exe", "local-data-character-qualification", developerDataTools: true);
         }
 
         public static void BuildReleaseBatch()
@@ -227,7 +227,7 @@ namespace Dreynox.Mmorpg.Editor.Build
             PlayerSettings.runInBackground = true;
         }
 
-        private static void Build(string[] scenes, string outputPath, string buildKind)
+        private static void Build(string[] scenes, string outputPath, string buildKind, bool developerDataTools = false)
         {
             if (string.IsNullOrWhiteSpace(outputPath))
                 throw new ArgumentException("Ruta de build vacía.", nameof(outputPath));
@@ -239,12 +239,20 @@ namespace Dreynox.Mmorpg.Editor.Build
 
             Directory.CreateDirectory(directory);
 
+            BuildOptions flags = BuildOptions.CompressWithLz4HC;
+            if (developerDataTools) flags |= BuildOptions.Development;
+            LocalDataBuildGuard.ValidateRequest(scenes, flags, developerDataTools, buildKind);
+
             BuildPlayerOptions options = new BuildPlayerOptions
             {
                 scenes = scenes,
                 locationPathName = full,
                 target = BuildTarget.StandaloneWindows64,
-                options = BuildOptions.CompressWithLz4HC
+                options = flags,
+                // Per-build only: never persist the development opt-in in PlayerSettings.
+                extraScriptingDefines = developerDataTools
+                    ? new[] { LocalDataBuildGuard.DeveloperDefine }
+                    : Array.Empty<string>()
             };
 
             BuildReport report = BuildPipeline.BuildPlayer(options);
@@ -261,6 +269,9 @@ namespace Dreynox.Mmorpg.Editor.Build
                 manifest,
                 "product=Dreynox Mmorpg\n" +
                 "kind=" + buildKind + "\n" +
+                "developmentBuild=" + ((flags & BuildOptions.Development) != 0 ? "true" : "false") + "\n" +
+                "localDataDeveloperTools=" + (developerDataTools ? "true" : "false") + "\n" +
+                "contentMode=" + (developerDataTools ? "external-data-character-diagnostics" : "preconverted-unity-assets") + "\n" +
                 "target=StandaloneWindows64\n" +
                 "unity=" + Application.unityVersion + "\n" +
                 "backend=" + PlayerSettings.GetScriptingBackend(NamedBuildTarget.Standalone) + "\n" +

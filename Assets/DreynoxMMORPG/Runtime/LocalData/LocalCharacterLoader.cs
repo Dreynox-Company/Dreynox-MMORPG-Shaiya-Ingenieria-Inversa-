@@ -1,3 +1,8 @@
+// Raw DATA loading is an opt-in developer tool, never a shipping-client feature.
+#if DREYNOX_DEV_DATA && !DEVELOPMENT_BUILD && !UNITY_EDITOR
+#error DREYNOX_DEV_DATA requires a Development Player build.
+#endif
+#if UNITY_EDITOR || (DEVELOPMENT_BUILD && DREYNOX_DEV_DATA)
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -132,3 +137,4 @@ namespace Dreynox.Mmorpg.LocalData
     }
 
 }
+#endif
