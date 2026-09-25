@@ -1,4 +1,5 @@
 using System;
+using Dreynox.Mmorpg.Editor.Rendering;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -26,6 +27,8 @@ namespace Dreynox.Mmorpg.Editor.Build
             if (corpus==null || !corpus.Validate().IsCanonical) throw new BuildFailedException("Verified content anchors required.");
             WorldRenderPipelineSetup.EnsureConfigured();
             LegacyWorldTerrainImporter.BuildCanonicalMap0();
+            EnhancedWorldPresentation.ApplyToCurrentWorld();
+            AssetDatabase.SaveAssets();
             var actor=UnityEngine.Object.FindFirstObjectByType<ShaiyaClientActor>();
             var streamer=UnityEngine.Object.FindFirstObjectByType<LegacyMonsterSpawnStreamer>();
             var camera=Camera.main;
