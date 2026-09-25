@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "archive": "Shaiya_Offline_Nativo_0_1_2_Windows.zip",
+  "archiveBytes": 198207511,
+  "archiveSha256": "b4a625f9aeb67d702a3c6d661eddee4f8d54942c8e5a2772e9a9735d44dd4ff7",
+  "gameExeBytes": 5352488,
+  "gameExeSha256": "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d",
+  "captureClientSha256": "32232a8e3e176c32ac75ad357d1f70ccf8ccadc7f223384866afdd2c9e6282df",
+  "captureScope": "Historical diagnostic audio variant; fullGameplayVerified=false in archived scope.json. Not a new execution.",
+  "sourceDirectory": "Shaiya_Offline_Nativo/pruebas/cliente_nativo_windows",
+  "size": [1024, 768],
+  "clientCrop": [3, 26, 1021, 739],
+  "allEightMatchNativeVisualReferenceCore": true,
+  "references": [
+    {"scenario": "server-list", "file": "01-server-list.png", "sha256": "533f6cd8bf684ff18d46cc188c9bfbd981e684e0946cd2730839ab0970fda72d"},
+    {"scenario": "after-faction", "file": "04-after-faction.png", "sha256": "b40064d95f1c60ab2e5ce8a6340a6679c6bec2712dba35eaf9a512092f6b33aa"},
+    {"scenario": "character-editor", "file": "05-character-editor.png", "sha256": "2fd2807d305f5ae589f30232ac31c52a12f9caef66ed1b674ca6405a607f5549"},
+    {"scenario": "mode-selected", "file": "06c-mode-selected.png", "sha256": "e8ddd8f935f05e6dc101a1b5dafdbffaf233312a747fd5aecffd05152f47df0a"},
+    {"scenario": "character-selection", "file": "08-character-selection.png", "sha256": "64d80b94bcfd41aef6b3c44971275c4b166bde416e5946ba6d9b4f0e26ae74fd"},
+    {"scenario": "world-entry", "file": "09-world-entry.png", "sha256": "7759bca4d47ba7cbe22ed2636b0a39535d359eca40dc786d076dba928e87842b"},
+    {"scenario": "world-loaded", "file": "10-world-loaded.png", "sha256": "c19cb5f06154bf6eacb029b08be7f6762bd9a002c044ff170363a9dfeadee6a0"},
+    {"scenario": "after-movement", "file": "11-after-movement.png", "sha256": "8e6592c871047643c6377498194fab98d9de7e46b0f4e5117885f9859fc32757"}
+  ]
+}
