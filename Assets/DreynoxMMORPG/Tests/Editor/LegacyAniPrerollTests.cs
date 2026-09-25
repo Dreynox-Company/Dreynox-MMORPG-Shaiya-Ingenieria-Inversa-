@@ -27,7 +27,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
         }
         [TestCase("Mob_Orc4_Die.ANI", 59, 57, 1306, 146, 55)]
         [TestCase("Mob_Zomb_01_Att1.ANI", 36, 52, 705, 127, 31)]
-        public void ActualMobAttackAndDeathRetainEveryAuthoredKey(string name, int bones, uint end,
+        public void ActualMobAttackAndDeathRetainEveryAuthoredKey(string name, int bones, int end,
             int rotationKeys, int translationKeys, int prerollKeys)
         {
             var corpus = CanonicalClientCorpus.FromStoredRoot();
@@ -36,7 +36,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
             Assert.AreEqual(bones, clip.Bones.Count);
             Assert.AreEqual(1, clip.FrameOffset);
             Assert.AreEqual(0u, clip.StartKeyframe);
-            Assert.AreEqual(end, clip.EndKeyframe);
+            Assert.AreEqual((uint)end, clip.EndKeyframe);
             Assert.AreEqual(rotationKeys, clip.Bones.Sum(b => b.Rotations.Count));
             Assert.AreEqual(translationKeys, clip.Bones.Sum(b => b.Translations.Count));
             Assert.AreEqual(prerollKeys, clip.Bones.Sum(b => b.Rotations.Count(k => k.Frame == 0) + b.Translations.Count(k => k.Frame == 0)));
