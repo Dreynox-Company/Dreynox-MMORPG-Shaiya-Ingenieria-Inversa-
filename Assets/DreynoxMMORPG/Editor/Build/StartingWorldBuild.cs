@@ -67,6 +67,8 @@ namespace Dreynox.Mmorpg.Editor.Build
             var questUi=game.AddComponent<QuestWorldPanel>();questUi.Configure(hud,journal,
                 AssetDatabase.LoadAssetAtPath<Sprite>(HudPath+"/take.tga"));
             game.AddComponent<StartingWorldQualification>();
+            game.AddComponent<LocalPortalTravel>().Configure(
+                UnityEngine.Object.FindFirstObjectByType<NativeWorldSession>(),actor,combat,journal);
             EditorSceneManager.MarkSceneDirty(actor.gameObject.scene);
             EditorSceneManager.SaveScene(actor.gameObject.scene,LegacyWorldTerrainImporter.Map1ScenePath);
             AssetDatabase.SaveAssets();

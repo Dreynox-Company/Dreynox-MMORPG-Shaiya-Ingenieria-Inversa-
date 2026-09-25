@@ -46,7 +46,6 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
                     if (Input.GetKeyDown((KeyCode)((int)KeyCode.Alpha1 + i))) TryAttackSelected(attackDamage[i]);
             FlushHitToScene();
         }
-
         public bool Select(ShaiyaCombatTarget target)
         {
             if (actor == null || target == null || !target.gameObject.activeInHierarchy || !target.IsAlive) return false;
@@ -65,7 +64,17 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
             TargetSelected?.Invoke(target);
             return true;
         }
-
+        /// <summary>Cancel pending target actions when leaving their local context.</summary>
+        public void ClearSelection()
+        {
+            // An impact already accepted before travel is applied exactly once.
+            FlushHitToScene();
+            if (actor != null)
+                foreach (int id in targets.Keys) actor.Combat.UnregisterTarget(id);
+            targets.Clear();
+            SelectedTarget = null;
+            Feedback = string.Empty;
+        }
         public bool TryAttackSelected(int damage)
         {
             if (SelectedTarget == null || !CanImpact(SelectedTarget.TargetId))
@@ -74,7 +83,6 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
             if (accepted) Feedback = "Atacando " + SelectedTarget.name;
             return accepted;
         }
-
         public bool CanImpact(int targetId)
         {
             if (actor == null) return false;
@@ -103,14 +111,12 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
             }
             return true;
         }
-
         private void SelectUnderCursor()
         {
             Ray ray = rayCamera.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out RaycastHit hit, maxSelectionDistance, targetMask, QueryTriggerInteraction.Ignore))
                 Select(hit.collider.GetComponentInParent<ShaiyaCombatTarget>());
         }
-
         public void FlushHitToScene()
         {
             if (actor == null || actor.Combat.HitSerial == lastHitSerial) return;
