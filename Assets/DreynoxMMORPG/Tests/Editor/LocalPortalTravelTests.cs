@@ -8,15 +8,13 @@ using Dreynox.Mmorpg.Gameplay.Combat;
 using Dreynox.Mmorpg.Interaction;
 using Dreynox.Mmorpg.World;
 using NUnit.Framework;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Dreynox.Mmorpg.Tests.Editor
 {
     public sealed class LocalPortalTravelTests
     {
-        private Scene prior, scene;
+        private GameObject fixtureRoot;
         private ShaiyaClientActor actor;
         private LocalPortalTravel travel;
         private ShaiyaCombatInteraction combat;
@@ -25,18 +23,19 @@ namespace Dreynox.Mmorpg.Tests.Editor
         [SetUp]
         public void SetUp()
         {
-            prior = SceneManager.GetActiveScene();
-            scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
-            SceneManager.SetActiveScene(scene);
-            var player = new GameObject("portal test actor"); player.transform.position = Origin;
+            // Other EditMode tests may leave an untitled scene open. Do not
+            // replace, save or discard that scene just to construct a fixture.
+            // Own only these transient objects, far from any existing geometry.
+            fixtureRoot = new GameObject("PortalFixture_" + Guid.NewGuid().ToString("N"));
+            var player = Make("portal test actor", Origin);
             var body = player.AddComponent<CharacterController>();
             body.height = 1.8f; body.center = Vector3.up * 0.9f; body.radius = 0.35f;
             actor = player.AddComponent<ShaiyaClientActor>();
-            var world = new GameObject("portal test session");
+            var world = Make("portal test session", Origin);
             var session = world.AddComponent<NativeWorldSession>(); session.Configure(1, actor, Origin);
             combat = world.AddComponent<ShaiyaCombatInteraction>(); combat.Bind(actor, null);
             travel = world.AddComponent<LocalPortalTravel>(); travel.Configure(session, actor, combat, null);
-            var point = new GameObject("authored portal"); point.transform.position = Origin + Vector3.forward;
+            var point = Make("authored portal", Origin + Vector3.forward);
             portal = point.AddComponent<LegacyPortalRuntime>();
             portal.Configure(1, 1, 0, 999, 1, Origin + Vector3.right * 10);
         }
@@ -44,12 +43,20 @@ namespace Dreynox.Mmorpg.Tests.Editor
         public void TearDown()
         {
             if (travel != null) WorldInputGate.Set(travel, false);
-            if (scene.IsValid() && scene.isLoaded) EditorSceneManager.CloseScene(scene, true);
-            if (prior.IsValid() && prior.isLoaded) SceneManager.SetActiveScene(prior);
+            if (fixtureRoot != null) UnityEngine.Object.DestroyImmediate(fixtureRoot);
+            fixtureRoot = null;
+            Physics.SyncTransforms();
+        }
+        private GameObject Make(string name, Vector3 position)
+        {
+            var value = new GameObject(name);
+            value.transform.SetParent(fixtureRoot.transform, false);
+            value.transform.position = position;
+            return value;
         }
         private void AddFloor()
         {
-            var floor = new GameObject("actual collision support"); floor.transform.position = Origin + Vector3.down * 0.5f;
+            var floor = Make("actual collision support", Origin + Vector3.down * 0.5f);
             floor.AddComponent<BoxCollider>().size = new Vector3(40, 1, 40);
             Physics.SyncTransforms();
         }
@@ -100,7 +107,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
         public void PortalCancelsPendingStrikesButPreservesAnAlreadyAcceptedImpact(bool impactOccurred)
         {
             AddFloor();
-            var enemy = new GameObject("original target"); enemy.transform.position = Origin + Vector3.forward * 2;
+            var enemy = Make("original target", Origin + Vector3.forward * 2);
             var target = enemy.AddComponent<ShaiyaCombatTarget>(); target.Configure(12, 100);
             Assert.IsTrue(combat.Select(target)); Assert.IsTrue(actor.Combat.RequestAttack(25));
             if (impactOccurred) actor.Combat.Tick(0.2);
