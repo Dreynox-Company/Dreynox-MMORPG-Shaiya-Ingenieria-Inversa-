@@ -1,5 +1,6 @@
-Map1 qualification27: repair merchant integration against the EXISTING NpcServiceKind.Shop contract.
-No new service flag, alias or serialized enum value introduced; runtime UI and test fixtures use the same original NPC resolver.
-Retain all content signature, catalog, local buy/sell, durable journal, real Player and visual capture gates from revision26.
-Revision26 stopped at actual CSharp compilation; none of its Editor tests or gameplay checks ran. This new source must pass independently.
-Only a qualified executable is deliverable. Main, original DATA/game.exe, Flutter and Studio remain unchanged.
+Map1 qualification28: merchant UI callbacks preserve the actual durable transaction result when a view closes during persistence or notification.
+Retain the existing Shop capability; reject disabled/ambiguous providers and report service-open failure accurately.
+Invalid quantities clear old payable quotes; selecting across buy/sell/page contexts displays the corresponding original art; confirmation stays centered after resizing.
+Seventeen additional actual-component EditMode cases cover lifecycle, reentrancy, stale amounts, routing and input ownership without suppressing any prior assertions.
+The original corpus/catalog/mission/combat/merchant Player sequence remains required. Code tests alone are not a qualified Player or native MMO equivalence.
+Do not cancel an already running immutable source build. Main, original DATA/game.exe, Flutter and Studio remain unchanged.

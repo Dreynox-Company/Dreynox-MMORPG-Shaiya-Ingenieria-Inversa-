@@ -19,7 +19,7 @@ using Object=UnityEngine.Object;
 
 namespace Dreynox.Mmorpg.Tests.Editor
 {
-    public sealed class LocalMerchantIntegrationTests
+    public sealed partial class LocalMerchantIntegrationTests
     {
         private GameObject root;
         private ShaiyaClientActor actor;

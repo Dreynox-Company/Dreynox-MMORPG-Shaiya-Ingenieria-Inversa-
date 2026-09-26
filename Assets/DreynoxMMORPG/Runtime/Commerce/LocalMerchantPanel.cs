@@ -79,27 +79,35 @@ namespace Dreynox.Mmorpg.Commerce
                 throw new InvalidOperationException("Merchant bindings/artwork are incomplete.");
             items.Validate();Build();subscribed=journal.Journal;subscribed.Changed+=OnJournalChanged;
             quests.MerchantRequested+=OnMerchantRequested;quests.HasMerchantPanel=true;
-            hud.DialogueClosed+=Close;Ready=true;window.gameObject.SetActive(false);confirmation.gameObject.SetActive(false);
+            hud.DialogueClosed+=Close;hud.DialogueOpened+=OnConversationOpened;Ready=true;window.gameObject.SetActive(false);confirmation.gameObject.SetActive(false);
         }
-        private void OnMerchantRequested(LegacyNpcRuntimeDescriptor value){Open(value);}
+        private bool OnMerchantRequested(LegacyNpcRuntimeDescriptor value)=>Open(value);
+        private void OnConversationOpened(LegacyNpcRuntimeDescriptor value)
+        {
+            // A new native conversation owns its own context. Closing our old
+            // store must not later close that freshly opened NPC selector.
+            Close();
+        }
         public bool Open(LegacyNpcRuntimeDescriptor value)
         {
             Failure="";
-            if(!Ready||!journal.Ready||value==null||value.NpcType!=1||(value.Services&NpcServiceKind.Shop)==0)
+            if(!Ready||!isActiveAndEnabled||confirming||closing)
+                return Fail("La tienda no puede abrirse durante otra operación o mientras está desactivada.");
+            if(!journal.Ready||value==null||value.NpcType!=1||(value.Services&NpcServiceKind.Shop)==0)
                 return Fail("Este NPC no es un comerciante con una oferta original vinculada.");
             if(!NativeMerchantOfferFactory.SupportsMerchantType(value.MerchantType))
                 return Fail("La categoría especial de este comerciante todavía requiere integración.");
             if(!LocalNpcInteractionGuard.Validate(journal.Actor,value,hud.SelectedNpc,hud.Ready,out string reason))return Fail(reason);
-            Close();npc=value;npcLifetime=npc.LifetimeGeneration;
-            var offers=new List<LocalMerchantOffer>(npc.SaleItems.Count);
-            foreach(var item in npc.SaleItems)offers.Add(NativeMerchantOfferFactory.Resolve(items,(item.type<<8)|item.typeId));
-            session=new LocalMerchantSession(journal.Journal,offers,key=>NativeMerchantOfferFactory.Resolve(items,key),ContextValid);
+            var offers=new List<LocalMerchantOffer>(value.SaleItems.Count);
+            foreach(var item in value.SaleItems)offers.Add(NativeMerchantOfferFactory.Resolve(items,(item.type<<8)|item.typeId));
+            var opened=new LocalMerchantSession(journal.Journal,offers,key=>NativeMerchantOfferFactory.Resolve(items,key),ContextValid);
+            Close();npc=value;npcLifetime=npc.LifetimeGeneration;session=opened;
             quests.SuspendForService();selling=false;page=0;selected=-1;
             window.gameObject.SetActive(true);WorldInputGate.Set(this,true);Refresh();return true;
         }
         private bool ContextValid()
         {
-            return enabled&&journal!=null&&journal.Ready&&npc!=null&&npc.LifetimeGeneration==npcLifetime&&
+            return isActiveAndEnabled&&journal!=null&&journal.Ready&&npc!=null&&npc.LifetimeGeneration==npcLifetime&&
                 LocalNpcInteractionGuard.Validate(journal.Actor,npc,hud.SelectedNpc,hud.Ready,out _);
         }
         private void Update()
@@ -143,13 +151,13 @@ namespace Dreynox.Mmorpg.Commerce
         }
         public bool ShowSelling(bool value)
         {
-            if(!IsOpen)return false;
+            if(!IsOpen||confirming)return false;
             CancelConfirmation();selling=value;page=0;selected=-1;Refresh();return true;
         }
         public bool SelectPage(int value)
         {
             int count=selling?sellKeys.Count:StockCount;
-            if(!IsOpen||value<0||value>=Math.Max(1,(count+29)/30))return false;
+            if(!IsOpen||confirming||value<0||value>=Math.Max(1,(count+29)/30))return false;
             CancelConfirmation();page=value;Refresh();return true;
         }
         private void Refresh()
@@ -196,13 +204,17 @@ namespace Dreynox.Mmorpg.Commerce
         }
         public bool SelectStock(int originalStockIndex)
         {
-            if(!IsOpen||originalStockIndex<0||originalStockIndex>=StockCount)return false;
-            selling=false;selected=originalStockIndex;BeginConfirmation();return true;
+            if(!IsOpen||confirming||originalStockIndex<0||originalStockIndex>=StockCount)return false;
+            CancelConfirmation();selling=false;selected=originalStockIndex;page=originalStockIndex/30;
+            Refresh();BeginConfirmation();return true;
         }
         public bool SelectOwnedItem(int key)
         {
-            if(!IsOpen||!journal.Journal.Inventory.ContainsKey(key))return false;
-            selling=true;selected=key;BeginConfirmation();return true;
+            if(!IsOpen||confirming||!journal.Journal.Inventory.ContainsKey(key))return false;
+            CancelConfirmation();selling=true;selected=key;page=0;Refresh();
+            int selectedPage=sellKeys.BinarySearch(key)/30;
+            if(selectedPage!=page){page=selectedPage;Refresh();}
+            BeginConfirmation();return true;
         }
         private void SelectCell(int cell)
         {
@@ -217,12 +229,19 @@ namespace Dreynox.Mmorpg.Commerce
         }
         public bool SetQuantity(int count)
         {
-            if(!IsOpen||!confirmation.gameObject.activeSelf||count<1||count>LocalMerchantSession.MaximumQuantity)return false;
+            if(!IsOpen||confirming||!confirmation.gameObject.activeSelf)return false;
+            if(count<1||count>LocalMerchantSession.MaximumQuantity)
+            {
+                // Do not keep an earlier valid price payable after invalid input,
+                // or let InputField truncate 1000 to a different valid quantity.
+                quote=null;session.CancelQuote();confirm.interactable=false;quantity.SetTextWithoutNotify("");
+                question.text="Escribe una cantidad entre 1 y 255.";Failure=question.text;return false;
+            }
             quantity.SetTextWithoutNotify(count.ToString(CultureInfo.InvariantCulture));Requote();return quote!=null;
         }
         private void Requote()
         {
-            if(!IsOpen||!confirmation.gameObject.activeSelf)return;
+            if(!IsOpen||confirming||!confirmation.gameObject.activeSelf)return;
             quote=null;session.CancelQuote();confirm.interactable=false;
             if(!int.TryParse(quantity.text,NumberStyles.None,CultureInfo.InvariantCulture,out int count)||count<1||count>255)
             {question.text="Escribe una cantidad entre 1 y 255.";return;}
@@ -235,18 +254,28 @@ namespace Dreynox.Mmorpg.Commerce
         public bool ConfirmPending()
         {
             if(!IsOpen||quote==null||!confirmation.gameObject.activeInHierarchy||!confirm.interactable||confirming)return false;
+            // Persist/Changed callbacks are external code and may synchronously
+            // close this panel, disable it or open a different NPC conversation.
+            // Preserve the immutable submitted operation across that boundary.
+            var submittedSession=session;var submittedQuote=quote;
             confirming=true;confirm.interactable=false;
             try
             {
-                if(!session.Confirm(quote,out string reason))
+                bool committed=submittedSession.Confirm(submittedQuote,out string reason);
+                bool sameView=this!=null&&isActiveAndEnabled&&ReferenceEquals(session,submittedSession)&&
+                    ReferenceEquals(quote,submittedQuote)&&window!=null&&window.gameObject.activeInHierarchy;
+                // Closing the UI cannot undo a saved trade or turn it into an
+                // exception/duplicate retry. Do not reopen or update a newer view.
+                if(!sameView)return committed;
+                if(!committed)
                 {
                     Fail(reason);question.text=reason;
-                    if(!session.IsOpen){AbortConversation(reason);return false;}
-                    // Only a failed durable save can retry this unchanged quote.
-                    confirm.interactable=ReferenceEquals(session.Pending,quote)&&quote.JournalRevision==journal.Journal.Revision;
+                    if(!submittedSession.IsOpen){AbortConversation(reason);return false;}
+                    confirm.interactable=ReferenceEquals(submittedSession.Pending,submittedQuote)&&
+                        submittedQuote.JournalRevision==journal.Journal.Revision;
                     return false;
                 }
-                string result=(quote.Side==LocalMerchantSide.Buy?"Compra":"Venta")+" guardada: "+quote.ItemName+" × "+quote.Quantity+".";
+                string result=(submittedQuote.Side==LocalMerchantSide.Buy?"Compra":"Venta")+" guardada: "+submittedQuote.ItemName+" × "+submittedQuote.Quantity+".";
                 CancelConfirmation();Refresh();hud.ShowMessage(result);Failure="";status.text=result;return true;
             }
             finally {confirming=false;}
@@ -308,6 +337,7 @@ namespace Dreynox.Mmorpg.Commerce
             var layer=confirmation.gameObject.AddComponent<Canvas>();layer.overrideSorting=true;layer.sortingOrder=180;
             confirmation.gameObject.AddComponent<GraphicRaycaster>();
             var box=NativeUiPrimitives.Rect("Merchant confirmation",confirmation,new Vector2(Mathf.Max(0,(hud.CanvasRoot.rect.width-300)/2),220),new Vector2(300,206));
+            box.anchorMin=box.anchorMax=box.pivot=Vector2.one*.5f;box.anchoredPosition=Vector2.zero;
             box.gameObject.AddComponent<Image>().color=new Color(.075f,.06f,.04f,1);
             question=NativeUiPrimitives.Text("Quoted item and total",box,"",13,new Vector2(14,10),new Vector2(272,91),TextAnchor.MiddleCenter);
             NativeUiPrimitives.Text("Quantity caption",box,"Cantidad",12,new Vector2(28,108),new Vector2(91,27));
@@ -324,7 +354,7 @@ namespace Dreynox.Mmorpg.Commerce
         {
             Close();if(subscribed!=null)subscribed.Changed-=OnJournalChanged;
             if(quests!=null){quests.MerchantRequested-=OnMerchantRequested;quests.HasMerchantPanel=false;}
-            if(hud!=null)hud.DialogueClosed-=Close;
+            if(hud!=null){hud.DialogueClosed-=Close;hud.DialogueOpened-=OnConversationOpened;}
             if(window!=null){if(Application.isPlaying)Destroy(window.gameObject);else DestroyImmediate(window.gameObject);}
             if(confirmation!=null){if(Application.isPlaying)Destroy(confirmation.gameObject);else DestroyImmediate(confirmation.gameObject);}
         }

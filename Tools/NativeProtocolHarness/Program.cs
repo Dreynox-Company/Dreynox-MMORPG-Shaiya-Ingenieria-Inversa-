@@ -31,3 +31,5 @@ Reject(()=>NativeQuestRequestCodec.Decode(new byte[]{1,9,1,0}),"unsupported serv
 Reject(()=>new NativeQuestRequest(NativeQuestRequestKind.Abandon,1,3400),"NPC cannot leak into abandonment");
 Reject(()=>new NativeQuestRequest(NativeQuestRequestKind.Accept,1,3400,1),"choice cannot leak into acceptance");
 Console.WriteLine("NATIVE QUEST BODY CONTRACTS OK: "+count+" checks; no native network session executed.");
+
+MerchantBodyCases.Run();

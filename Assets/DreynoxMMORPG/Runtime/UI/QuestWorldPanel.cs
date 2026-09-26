@@ -29,7 +29,7 @@ namespace Dreynox.Mmorpg.UI
         private LegacyNpcRuntimeDescriptor npc;
         private uint npcLifetime;
         public bool HasMerchantPanel { get; set; }
-        public event Action<LegacyNpcRuntimeDescriptor> MerchantRequested;
+        public event Func<LegacyNpcRuntimeDescriptor,bool> MerchantRequested;
 
         private int selectedQuest=-1, rewardIndex;
         private bool journalView;
@@ -223,7 +223,12 @@ namespace Dreynox.Mmorpg.UI
                 npc.LifetimeGeneration!=npcLifetime||(npc.Services&NpcServiceKind.Shop)==0||
                 !LocalNpcInteractionGuard.Validate(quests.Actor,npc,hud.SelectedNpc,hud.Ready,out reason))
             {ActionFailure=reason;ShowHint(reason);return false;}
-            MerchantRequested(npc);return true;
+            var handlers=MerchantRequested.GetInvocationList();
+            if(handlers.Length!=1)
+            {ActionFailure="La tienda tiene más de un controlador registrado.";ShowHint(ActionFailure);return false;}
+            bool opened=((Func<LegacyNpcRuntimeDescriptor,bool>)handlers[0])(npc);
+            ActionFailure=opened?"":"El comerciante no abrió la tienda; consulta el motivo indicado.";
+            return opened;
         }
         public void SuspendForService()
         {
