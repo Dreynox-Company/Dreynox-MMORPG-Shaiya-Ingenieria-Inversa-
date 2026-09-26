@@ -40,6 +40,8 @@ jobs:
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $payload=Join-Path $root 'payload.zip'
           [IO.Compression.ZipFile]::CreateFromDirectory($payloadRoot,$payload)
+          $archive=[IO.Compression.ZipFile]::OpenRead($payload)
+          try { foreach($entry in $archive.Entries){Write-Host ('Fixture entry: '+$entry.FullName)} } finally {$archive.Dispose()}
           $hash=(Get-FileHash $payload -Algorithm SHA256).Hash.ToLowerInvariant()
           $identity=Join-Path $root 'PayloadIdentity.cs'
           "namespace Dreynox.Delivery { internal static class PayloadIdentity { public const string Sha256 = `"$hash`"; } }" | Set-Content $identity
@@ -50,16 +52,19 @@ jobs:
           $launcher=(Resolve-Path -LiteralPath 'Tools/Delivery/PortablePlayerLauncher.cs').Path
           & $compiler /nologo /target:winexe /platform:x64 /langversion:5 "/out:$exe" "/resource:$payload,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity $core $metadata $launcher
           if($LASTEXITCODE -ne 0){throw 'Windows Framework delivery wrapper compilation failed.'}
-          foreach($attempt in @(1,2)) {
-            $p=Start-Process -FilePath $exe -ArgumentList '--verify-only' -PassThru
+          function Test-Child([int]$expected,[string]$label) {
+            $stderr=Join-Path $root ($label+'.stderr.log')
+            $stdout=Join-Path $root ($label+'.stdout.log')
+            $p=Start-Process -FilePath $exe -ArgumentList '--verify-only' -PassThru -RedirectStandardError $stderr -RedirectStandardOutput $stdout
             if(-not $p.WaitForExit(30000)){Stop-Process -Id $p.Id -Force;throw 'Fixture timed out.'}
             $p.Refresh()
-            if($p.ExitCode -ne 0){throw "Extraction/cache verification failed on attempt $attempt."}
+            if(Test-Path $stderr){Get-Content $stderr | Write-Host}
+            if(Test-Path $stdout){Get-Content $stdout | Write-Host}
+            if($p.ExitCode -ne $expected){throw "Child $label returned $($p.ExitCode), expected $expected."}
           }
+          Test-Child 0 'extract'
+          Test-Child 0 'cached'
           $cache=Join-Path $env:LOCALAPPDATA ("Dreynox/PlayableClient/"+$hash)
           'not in the embedded manifest' | Set-Content (Join-Path $cache 'unlisted.dll')
-          $p=Start-Process -FilePath $exe -ArgumentList '--verify-only' -PassThru
-          if(-not $p.WaitForExit(30000)){Stop-Process -Id $p.Id -Force;throw 'Tamper fixture timed out.'}
-          $p.Refresh()
-          if($p.ExitCode -ne 1){throw 'Unlisted cached payload was not rejected.'}
+          Test-Child 1 'injected'
           Write-Host 'DELIVERY_FRAMEWORK_EXTRACTION_CACHE_TAMPER_OK. No game executed and no fixture published.'
