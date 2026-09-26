@@ -2,7 +2,9 @@
 param(
     [Parameter(Mandatory=$true)][string]$PlayerDirectory,
     [Parameter(Mandatory=$true)][string]$QualificationReport,
-    [Parameter(Mandatory=$true)][string]$OutputDirectory
+    [Parameter(Mandatory=$true)][string]$OutputDirectory,
+    [ValidatePattern('^[a-f0-9]{40}$')][string]$PlayerCommit=$env:GITHUB_SHA,
+    [ValidatePattern('^[0-9]+$')][string]$QualificationRunId=$env:GITHUB_RUN_ID
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -37,7 +39,8 @@ $launcher=Join-Path $PSScriptRoot 'PortablePlayerLauncher.cs'
 if($LASTEXITCODE -ne 0){throw 'Portable executable compilation failed.'}
 & (Join-Path $PSScriptRoot 'Invoke-VerifiedPlayerCheck.ps1') -Executable $executable -ExpectedExitCode 0
 @{
-    schema=1;sourceCommit=$env:GITHUB_SHA;run=$env:GITHUB_RUN_ID;payloadSha256=$digest;
+    schema=2;sourceCommit=$PlayerCommit;run=$QualificationRunId;payloadSha256=$digest;
+    packagerCommit=$env:GITHUB_SHA;packagerRun=$env:GITHUB_RUN_ID;
     executable=[IO.Path]::GetFileName($executable);sha256=(Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLowerInvariant();
     bytes=(Get-Item -LiteralPath $executable).Length;playerQualification=$report.passed;extractionVerified=$true;
     scope='Qualified local Map1 quest loop; not complete native MMO parity';
