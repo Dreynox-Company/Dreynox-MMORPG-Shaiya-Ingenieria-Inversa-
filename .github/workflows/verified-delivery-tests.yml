@@ -5,8 +5,7 @@ on:
     paths: ['Tools/Delivery/**', 'Tools/DeliveryTests/**', '.github/workflows/verified-delivery-tests.yml']
   pull_request:
     paths: ['Tools/Delivery/**', 'Tools/DeliveryTests/**', '.github/workflows/verified-delivery-tests.yml']
-permissions:
-  contents: read
+permissions: {contents: read}
 jobs:
   archive-security:
     runs-on: ubuntu-latest
@@ -23,24 +22,44 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: {persist-credentials: false}
-      - name: Compile the delivery wrapper with the installed Windows Framework
+      - name: Compile and exercise the exact Framework extraction path
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
           $root=Join-Path $env:RUNNER_TEMP ('delivery-'+[Guid]::NewGuid().ToString('N'))
-          New-Item -ItemType Directory -Path $root | Out-Null
+          $payloadRoot=Join-Path $root 'payload'
+          New-Item -ItemType Directory -Path (Join-Path $payloadRoot 'DreynoxMmorpg-Map1_Data') -Force | Out-Null
+          # Labelled archive fixtures, never launched as a game or uploaded.
+          'DELIVERY FIXTURE, NOT A GAME EXECUTABLE' | Set-Content (Join-Path $payloadRoot 'DreynoxMmorpg-Map1.exe')
+          'DELIVERY FIXTURE, NOT A NATIVE DLL' | Set-Content (Join-Path $payloadRoot 'UnityPlayer.dll')
+          'DELIVERY FIXTURE, NOT GAME DATA' | Set-Content (Join-Path $payloadRoot 'DreynoxMmorpg-Map1_Data/globalgamemanagers')
+          $rows=@(Get-ChildItem $payloadRoot -Recurse -File | ForEach-Object {
+            (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$_.FullName.Substring($payloadRoot.Length+1).Replace('\','/')
+          })
+          $rows | Set-Content (Join-Path $payloadRoot 'SHA256SUMS.txt') -Encoding UTF8
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $payload=Join-Path $root 'payload.zip'
+          [IO.Compression.ZipFile]::CreateFromDirectory($payloadRoot,$payload)
+          $hash=(Get-FileHash $payload -Algorithm SHA256).Hash.ToLowerInvariant()
           $identity=Join-Path $root 'PayloadIdentity.cs'
-          'namespace Dreynox.Delivery { internal static class PayloadIdentity { public const string Sha256 = "intentionally-invalid-fixture"; } }' | Set-Content $identity
-          $payload=Join-Path $root 'invalid-payload.bin'
-          [IO.File]::WriteAllBytes($payload,[byte[]](1,2,3))
+          "namespace Dreynox.Delivery { internal static class PayloadIdentity { public const string Sha256 = `"$hash`"; } }" | Set-Content $identity
           $exe=Join-Path $root 'DeliveryTest.exe'
           $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
           $core=(Resolve-Path -LiteralPath 'Tools/Delivery/VerifiedPlayerArchive.cs').Path
+          $metadata=(Resolve-Path -LiteralPath 'Tools/Delivery/PlayerZipMetadata.cs').Path
           $launcher=(Resolve-Path -LiteralPath 'Tools/Delivery/PortablePlayerLauncher.cs').Path
-          & $compiler /nologo /target:winexe /platform:x64 /langversion:5 "/out:$exe" "/resource:$payload,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity $core $launcher
-          if($LASTEXITCODE -ne 0){throw 'Windows delivery wrapper compilation failed.'}
+          & $compiler /nologo /target:winexe /platform:x64 /langversion:5 "/out:$exe" "/resource:$payload,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity $core $metadata $launcher
+          if($LASTEXITCODE -ne 0){throw 'Windows Framework delivery wrapper compilation failed.'}
+          foreach($attempt in @(1,2)) {
+            $p=Start-Process -FilePath $exe -ArgumentList '--verify-only' -PassThru
+            if(-not $p.WaitForExit(30000)){Stop-Process -Id $p.Id -Force;throw 'Fixture timed out.'}
+            $p.Refresh()
+            if($p.ExitCode -ne 0){throw "Extraction/cache verification failed on attempt $attempt."}
+          }
+          $cache=Join-Path $env:LOCALAPPDATA ("Dreynox/PlayableClient/"+$hash)
+          'not in the embedded manifest' | Set-Content (Join-Path $cache 'unlisted.dll')
           $p=Start-Process -FilePath $exe -ArgumentList '--verify-only' -PassThru
-          if(-not $p.WaitForExit(30000)){Stop-Process -Id $p.Id -Force;throw 'Fixture timed out.'}
+          if(-not $p.WaitForExit(30000)){Stop-Process -Id $p.Id -Force;throw 'Tamper fixture timed out.'}
           $p.Refresh()
-          if($p.ExitCode -ne 1){throw 'The invalid embedded payload was not rejected.'}
-          Write-Host 'DELIVERY_WINDOWS_COMPATIBILITY_OK; invalid payload rejected. No game or player artifact generated.'
+          if($p.ExitCode -ne 1){throw 'Unlisted cached payload was not rejected.'}
+          Write-Host 'DELIVERY_FRAMEWORK_EXTRACTION_CACHE_TAMPER_OK. No game executed and no fixture published.'
