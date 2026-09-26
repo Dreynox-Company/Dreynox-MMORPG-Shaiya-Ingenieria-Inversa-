@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Dreynox.Mmorpg.Interaction;
+using Dreynox.Mmorpg.ParityCore;
 using Dreynox.Mmorpg.Quests;
 using Dreynox.Mmorpg.World;
 using UnityEngine;
@@ -18,7 +19,7 @@ namespace Dreynox.Mmorpg.UI
         [SerializeField] private Sprite questBackground;
         private RectTransform canvasRoot, modal, listRoot;
         private Text tracker, modalTitle, narrative, rewardText;
-        private Button action;
+        private Button action, rewardCycle;
         private Font font;
         private LegacyNpcRuntimeDescriptor npc;
         private int selectedQuest=-1, rewardIndex;
@@ -67,37 +68,46 @@ namespace Dreynox.Mmorpg.UI
             foreach(int id in ids)
             {
                 if(quests.Journal.Entries.TryGetValue(id,out var e)&&e.stage==JournalStage.Ready&&quests.Journal.TryGet(id,out var q)&&q.EndNpcKey==npcKey)return " ?";
-                // Eligible special quests remain visible with an explicit unsupported-condition explanation.
                 if(quests.Journal.Eligibility(id,npcKey,quests.Player).Length==0)available=true;
             }
             return available?" !":"";
         }
         private void BuildDialog()
         {
-            modal=Panel("NPC and quest dialog",canvasRoot,new Vector2(.5f,.5f),new Vector2(-405,320),new Vector2(810,650));
-            // Pooled world labels can be created later. Keep the actual dialogue
-            // above them, without changing their gameplay visibility or colliders.
+            // ps0032 0x58F1D2..0x58F1E9 loads quest/take.tga as 256x512.
+            // Preserve the authored ratio; panel margins are Unity presentation choices.
+            modal=Panel("NPC and quest dialog",canvasRoot,new Vector2(.5f,.5f),new Vector2(-290,296),new Vector2(580,592));
+            modal.GetComponent<Image>().color=new Color(.065f,.052f,.037f,1f);
             var overlay=modal.gameObject.AddComponent<Canvas>();overlay.overrideSorting=true;overlay.sortingOrder=100;
             modal.gameObject.AddComponent<GraphicRaycaster>();
-            var close=Button(modal,"×",CloseAll);Box(close.GetComponent<RectTransform>(),new Vector2(1,1),new Vector2(-40,-8),new Vector2(30,30));
-            modalTitle=Label(modal,"",24);Box(modalTitle.rectTransform,new Vector2(0,1),new Vector2(20,-14),new Vector2(735,40));
-            listRoot=Scroll(modal,new Vector2(14,-70),new Vector2(290,560));
-            var page=Panel("Original quest parchment",modal,new Vector2(0,1),new Vector2(319,-70),new Vector2(475,560));
+            var close=Button(modal,"×",CloseAll);Box(close.GetComponent<RectTransform>(),new Vector2(1,1),new Vector2(-38,-8),new Vector2(30,30));
+            modalTitle=Label(modal,"",22);Box(modalTitle.rectTransform,new Vector2(0,1),new Vector2(18,-12),new Vector2(518,38));
+            listRoot=Scroll(modal,new Vector2(14,-60),new Vector2(280,465));
+            var page=Panel("Original quest parchment",modal,new Vector2(0,1),new Vector2(308,-56),new Vector2(256,512));
             var image=page.GetComponent<Image>();image.sprite=questBackground;image.color=Color.white;
-            var story=Scroll(page,new Vector2(20,-20),new Vector2(435,365));
-            narrative=Label(story,"",17);narrative.color=new Color(.10f,.065f,.02f);narrative.supportRichText=false;
-            narrative.gameObject.AddComponent<ContentSizeFitter>().verticalFit=ContentSizeFitter.FitMode.PreferredSize;
-            narrative.gameObject.AddComponent<LayoutElement>().minHeight=350;
-            rewardText=Label(page,"",15);rewardText.color=new Color(.1f,.07f,.02f);rewardText.supportRichText=false;
-            Box(rewardText.rectTransform,new Vector2(0,1),new Vector2(20,-394),new Vector2(435,92));
-            action=Button(page,"Aceptar",QuestAction);Box(action.GetComponent<RectTransform>(),new Vector2(0,0),new Vector2(20,58),new Vector2(210,38));
-            var cycle=Button(page,"Elegir recompensa →",CycleReward);Box(cycle.GetComponent<RectTransform>(),new Vector2(0,0),new Vector2(240,58),new Vector2(215,38));
+            // Source interior alpha218 composites against the opaque modal, not world labels.
+            var story=Scroll(page,new Vector2(28,-40),new Vector2(200,278));
+            narrative=Label(story,"",14);ConfigurePaperText(narrative);
+            var rewards=Scroll(page,new Vector2(28,-352),new Vector2(200,84));
+            rewardText=Label(rewards,"",13);ConfigurePaperText(rewardText);
+            action=Button(page,"Aceptar misión",QuestAction);
+            Box(action.GetComponent<RectTransform>(),new Vector2(0,0),new Vector2(28,45),new Vector2(200,32));
+            rewardCycle=Button(modal,"Elegir recompensa →",CycleReward);
+            Box(rewardCycle.GetComponent<RectTransform>(),new Vector2(0,0),new Vector2(20,52),new Vector2(266,34));
+            rewardCycle.gameObject.SetActive(false);
             modal.gameObject.SetActive(false);
+        }
+        private static void ConfigurePaperText(Text value)
+        {
+            value.color=Color.white;value.supportRichText=false;
+            var shadow=value.gameObject.AddComponent<Shadow>();
+            shadow.effectColor=new Color(0,0,0,.9f);shadow.effectDistance=new Vector2(1,-1);
         }
         private void NpcOpened(LegacyNpcRuntimeDescriptor value)
         {
             npc=value;journalView=false;selectedQuest=-1;modal.gameObject.SetActive(true);modalTitle.text=value.DisplayName;
             RefreshOptions();narrative.text=Format(value.WelcomeMessage);action.interactable=false;rewardText.text="";
+            action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);
         }
         private void ToggleJournal()
         {
@@ -106,6 +116,7 @@ namespace Dreynox.Mmorpg.UI
             modal.gameObject.SetActive(true);modalTitle.text="Diario de misiones";RefreshOptions();
             narrative.text="Selecciona una misión activa.\nLas condiciones no integradas se muestran, pero no se completan artificialmente.";
             rewardText.text="";action.interactable=false;
+            action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);
         }
         private void RefreshQuests()
         {
@@ -119,7 +130,7 @@ namespace Dreynox.Mmorpg.UI
         }
         private void RefreshOptions()
         {
-            foreach(var obj in optionObjects){obj.SetActive(false);Destroy(obj);}optionObjects.Clear();visibleQuestIds.Clear();
+            foreach(var obj in optionObjects){obj.SetActive(false);if(Application.isPlaying)Destroy(obj);else DestroyImmediate(obj);}optionObjects.Clear();visibleQuestIds.Clear();
             if(!quests.Ready)return;
             var ids=new HashSet<int>();
             if(npc!=null){foreach(int id in npc.InQuestIds)ids.Add(id);foreach(int id in npc.OutQuestIds)ids.Add(id);}
@@ -135,9 +146,9 @@ namespace Dreynox.Mmorpg.UI
                 var button=Button(listRoot,q.title+suffix,()=>SelectQuest(captured));
                 button.gameObject.AddComponent<LayoutElement>().preferredHeight=70;optionObjects.Add(button.gameObject);
             }
-            if(npc!=null&&npc.Services!=0)
+            if(npc!=null&&(npc.Services & ~NpcServiceKind.Quest)!=NpcServiceKind.None)
             {
-                var label=Label(listRoot,"Servicios originales: "+npc.Services+"\nComercio, viaje y almacén aún no se ejecutan desde este panel.",14);
+                var label=Label(listRoot,"Otros servicios de este NPC todavía requieren integración. Las misiones disponibles se muestran arriba.",14);
                 label.gameObject.AddComponent<LayoutElement>().preferredHeight=95;optionObjects.Add(label.gameObject);
             }
         }
@@ -151,6 +162,9 @@ namespace Dreynox.Mmorpg.UI
             if(!quests.Ready||!quests.Journal.TryGet(id,out var q))return;
             selectedQuest=id;rewardIndex=Mathf.Clamp(rewardIndex,0,Mathf.Max(0,Choices(q)-1));
             quests.Journal.Entries.TryGetValue(id,out var entry);
+            if(entry!=null&&entry.stage==JournalStage.Rewarded){ShowCompletion(q,rewardIndex);return;}
+            action.gameObject.SetActive(!journalView);
+            rewardCycle.gameObject.SetActive(!journalView&&Choices(q)>1);
             narrative.text=Format(entry!=null?q.reminder:q.initial)+"\n\n"+Format(q.window)+"\n"+Progress(q,entry);
             string reason;
             if(entry==null)reason=npc==null?"Acude al NPC de inicio.":quests.Journal.Availability(id,npc.ServiceKey,quests.Player);
@@ -163,22 +177,34 @@ namespace Dreynox.Mmorpg.UI
             action.GetComponentInChildren<Text>().text=entry==null?"Aceptar misión":"Entregar misión";
         }
         private void QuestAction(){SubmitSelectedQuest();}
-        /// <summary>The same validated action serves the button and actual Player test.</summary>
         public bool SubmitSelectedQuest()
         {
             ActionFailure="La conversación o misión seleccionada no está disponible.";
             if(npc==null||modal==null||!modal.gameObject.activeInHierarchy||selectedQuest<0||!quests.Ready||
                 !visibleQuestIds.Contains(selectedQuest)||!action.interactable)return false;
+            string conversationFailure="La conversación ya no está activa.";
+            if(hud==null||!LocalNpcInteractionGuard.Validate(quests.Actor,npc,hud.SelectedNpc,hud.Ready,out conversationFailure))
+            {
+                ActionFailure=conversationFailure??"La conversación ya no está activa.";
+                CloseAll();ShowHint(ActionFailure);return false;
+            }
             string reason;bool accepted;
             bool hadEntry=quests.Journal.Entries.ContainsKey(selectedQuest);
             int id=selectedQuest,index=rewardIndex;
             if(!hadEntry)accepted=quests.Journal.Accept(id,npc.ServiceKey,quests.Player,out reason);
             else accepted=quests.Journal.Deliver(id,npc.ServiceKey,index,out reason);
             ShowHint(accepted?(hadEntry?"Misión entregada. Recompensa guardada.":"Misión aceptada y guardada."):reason);
-            if(accepted&&hadEntry&&quests.Journal.TryGet(id,out var q))narrative.text=Format(q.rewards[index].completion);
             ActionFailure=accepted?"":reason;
             RefreshOptions();action.interactable=false;
+            if(accepted&&hadEntry&&quests.Journal.TryGet(id,out var q))ShowCompletion(q,index);
             return accepted;
+        }
+        private void ShowCompletion(LegacyQuestDefinition quest,int index)
+        {
+            var reward=quest.rewards[Mathf.Clamp(index,0,quest.rewards.Length-1)];
+            narrative.text=Format(reward.completion);
+            rewardText.text="Misión completada.\nRecompensa guardada: "+reward.experience+" EXP · "+reward.money+" oro";
+            action.interactable=false;action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);
         }
         private void CycleReward()
         {
@@ -200,11 +226,11 @@ namespace Dreynox.Mmorpg.UI
             return System.Text.RegularExpressions.Regex.Replace(text??"",@"\{/?c[0-9]*\}","")
                 .Replace("\\n","\n").Replace("$n","\n");
         }
-        private void CloseAll(){hud.CloseDialogue();CloseDialog();}
+        private void CloseAll(){if(hud!=null)hud.CloseDialogue();CloseDialog();}
         private void CloseDialog()
         {if(modal!=null)modal.gameObject.SetActive(false);npc=null;journalView=false;WorldInputGate.Set(this,false);}
         private void ShowHint(string message){if(hud!=null)hud.ShowMessage(message);}
-        private void OnDisable(){CloseDialog();}
+        private void OnDisable(){CloseAll();}
         private void OnDestroy()
         {
             if(hud!=null){hud.DialogueOpened-=NpcOpened;hud.DialogueClosed-=CloseDialog;hud.QuestMarker=null;hud.HasQuestPanel=false;}

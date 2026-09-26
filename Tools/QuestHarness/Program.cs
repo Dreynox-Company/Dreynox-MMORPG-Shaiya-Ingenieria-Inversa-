@@ -40,6 +40,26 @@ Check(gather.Accept(3500,npc,player,out _)&&gather.Entries[3500].stage==JournalS
 Check(gather.ApplyInventoryTransaction(new Dictionary<int,int>{{(25<<8)|4,2}},out _)&&gather.Entries[3500].stage==JournalStage.Ready,"accepted inventory transaction advances collection");
 Check(gather.Deliver(3500,npc,0,out _)&&!gather.Inventory.ContainsKey((25<<8)|4),"turn-in consumes required items atomically");
 Check(!gather.ApplyInventoryTransaction(new Dictionary<int,int>{{(25<<8)|4,-1}},out _),"negative inventory rejected");
+var durable=new QuestJournalCore(catalog);int notified=0,reported=0;
+durable.Persist=_=>true;
+durable.Changed+=()=>throw new InvalidOperationException("simulated broken UI");
+durable.Changed+=()=>notified++;
+durable.ObserverFailed+=_=>reported++;
+Check(durable.Accept(3400,npc,player,out _)&&notified==1&&reported==1,"UI exception does not cancel persisted acceptance or other observers");
+for(int i=0;i<5;i++)durable.CreditMobDeath(500+i,2011,out _);
+Check(durable.Deliver(3400,npc,0,out _)&&durable.Gold==3000,"reward survives broken UI observer");
+Check(!durable.Deliver(3400,npc,0,out _)&&durable.Gold==3000,"broken UI cannot make reward claimable again");
+var reentrant=new QuestJournalCore(catalog);reentrant.Accept(3400,npc,player,out _);
+bool nestedAccepted=true;
+reentrant.Changed+=()=>nestedAccepted=reentrant.CreditMobDeath(600,2011,out _);
+Check(reentrant.CreditMobDeath(600,2011,out _)&&!nestedAccepted&&reentrant.Entries[3400].kills1==1,"reentrant death callback is counted exactly once");
+var diskFailure=new QuestJournalCore(catalog);diskFailure.Accept(3400,npc,player,out _);diskFailure.Persist=_=>false;
+Check(!diskFailure.CreditMobDeath(700,2011,out _)&&diskFailure.Entries[3400].kills1==0,"failed persistence leaves kill uncredited");
+diskFailure.Persist=_=>true;
+Check(diskFailure.CreditMobDeath(700,2011,out _)&&diskFailure.Entries[3400].kills1==1,"same death can retry after failed persistence");
+var writeReentry=new QuestJournalCore(catalog);bool nestedWrite=true;
+writeReentry.Persist=snapshot=>{nestedWrite=writeReentry.ApplyInventoryTransaction(new Dictionary<int,int>{{1,1}},out _);return true;};
+Check(writeReentry.Accept(3400,npc,player,out _)&&!nestedWrite&&writeReentry.Inventory.Count==0,"persistence callbacks cannot start a nested write");
 if(args.Length==2)
 {
     var parsed=LegacyQuestCatalogParser.Parse(File.ReadAllBytes(args[0]),98637,File.ReadAllBytes(args[1]),219081);

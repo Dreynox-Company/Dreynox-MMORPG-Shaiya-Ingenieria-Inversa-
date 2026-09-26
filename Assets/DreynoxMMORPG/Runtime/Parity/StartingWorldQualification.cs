@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Dreynox.Mmorpg.Parity
 {
-    /// <summary>Opt-in Development Player integration. Never labels scripted setup as a native gameplay comparison.</summary>
+    /// <summary>Opt-in Development Player integration, not a native gameplay comparison.</summary>
     public sealed class StartingWorldQualification : MonoBehaviour
     {
         [Serializable] private sealed class Evidence
@@ -31,6 +31,9 @@ namespace Dreynox.Mmorpg.Parity
             public long rewardGold, rewardExperience;
             public float walkedDistance, directionDot, cameraYawBefore, cameraYawAfter;
             public Vector3 entry;
+            public SkinnedPoseProbe.Difference walkSkin;
+            public List<SkinnedPoseProbe.Difference> attackSkins=new List<SkinnedPoseProbe.Difference>();
+            public List<SkinnedPoseProbe.Difference> deathSkins=new List<SkinnedPoseProbe.Difference>();
             public List<string> steps=new List<string>();
             public string limitations="Uses authored NPC/quest/mob IDs; damage=95 is local diagnostic, not native combat rules. Relocation and scripted input are explicit. No assertion of graphical/native equivalence.";
         }
@@ -78,7 +81,6 @@ namespace Dreynox.Mmorpg.Parity
             var terrain=Terrain.activeTerrain;
             WorldTerrainCollision.Require(terrain);
             Physics.SyncTransforms();
-            // Test real terrain under field spawns, not the city SMOD floor.
             foreach(var fox in monsters.Spawns.Where(s=>s.mobId==2011&&s.prefab!=null))
             {
                 if(!WorldTerrainCollision.TryProbe(terrain,fox.position,out RaycastHit support))
@@ -90,17 +92,15 @@ namespace Dreynox.Mmorpg.Parity
             }
             if(evidence.terrainProbes==0){Finish("No authored fox areas to verify terrain support.");yield break;}
             evidence.terrainCollisionVerified=true;
-            var appearance=actor.GetComponent<Dreynox.Mmorpg.Gameplay.Equipment.LegacyAppearanceEvidence>();
-            if(appearance==null || appearance.Policy!="ML2-default-body-row0" ||
+            var appearance=actor.GetComponent<LegacyAppearanceEvidence>();
+            if(appearance==null||appearance.Policy!="ML2-default-body-row0"||
                 !appearance.Meshes[0].EndsWith("humf_torso001.3DC",StringComparison.OrdinalIgnoreCase))
             {Finish("Native starter body is absent or an unrelated costume replaced it.");yield break;}
             evidence.bodyMeshSources=appearance.Meshes;evidence.bodyTextureSources=appearance.Textures;
             evidence.defaultAppearanceVerified=true;
-            var nativeHud=FindFirstObjectByType<Dreynox.Mmorpg.UI.NativeWorldHud>();
-            if(nativeHud==null || nativeHud.Radar==null || nativeHud.Radar.PlayerMarker.sprite==null)
+            if(npcInteraction.Radar==null||npcInteraction.Radar.PlayerMarker.sprite==null)
             {Finish("Original radar artwork is not bound in the running Player.");yield break;}
             evidence.nativeRadarVerified=true;
-
             if(Mathf.Abs(evidence.entry.x-580)>1||Mathf.Abs(evidence.entry.z-1760)>1||Mathf.Abs(evidence.entry.y-78)>3||evidence.npcPositions!=307||evidence.monsterInstances!=1186)
             {Finish("The native starting map or authored entry is not the expected Map1.");yield break;}
             if(!actor.GetComponentsInChildren<SkinnedMeshRenderer>().Any(r=>r.sharedMesh!=null))
@@ -116,8 +116,15 @@ namespace Dreynox.Mmorpg.Parity
             evidence.starterWeaponResource=weaponDefinition.legacyResourceId;
             if(evidence.starterWeaponVertices!=169||weapon.transform.parent.name!="Bone_021")
             {Finish("Starter sword visual or original hand binding is missing.");yield break;}
-            evidence.steps.Add("Original item 1/1 resolved through DBItemData and IT2; 169-vertex sword attached to authored HUMF hand.");
+            evidence.steps.Add("Original item1/1 resolved through DBItemData and IT2;169-vertex sword attached to authored HUMF hand.");
             yield return Capture("01-map1-entry-hud");
+            foreach(float angle in new[]{0f,90f,180f,270f})
+            {
+                camera.ConfigureView(angle,12,3.5f);
+                yield return new WaitForSeconds(.2f);
+                yield return Capture("01-body-view-"+angle.ToString("F0",System.Globalization.CultureInfo.InvariantCulture));
+            }
+            camera.ConfigureView(180,18,6.5f);yield return null;
             evidence.cameraYawBefore=camera.Yaw;camera.AddLookInput(new Vector2(10,0));
             yield return null;yield return null;
             evidence.cameraYawAfter=camera.Yaw;
@@ -125,8 +132,14 @@ namespace Dreynox.Mmorpg.Parity
             {Finish("Camera orbit input did not change the actual camera.");yield break;}
             camera.ConfigureView(0,18,6.5f);yield return null;
             Vector3 direction=Vector3.ProjectOnPlane(camera.transform.forward,Vector3.up).normalized;
+            var idleSkin=SkinnedPoseProbe.Capture(actor.gameObject);
             Vector3 start=actor.transform.position;actor.SetExternalMovement(Vector2.up,false);
-            yield return new WaitForSeconds(1.2f);actor.SetExternalMovement(Vector2.zero,false);yield return new WaitForSeconds(.3f);
+            yield return new WaitForSeconds(.63f);
+            evidence.walkSkin=SkinnedPoseProbe.Compare(idleSkin,SkinnedPoseProbe.Capture(actor.gameObject));
+            var actorAnimation=actor.GetComponent<SemanticAnimationPlayer>();
+            if(!evidence.walkSkin.Deformed||actorAnimation==null||actorAnimation.ResolvedSemantic!="walk")
+            {Finish("Movement did not deform the original body through its walk animation.");yield break;}
+            yield return new WaitForSeconds(.57f);actor.SetExternalMovement(Vector2.zero,false);yield return new WaitForSeconds(.3f);
             Vector3 delta=Vector3.ProjectOnPlane(actor.transform.position-start,Vector3.up);
             evidence.walkedDistance=delta.magnitude;evidence.directionDot=delta.magnitude>0?Vector3.Dot(direction,delta.normalized):0;
             yield return Capture("02-after-walking");
@@ -145,7 +158,7 @@ namespace Dreynox.Mmorpg.Parity
             evidence.questAccepted=panel.SubmitSelectedQuest();
             string reason=panel.ActionFailure;
             if(!evidence.questAccepted){Finish("Authored quest rejected: "+reason);yield break;}
-            npcInteraction.CloseDialogue();evidence.steps.Add("NPC 7/1081 opened; quest 3400 accepted through real catalog.");
+            npcInteraction.CloseDialogue();evidence.steps.Add("NPC7/1081 opened; quest3400 accepted through real catalog.");
             var targets=monsters.Spawns.Where(s=>s.mobId==2011&&s.prefab!=null&&s.maxHealth>0)
                 .OrderBy(s=>(s.position-actor.transform.position).sqrMagnitude).Take(5).ToArray();
             if(targets.Length!=5){Finish("Fewer than five authored fox spawns exist.");yield break;}
@@ -156,16 +169,35 @@ namespace Dreynox.Mmorpg.Parity
                 var target=spawn.activeInstance!=null?spawn.activeInstance.GetComponent<ShaiyaCombatTarget>():null;
                 if(target==null||!combat.Select(target)){Finish("Original fox not active/selectable.");yield break;}
                 if(!combat.CanImpact(target.TargetId)){Finish("Fox obstructed/out of reach after collision-aware placement.");yield break;}
+                var livingSkin=SkinnedPoseProbe.Capture(target.gameObject);
+                var beforeAttack=SkinnedPoseProbe.Capture(actor.gameObject);
+                bool measuredAttack=false;
                 int initial=target.Health;float until=Time.realtimeSinceStartup+35;
                 while(target.IsAlive&&Time.realtimeSinceStartup<until)
                 {
                     Vector3 facing=Vector3.ProjectOnPlane(target.transform.position-actor.transform.position,Vector3.up);
                     if(facing.sqrMagnitude>.001f)actor.transform.rotation=Quaternion.LookRotation(facing);
-                    combat.TryAttackSelected(95);yield return new WaitForSeconds(.25f);
+                    bool accepted=combat.TryAttackSelected(95);
+                    if(accepted&&!measuredAttack)
+                    {
+                        yield return new WaitForSeconds(.12f);
+                        var difference=SkinnedPoseProbe.Compare(beforeAttack,SkinnedPoseProbe.Capture(actor.gameObject));
+                        if(!difference.Deformed||actorAnimation.ResolvedSemantic!="attack_1")
+                        {Finish("An accepted attack did not deform the original character through attack_1.");yield break;}
+                        evidence.attackSkins.Add(difference);measuredAttack=true;
+                        yield return Capture("04-attack-"+(evidence.kills+1));
+                        yield return new WaitForSeconds(.13f);
+                    }
+                    else yield return new WaitForSeconds(.25f);
                 }
                 if(target.IsAlive||target.Health>=initial){Finish("No real fox death through accepted attacks.");yield break;}
                 var animation=target.GetComponent<SemanticAnimationPlayer>();
                 if(animation==null||animation.ResolvedSemantic!="dead"){Finish("HP changed but authored MON death animation missing.");yield break;}
+                yield return new WaitForSeconds(.25f);
+                var deathSkin=SkinnedPoseProbe.Compare(livingSkin,SkinnedPoseProbe.Capture(target.gameObject));
+                if(!measuredAttack||!deathSkin.Deformed)
+                {Finish("Damage changed health without a measured authored attack/death pose.");yield break;}
+                evidence.deathSkins.Add(deathSkin);
                 evidence.kills++;evidence.steps.Add("Fox "+spawn.targetId+": "+initial+" HP -> "+target.Health+" through combat adapter.");
                 yield return Capture("04-fox-"+evidence.kills+"-defeated");
             }
@@ -191,17 +223,34 @@ namespace Dreynox.Mmorpg.Parity
         private bool PlaceNear(Vector3 point)
         {
             actor.SetExternalMovement(Vector2.zero,false);
-            var body=actor.GetComponent<CharacterController>();
             Vector3[] offsets={Vector3.back,Vector3.right,Vector3.forward,Vector3.left};
             foreach(var offset in offsets)
-                if(WorldGroundPlacement.TryPlace(actor,point+offset*2.2f,out lastPlacementFailure,horizontalRadius:0.5f,verticalTolerance:8f))return true;
+                if(WorldGroundPlacement.TryPlace(actor,point+offset*2.2f,out lastPlacementFailure,horizontalRadius:.5f,verticalTolerance:8))return true;
             return false;
+        }
+        [Serializable] private sealed class ViewEvidence
+        {
+            public string scope="actual-unity-player-view-not-matched-native-camera";
+            public int width,height;
+            public Vector3 actorPosition,cameraPosition,cameraEuler;
+            public float fov,resolvedDistance;
+            public bool pivotObstructed,avatarOccluded;
         }
         private IEnumerator Capture(string name)
         {
             yield return new WaitForEndOfFrame();
             var texture=ScreenCapture.CaptureScreenshotAsTexture();
-            try{File.WriteAllBytes(Path.Combine(output,name+".png"),texture.EncodeToPNG());}
+            try
+            {
+                File.WriteAllBytes(Path.Combine(output,name+".png"),texture.EncodeToPNG());
+                var camera=Camera.main;var orbit=camera!=null?camera.GetComponent<ShaiyaThirdPersonCamera>():null;
+                var view=new ViewEvidence{width=texture.width,height=texture.height,actorPosition=actor.transform.position,
+                    cameraPosition=camera!=null?camera.transform.position:Vector3.zero,
+                    cameraEuler=camera!=null?camera.transform.eulerAngles:Vector3.zero,fov=camera!=null?camera.fieldOfView:0,
+                    resolvedDistance=orbit!=null?orbit.ResolvedDistance:0,pivotObstructed=orbit!=null&&orbit.PivotObstructed,
+                    avatarOccluded=orbit!=null&&orbit.AvatarOccluded};
+                File.WriteAllBytes(Path.Combine(output,name+".view.json"),System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(view,true)));
+            }
             finally{Destroy(texture);}
         }
         private void Finish(string failure)

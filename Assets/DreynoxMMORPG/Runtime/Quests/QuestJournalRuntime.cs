@@ -16,6 +16,7 @@ namespace Dreynox.Mmorpg.Quests
         [SerializeField] private LegacyMonsterSpawnStreamer monsters;
         [SerializeField] private string localCharacterKey="ps0032-map1-human-fighter";
         public QuestJournalCore Journal {get;private set;}
+        public ShaiyaClientActor Actor => actor;
         public QuestPlayerContext Player => new QuestPlayerContext(1,actor!=null?actor.Family:0,actor!=null?actor.Job:0,actor!=null?actor.Sex:0,2);
         public string Error {get;private set;}="";
         public bool Ready => Journal!=null && Error.Length==0;
@@ -30,17 +31,20 @@ namespace Dreynox.Mmorpg.Quests
             {
                 if(catalogAsset==null||actor==null||combat==null||monsters==null)throw new InvalidOperationException("Quest scene references are incomplete.");
                 var data=JsonUtility.FromJson<LegacyQuestCatalogData>(catalogAsset.text);Journal=new QuestJournalCore(data);
-                // Separate local qualification save. Never writes to the native offline server databases.
+                // This local save is separate from original offline-server databases.
                 bool qualification=Array.IndexOf(Environment.GetCommandLineArgs(),"--starting-world-qualification")>=0;
                 string key=qualification?"qualification-"+Guid.NewGuid().ToString("N"):localCharacterKey;
                 path=Path.Combine(Application.persistentDataPath,"LocalQuestSaves",key+".json");
                 if(File.Exists(path))Journal.Restore(JsonUtility.FromJson<QuestJournalSave>(File.ReadAllText(path)));
                 foreach(var spawn in monsters.Spawns)if(!mobNames.ContainsKey((int)spawn.mobId))mobNames.Add((int)spawn.mobId,spawn.mobName);
-                Journal.Persist=Save;combat.HitApplied+=OnHit;
+                Journal.Persist=Save;Journal.ObserverFailed+=OnObserverFailed;combat.HitApplied+=OnHit;
             }
             catch(Exception ex){Error=ex.Message;Debug.LogException(ex);enabled=false;}
         }
-        private void OnDestroy(){if(combat!=null)combat.HitApplied-=OnHit;}
+        private void OnDestroy()
+        {if(combat!=null)combat.HitApplied-=OnHit;if(Journal!=null)Journal.ObserverFailed-=OnObserverFailed;}
+        private void OnObserverFailed(Exception error)
+        {Debug.LogError("El diario ya guardó el cambio, pero un observador de interfaz falló: "+error);}
         private void OnHit(ShaiyaCombatTarget target,int damage)
         {
             if(target==null||target.IsAlive||damage<=0||Journal==null)return;

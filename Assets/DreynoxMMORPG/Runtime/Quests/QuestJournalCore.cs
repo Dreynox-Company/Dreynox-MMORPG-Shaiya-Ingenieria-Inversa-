@@ -38,9 +38,13 @@ namespace Dreynox.Mmorpg.Quests
         private readonly Queue<long> killOrder = new Queue<long>();
         private readonly string catalogHash;
         private int revision;
+        private bool committing;
+        private readonly HashSet<long> pendingCredits = new HashSet<long>();
         public long Experience {get;private set;}
         public long Gold {get;private set;}
         public event Action Changed;
+        public event Action<Exception> ObserverFailed;
+        public int ObserverFailureCount { get; private set; }
         public IReadOnlyDictionary<int,QuestProgress> Entries => entries;
         public IReadOnlyDictionary<int,int> Inventory => inventory;
         // Must atomically persist the entire prospective snapshot. No mutation on failure.
@@ -63,8 +67,7 @@ namespace Dreynox.Mmorpg.Quests
             if(player.Sex<0||player.Sex>1||(player.Sex==0?q.male:q.female)==0)return "Personaje no elegible.";
             if(player.Job<0||player.Job>=q.jobs.Length||q.jobs[player.Job]==0)return "Clase no elegible.";
             if(player.NativeMode<q.mode)return "Modo de dificultad no elegible.";
-            // Local interpretation supported by the corpus distribution (not yet an executed native eligibility comparison).
-            // The inspected ps0032 data has seven values, unlike the public older three-value schema.
+            // Local interpretation supported by the corpus distribution, not a native runtime eligibility trace.
             bool faction = q.faction==6 || q.faction==2&&(player.Family==0||player.Family==1) ||
                 q.faction==5&&(player.Family==2||player.Family==3) || q.faction==player.Family+(player.Family>=2?1:0);
             if(!faction)return "Facción o raza no elegible.";
@@ -108,25 +111,29 @@ namespace Dreynox.Mmorpg.Quests
         }
         public bool CreditMobDeath(long lifetimeId,int mobId,out string reason)
         {
-            reason="";if(creditedKills.Contains(lifetimeId))return false;
-            var copy=CloneEntries();bool changed=false;
-            foreach(var e in copy.Values)
+            reason="";
+            if(creditedKills.Contains(lifetimeId)||!pendingCredits.Add(lifetimeId))return false;
+            try
             {
-                if(e.stage!=JournalStage.Active)continue;var q=catalog[e.id];
-                if(q.mob1==mobId&&e.kills1<q.mobCount1){e.kills1++;changed=true;}
-                if(q.mob2==mobId&&e.kills2<q.mobCount2){e.kills2++;changed=true;}
-                if(Ready(q,e,inventory))e.stage=JournalStage.Ready;
+                var copy=CloneEntries();bool changed=false;
+                foreach(var e in copy.Values)
+                {
+                    if(e.stage!=JournalStage.Active)continue;var q=catalog[e.id];
+                    if(q.mob1==mobId&&e.kills1<q.mobCount1){e.kills1++;changed=true;}
+                    if(q.mob2==mobId&&e.kills2<q.mobCount2){e.kills2++;changed=true;}
+                    if(Ready(q,e,inventory))e.stage=JournalStage.Ready;
+                }
+                if(!changed){RememberKill(lifetimeId);return false;}
+                if(!Commit(copy,new Dictionary<int,int>(inventory),Experience,Gold,out reason))return false;
+                RememberKill(lifetimeId);return true;
             }
-            if(!changed){RememberKill(lifetimeId);return false;}
-            if(!Commit(copy,new Dictionary<int,int>(inventory),Experience,Gold,out reason))return false;
-            RememberKill(lifetimeId);return true;
+            finally { pendingCredits.Remove(lifetimeId); }
         }
         private void RememberKill(long receipt)
         {
             if (!creditedKills.Add(receipt)) return;
             killOrder.Enqueue(receipt);
-            // The scene adapter only emits a death once per pooled lifetime.
-            // Keep bounded duplicate protection for delayed duplicate notifications.
+            // Bounded duplicate protection for delayed notifications of a pooled lifetime.
             if (killOrder.Count > 8192) creditedKills.Remove(killOrder.Dequeue());
         }
         public bool Deliver(int id,int npcKey,int rewardIndex,out string reason)
@@ -152,7 +159,6 @@ namespace Dreynox.Mmorpg.Quests
             foreach(var e in copy.Values)if(e.stage!=JournalStage.Rewarded)e.stage=Ready(catalog[e.id],e,inv)?JournalStage.Ready:JournalStage.Active;
             return Commit(copy,inv,experience,gold,out reason);
         }
-        // Feed item changes only from an accepted inventory transaction, never from a UI click.
         public bool ApplyInventoryTransaction(IReadOnlyDictionary<int,int> changes,out string reason)
         {
             reason="";var inv=new Dictionary<int,int>(inventory);
@@ -173,6 +179,7 @@ namespace Dreynox.Mmorpg.Quests
         public QuestJournalSave Snapshot()=>Snapshot(entries,inventory,Experience,Gold,revision);
         public void Restore(QuestJournalSave data)
         {
+            if(committing)throw new InvalidOperationException("No se puede restaurar durante una transacción.");
             if(data==null||data.schema!=1||data.catalogHash!=catalogHash||data.gold<0||data.experience<0||data.revision<0)
                 throw new InvalidOperationException("La partida no corresponde al catálogo actual.");
             var inv=new Dictionary<int,int>();var copy=new Dictionary<int,QuestProgress>();
@@ -185,16 +192,47 @@ namespace Dreynox.Mmorpg.Quests
             }
             entries.Clear();foreach(var e in copy)entries.Add(e.Key,e.Value);
             inventory.Clear();foreach(var e in inv)inventory.Add(e.Key,e.Value);
-            Experience=data.experience;Gold=data.gold;revision=data.revision;creditedKills.Clear();killOrder.Clear();Changed?.Invoke();
+            Experience=data.experience;Gold=data.gold;revision=data.revision;creditedKills.Clear();killOrder.Clear();NotifyChanged();
         }
         private bool Commit(Dictionary<int,QuestProgress> next,Dictionary<int,int> inv,long experience,long gold,out string reason)
         {
-            reason="";int rev;
-            try{rev=checked(revision+1);if(Persist!=null&&!Persist(Snapshot(next,inv,experience,gold,rev))){reason="No se pudo guardar: no se aplicó ningún cambio.";return false;}}
-            catch(Exception ex){reason="No se aplicó el cambio: "+ex.Message;return false;}
-            entries.Clear();foreach(var e in next)entries.Add(e.Key,e.Value);
-            inventory.Clear();foreach(var e in inv)inventory.Add(e.Key,e.Value);
-            Experience=experience;Gold=gold;revision=rev;Changed?.Invoke();return true;
+            reason="";
+            if(committing){reason="Ya hay una transacción de diario en curso.";return false;}
+            committing=true;
+            try
+            {
+                int rev;
+                try
+                {
+                    rev=checked(revision+1);
+                    if(Persist!=null&&!Persist(Snapshot(next,inv,experience,gold,rev)))
+                    {reason="No se pudo guardar: no se aplicó ningún cambio.";return false;}
+                }
+                catch(Exception ex){reason="No se aplicó el cambio: "+ex.Message;return false;}
+                entries.Clear();foreach(var e in next)entries.Add(e.Key,e.Value);
+                inventory.Clear();foreach(var e in inv)inventory.Add(e.Key,e.Value);
+                Experience=experience;Gold=gold;revision=rev;
+            }
+            finally { committing=false; }
+            // UI failure cannot turn an already durable reward into a failed transaction.
+            NotifyChanged();return true;
+        }
+        private void NotifyChanged()
+        {
+            Action callbacks=Changed;
+            if(callbacks==null)return;
+            foreach(Action handler in callbacks.GetInvocationList())
+            {
+                try { handler(); }
+                catch(Exception ex)
+                {
+                    ObserverFailureCount++;
+                    var reporters=ObserverFailed;
+                    if(reporters==null)continue;
+                    foreach(Action<Exception> report in reporters.GetInvocationList())
+                        try { report(ex); } catch { /* Diagnostics cannot undo persisted state. */ }
+                }
+            }
         }
         private Dictionary<int,QuestProgress> CloneEntries()
         {var result=new Dictionary<int,QuestProgress>();foreach(var e in entries)result.Add(e.Key,new QuestProgress{id=e.Value.id,kills1=e.Value.kills1,kills2=e.Value.kills2,stage=e.Value.stage});return result;}

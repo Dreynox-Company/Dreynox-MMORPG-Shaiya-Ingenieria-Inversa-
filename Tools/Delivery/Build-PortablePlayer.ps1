@@ -20,9 +20,8 @@ $output=[IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $output -Force | Out-Null
 $stage=Join-Path $output ('build-'+[Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage | Out-Null
-Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip=Join-Path $stage 'player.zip'
-[IO.Compression.ZipFile]::CreateFromDirectory($player,$zip,[IO.Compression.CompressionLevel]::Optimal,$false)
+& (Join-Path $PSScriptRoot 'New-PlayerPayload.ps1') -SourceDirectory $player -Destination $zip
 $digest=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 $identity=Join-Path $stage 'PayloadIdentity.cs'
 "namespace Dreynox.Delivery { internal static class PayloadIdentity { public const string Sha256 = `"$digest`"; } }" |
@@ -36,10 +35,7 @@ $metadata=Join-Path $PSScriptRoot 'PlayerZipMetadata.cs'
 $launcher=Join-Path $PSScriptRoot 'PortablePlayerLauncher.cs'
 & $csc /nologo /target:winexe /platform:x64 /langversion:5 /optimize+ "/out:$executable" "/resource:$zip,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity $core $metadata $launcher
 if($LASTEXITCODE -ne 0){throw 'Portable executable compilation failed.'}
-$p=Start-Process -FilePath $executable -ArgumentList '--verify-only' -PassThru
-if(-not $p.WaitForExit(300000)){Stop-Process -Id $p.Id -Force;throw 'Portable executable verification timeout.'}
-$p.Refresh()
-if($p.ExitCode -ne 0){throw "Portable executable verification failed ($($p.ExitCode))."}
+& (Join-Path $PSScriptRoot 'Invoke-VerifiedPlayerCheck.ps1') -Executable $executable -ExpectedExitCode 0
 @{
     schema=1;sourceCommit=$env:GITHUB_SHA;run=$env:GITHUB_RUN_ID;payloadSha256=$digest;
     executable=[IO.Path]::GetFileName($executable);sha256=(Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLowerInvariant();
