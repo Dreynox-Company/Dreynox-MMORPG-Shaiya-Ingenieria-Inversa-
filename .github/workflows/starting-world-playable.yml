@@ -1,4 +1,4 @@
-# Revision 10: explicit same-map travel and qualified executable-only delivery.
+# Revision 20: source-derived default body, texture coordinates and original radar artwork.
 name: Starting Map1 playable client
 on:
   push:
@@ -19,6 +19,7 @@ jobs:
       - run: dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
       - run: dotnet run --project Tools/CombatHarness/CombatHarness.csproj --configuration Release
       - run: dotnet run --project Tools/QuestHarness/QuestHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/AppearanceHarness/AppearanceHarness.csproj --configuration Release
       - run: dotnet run --project Tools/DeliveryTests/DeliveryTests.csproj --configuration Release
   windows:
     needs: source

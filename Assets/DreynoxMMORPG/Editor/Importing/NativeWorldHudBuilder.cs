@@ -13,7 +13,8 @@ namespace Dreynox.Mmorpg.Editor.Importing
             const string root="Assets/DreynoxMMORPG/LocalLegacyGenerated/NativeHud";
             Directory.CreateDirectory(root);
             string[] paths={"statusminibar/player_bar_bg.tga","statusminibar/class_attack_fighter.tga",
-                "slot/main_1.tga","npctalk/talk1_bg.tga","minimap/minimap_1.tga"};
+                "slot/main_1.tga","npctalk/talk1_bg.tga","minimap/minimap_1.tga",
+                "statusminibar/enemy_bar_bg.tga","statusminibar/enemy_bar.tga"};
             var textures=new Texture2D[paths.Length];
             for(int i=0;i<paths.Length;i++)
             {
@@ -30,6 +31,8 @@ namespace Dreynox.Mmorpg.Editor.Importing
             }
             var hud=new GameObject("Native World Interface").AddComponent<NativeWorldHud>();
             hud.SetArtwork(textures[0],textures[1],textures[2],textures[3],textures[4]);
+            hud.SetRadarSkin(NativeRadarSkinImporter.Import(corpus));
+            hud.SetTargetArtwork(textures[5],textures[6]);
             return hud;
         }
     }

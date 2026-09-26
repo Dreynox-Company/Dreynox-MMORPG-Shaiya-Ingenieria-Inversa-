@@ -79,7 +79,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                         selection,
                         faceIndex: 0,
                         hairIndex: 0,
-                        setId: 3);
+                        setId: -1);
             }
 
             _sessionPrefabCache =
@@ -87,6 +87,15 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 result.Clone();
 
             return result;
+        }
+
+        private static LegacyCharacterPreviewAssetPaths ResolveAppearance(CanonicalClientCorpus corpus,
+            int family, int job, int sex, int faceIndex, int hairIndex, int setId)
+        {
+            return setId < 0
+                ? LegacyDefaultAppearanceCore.Resolve(family, job, sex, faceIndex, hairIndex,
+                    path => File.ReadAllBytes(corpus.Resolve(path)))
+                : LegacyCharacterAssetCore.ResolvePreview(family, job, sex, faceIndex, hairIndex, setId);
         }
 
         public static void ClearSessionCache()
@@ -106,7 +115,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 throw new ArgumentNullException(nameof(corpus));
 
             LegacyCharacterPreviewAssetPaths paths =
-                LegacyCharacterAssetCore.ResolvePreview(
+                ResolveAppearance(corpus,
                     selection.Family,
                     selection.Job,
                     selection.Sex,
@@ -215,7 +224,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                      variant++)
                 {
                     LegacyCharacterPreviewAssetPaths facePaths =
-                        LegacyCharacterAssetCore.ResolvePreview(
+                        ResolveAppearance(corpus,
                             selection.Family,
                             selection.Job,
                             selection.Sex,
@@ -242,7 +251,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                             });
 
                     LegacyCharacterPreviewAssetPaths hairPaths =
-                        LegacyCharacterAssetCore.ResolvePreview(
+                        ResolveAppearance(corpus,
                             selection.Family,
                             selection.Job,
                             selection.Sex,
@@ -489,8 +498,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 false);
 
             SkinnedMeshRenderer renderer =
-                partObject.AddComponent<
-                    SkinnedMeshRenderer>();
+                partObject.AddComponent<SkinnedMeshRenderer>();
 
             renderer.sharedMesh =
                 mesh;

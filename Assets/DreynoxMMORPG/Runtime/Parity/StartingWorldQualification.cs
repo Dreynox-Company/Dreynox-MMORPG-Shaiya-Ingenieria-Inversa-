@@ -23,7 +23,8 @@ namespace Dreynox.Mmorpg.Parity
             public string scope="map1-local-integration-not-native-equivalence", failure="";
             public bool passed, originalEthanOpened, questAccepted, questDelivered, inputIsScripted=true, combatRelocated=true;
             public int mapId=1, questId=3400, npcPositions, monsterInstances, kills, attackAnimations;
-            public bool starterWeaponEquipped, terrainCollisionVerified;
+            public bool starterWeaponEquipped, terrainCollisionVerified, defaultAppearanceVerified, nativeRadarVerified;
+            public string[] bodyMeshSources, bodyTextureSources;
             public int terrainProbes;
             public string starterWeaponResource="";
             public int starterWeaponVertices;
@@ -89,6 +90,17 @@ namespace Dreynox.Mmorpg.Parity
             }
             if(evidence.terrainProbes==0){Finish("No authored fox areas to verify terrain support.");yield break;}
             evidence.terrainCollisionVerified=true;
+            var appearance=actor.GetComponent<Dreynox.Mmorpg.Gameplay.Equipment.LegacyAppearanceEvidence>();
+            if(appearance==null || appearance.Policy!="ML2-default-body-row0" ||
+                !appearance.Meshes[0].EndsWith("humf_torso001.3DC",StringComparison.OrdinalIgnoreCase))
+            {Finish("Native starter body is absent or an unrelated costume replaced it.");yield break;}
+            evidence.bodyMeshSources=appearance.Meshes;evidence.bodyTextureSources=appearance.Textures;
+            evidence.defaultAppearanceVerified=true;
+            var nativeHud=FindFirstObjectByType<Dreynox.Mmorpg.UI.NativeWorldHud>();
+            if(nativeHud==null || nativeHud.Radar==null || nativeHud.Radar.PlayerMarker.sprite==null)
+            {Finish("Original radar artwork is not bound in the running Player.");yield break;}
+            evidence.nativeRadarVerified=true;
+
             if(Mathf.Abs(evidence.entry.x-580)>1||Mathf.Abs(evidence.entry.z-1760)>1||Mathf.Abs(evidence.entry.y-78)>3||evidence.npcPositions!=307||evidence.monsterInstances!=1186)
             {Finish("The native starting map or authored entry is not the expected Map1.");yield break;}
             if(!actor.GetComponentsInChildren<SkinnedMeshRenderer>().Any(r=>r.sharedMesh!=null))

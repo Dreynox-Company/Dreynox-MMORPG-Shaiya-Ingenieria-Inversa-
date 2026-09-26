@@ -51,7 +51,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
             var mesh = new Mesh { name = "Original_01001_StarterSword" };
             mesh.vertices = original.Vertices.Select(v => LegacyCoordinateBridge.Position(v.Position)).ToArray();
             mesh.normals = original.Vertices.Select(v => LegacyCoordinateBridge.Direction(v.Normal).normalized).ToArray();
-            mesh.uv = original.Vertices.Select(v => v.UV).ToArray();
+            mesh.uv = original.Vertices.Select(v => Dreynox.Mmorpg.LocalData.LegacyTextureCoordinates.ToUnity(v.UV)).ToArray();
             mesh.triangles = original.Faces.SelectMany(f => new[] { (int)f.A, (int)f.C, (int)f.B }).ToArray();
             mesh.RecalculateBounds();
             Write(mesh, Root + "/Sword.asset");

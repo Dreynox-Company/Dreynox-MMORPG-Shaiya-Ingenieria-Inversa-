@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Dreynox.Mmorpg.ParityCore;
 using Dreynox.Mmorpg.Editor.Corpus;
 using Dreynox.Mmorpg.Gameplay.AnimationSystem;
 using Dreynox.Mmorpg.Gameplay.Client;
@@ -66,7 +67,9 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 EnsureFolder(OutputRoot + "/" + sub);
 
             LegacyAniFile reference = ReadClip(corpus, Clips[0]);
-            Legacy3dcFile torso = Legacy3dcParser.Parse(corpus.Resolve(CharacterRoot + "3dc/co_humf_upper003.3dc"));
+            var appearance = LegacyDefaultAppearanceCore.Resolve(0, 0, 0, 0, 0,
+                path => File.ReadAllBytes(corpus.Resolve(path)));
+            Legacy3dcFile torso = Legacy3dcParser.Parse(corpus.Resolve(appearance.UpperMesh));
             LegacyRuntimeSkinnedBuilder.ValidateMeshForSkeleton(torso, reference.Bones.Count);
             // Preflight every requested ANI before generating any character assets.
             var bodyClips = new List<LegacyAniFile>(Clips.Length);
@@ -94,18 +97,19 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 if (bones.Length > 4) bones[4].gameObject.AddComponent<AttachmentSocket>().Configure("Wings_Back");
                 equipment.RebuildSocketCache();
                 string[] labels = { "Upper", "Lower", "Hands", "Feet", "Face", "Hair" };
-                string[] meshStems = { "co_humf_upper003", "co_humf_lower003", "co_humf_hand003",
-                    "co_humf_foot003", "humf_face001", "humf_hair001" };
-                string[] textureStems = { "co_humf_upper003", "co_humf_lower003", "co_humf_hand003",
-                    "co_humf_foot003", "hum_face001", "hum_hair001" };
+                string[] meshSources = { appearance.UpperMesh, appearance.LowerMesh, appearance.HandMesh,
+                    appearance.FootMesh, appearance.FaceMesh, appearance.HairMesh };
+                string[] textureSources = { appearance.UpperTexture, appearance.LowerTexture, appearance.HandTexture,
+                    appearance.FootTexture, appearance.FaceTexture, appearance.HairTexture };
+                actor.AddComponent<LegacyAppearanceEvidence>().Configure("ML2-default-body-row0", meshSources, textureSources);
                 for (int i = 0; i < labels.Length; i++)
                 {
-                    Legacy3dcFile source = Legacy3dcParser.Parse(corpus.Resolve(CharacterRoot + "3dc/" + meshStems[i] + ".3dc"));
+                    Legacy3dcFile source = Legacy3dcParser.Parse(corpus.Resolve(meshSources[i]));
                     Mesh mesh = LegacySkinnedAssetBuilder.BuildMesh(source, bones, actor.transform, labels[i]);
                     WriteAsset(mesh, OutputRoot + "/Meshes/" + labels[i] + ".asset");
                     Material material = LegacySkinnedAssetBuilder.ImportLitMaterial(
-                        corpus.Resolve(CharacterRoot + "dds/" + textureStems[i] + ".dds"),
-                        OutputRoot + "/Textures/" + textureStems[i] + ".dds",
+                        corpus.Resolve(textureSources[i]),
+                        OutputRoot + "/Textures/" + Path.GetFileName(textureSources[i]),
                         OutputRoot + "/Materials/" + labels[i] + ".mat", labels[i], i == 5);
                     GameObject part = new GameObject(labels[i]);
                     part.transform.SetParent(actor.transform, false);
@@ -119,7 +123,7 @@ namespace Dreynox.Mmorpg.Editor.LegacyFormats
                 {
                     ClipSpec spec = Clips[i];
                     AnimationClip clip = LegacySkinnedAssetBuilder.BuildAnimationClip(
-                        spec.Semantic, bodyClips[i], actor.transform, bones, spec.Loop);
+                        spec.Semantic, bodyClips[i], actor.transform, bones, Clips[i].Loop);
                     WriteAsset(clip, OutputRoot + "/Animations/" + spec.Semantic + ".anim");
                     entries.Add(new AnimationStateCatalog.Entry { semanticState = spec.Semantic, clip = clip, playbackSpeed = 1 });
                 }

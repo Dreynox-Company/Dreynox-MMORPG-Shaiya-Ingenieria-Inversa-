@@ -13,25 +13,30 @@ namespace Dreynox.Mmorpg.UI
     /// <summary>Live world UI using original artwork. No fabricated quest completion or server stats.</summary>
     public sealed class NativeWorldHud : MonoBehaviour
     {
-        [SerializeField] private Texture2D playerFrame, classIcon, actionFrame, talkFrame, minimap;
+        [SerializeField] private Texture2D playerFrame, classIcon, actionFrame, talkFrame, minimap, targetFrame, targetBar;
         private ShaiyaClientActor actor;
         private ShaiyaCombatInteraction combat;
         private LegacyNpcInteractionRuntime interaction;
         private LegacyNpcSpawnStreamer npcs;
         private LegacyMonsterSpawnStreamer mobs;
         private Camera cameraView;
-        private RectTransform canvasRoot, mapRect, mapMarker, dialogue;
-        private Text targetText, feedbackText, welcomeText, npcNameText, playerText;
+        private RectTransform canvasRoot, worldLabelRoot, dialogue;
+        private Text targetText, targetHealthText, feedbackText, welcomeText, npcNameText, playerText;
+        private RectTransform targetPanel;
         private Image targetFill;
         private Sprite healthSprite;
         private NativeWorldSession session;
         private LegacyNpcRuntimeDescriptor selectedNpc;
-        private RawImage mapImage;
+        [SerializeField] private NativeRadarSkin radarSkin;
+        private NativeRadarView radar;
         private readonly List<Text> labels = new List<Text>();
-        private readonly List<RectTransform> mapDots = new List<RectTransform>();
+
         private float nextUpdate;
-        private int visibleLabels, visibleDots;
+        private int visibleLabels;
         public int DialoguesOpened { get; private set; }
+        public NativeRadarView Radar => radar;
+        public void SetRadarSkin(NativeRadarSkin value) { radarSkin = value; }
+        public void SetTargetArtwork(Texture2D frame,Texture2D bar) { targetFrame=frame;targetBar=bar; }
         public RectTransform CanvasRoot => canvasRoot;
         public bool HasQuestPanel { get; set; }
         public Func<int,string> QuestMarker { get; set; }
@@ -52,7 +57,7 @@ namespace Dreynox.Mmorpg.UI
             npcs=FindFirstObjectByType<LegacyNpcSpawnStreamer>();
             mobs=FindFirstObjectByType<LegacyMonsterSpawnStreamer>();
             cameraView=Camera.main;
-            if(actor==null || combat==null || interaction==null || cameraView==null || playerFrame==null || minimap==null)
+            if(actor==null || combat==null || interaction==null || cameraView==null || playerFrame==null || minimap==null || radarSkin==null || targetFrame==null || targetBar==null)
             { Debug.LogError("Native world HUD missing required bindings or original artwork.");return; }
             session=FindFirstObjectByType<NativeWorldSession>();
             BuildUi();
@@ -131,27 +136,28 @@ namespace Dreynox.Mmorpg.UI
         }
         private void UpdateWorldUi()
         {
-            var session=FindFirstObjectByType<NativeWorldSession>();
             playerText.text="Dreynox · Mapa "+(session!=null?session.MapId:1)+"\n"+
                 "X "+actor.transform.position.x.ToString("F1")+"   Z "+actor.transform.position.z.ToString("F1");
             var target=combat.SelectedTarget;
             bool valid=target!=null && target.gameObject.activeInHierarchy;
-            targetText.text=valid?DisplayTarget(target)+"\n"+target.Health+" / "+target.MaxHealth:"";
+            targetPanel.gameObject.SetActive(valid);
+            targetText.text=valid?DisplayTarget(target):"";
+            targetHealthText.text=valid?target.Health+" / "+target.MaxHealth:"";
             targetFill.fillAmount=valid?(float)target.Health/Mathf.Max(1,target.MaxHealth):0f;
-            const float worldSize=2048f, viewFraction=0.22f;
-            float u=Mathf.Clamp(actor.transform.position.x/worldSize-viewFraction*0.5f,0,1-viewFraction);
-            float v=Mathf.Clamp(actor.transform.position.z/worldSize-viewFraction*0.5f,0,1-viewFraction);
-            mapImage.uvRect=new Rect(u,v,viewFraction,viewFraction);
-            mapMarker.anchoredPosition=new Vector2((actor.transform.position.x/worldSize-u)/viewFraction*180f,
-                (actor.transform.position.z/worldSize-v)/viewFraction*180f);
-            visibleLabels=0;visibleDots=0;VisibleNpcNames=0;
+            // Current starting-world terrain extent, not an assumption for every future map.
+            Vector2 extent = Terrain.activeTerrain != null
+                ? new Vector2(Terrain.activeTerrain.terrainData.size.x, Terrain.activeTerrain.terrainData.size.z)
+                : new Vector2(2048, 2048);
+            radar.BeginFrame(actor.transform.position, actor.transform.eulerAngles.y, extent);
+            visibleLabels=0;VisibleNpcNames=0;
             if(npcs!=null) foreach(var spawn in npcs.Spawns)
             {
                 if(spawn.activeInstance==null)continue;
                 Vector3 p=spawn.activeInstance.transform.position;
                 string marker=QuestMarker!=null?QuestMarker((spawn.npcType<<16)|(ushort)spawn.typeId):string.Empty;
                 if(Label(p,spawn.displayName+marker,new Color(0.4f,0.96f,1f)))VisibleNpcNames++;
-                Dot(p,new Color(0.35f,0.9f,1f),u,v,viewFraction);
+                var descriptor=spawn.activeInstance.GetComponent<LegacyNpcRuntimeDescriptor>();
+                radar.Add(p, ResolveNpcRadar(descriptor, marker));
             }
             if(mobs!=null)foreach(var spawn in mobs.Spawns)
             {
@@ -160,10 +166,10 @@ namespace Dreynox.Mmorpg.UI
                 if(life==null || !life.IsAlive)continue;
                 Vector3 p=spawn.activeInstance.transform.position;
                 Label(p,spawn.mobName+" · "+spawn.level,new Color(1f,0.7f,0.35f));
-                Dot(p,new Color(1f,0.4f,0.2f),u,v,viewFraction);
+                radar.Add(p,NativeRadarKind.Monster);
             }
             for(int i=visibleLabels;i<labels.Count;i++)labels[i].gameObject.SetActive(false);
-            for(int i=visibleDots;i<mapDots.Count;i++)mapDots[i].gameObject.SetActive(false);
+            radar.EndFrame();
         }
         private string DisplayTarget(ShaiyaCombatTarget target)
         {
@@ -178,26 +184,31 @@ namespace Dreynox.Mmorpg.UI
             if(screen.z<=0 || screen.x<0 || screen.y<0 || screen.x>Screen.width || screen.y>Screen.height)return false;
             if(visibleLabels==labels.Count)
             {
-                Text label=TextElement("World label",canvasRoot,"",13,TextAnchor.MiddleCenter);
+                Text label=TextElement("World label",worldLabelRoot,"",13,TextAnchor.MiddleCenter);
                 label.rectTransform.sizeDelta=new Vector2(280,25);
                 labels.Add(label);
             }
             Text item=labels[visibleLabels++];item.gameObject.SetActive(true);item.text=text;item.color=color;
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRoot,screen,null,out Vector2 point);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(worldLabelRoot,screen,null,out Vector2 point);
             item.rectTransform.anchoredPosition=point;
             return true;
         }
-        private void Dot(Vector3 p,Color color,float u,float v,float fraction)
+        public static NativeRadarKind ResolveNpcRadar(LegacyNpcRuntimeDescriptor npc,string questMarker)
         {
-            float x=(p.x/2048f-u)/fraction, y=(p.z/2048f-v)/fraction;
-            if(x<0 || y<0 || x>1 || y>1 || visibleDots>=160)return;
-            if(visibleDots==mapDots.Count)
+            if(!string.IsNullOrEmpty(questMarker))
             {
-                var dot=Rect("Entity marker",mapRect,new Vector2(0,0),new Vector2(5,5),Vector2.zero);
-                dot.gameObject.AddComponent<Image>().raycastTarget=false;mapDots.Add(dot);
+                if(questMarker.Contains("?"))return NativeRadarKind.QuestReady;
+                if(questMarker.Contains("!"))return NativeRadarKind.QuestAvailable;
             }
-            var value=mapDots[visibleDots++];value.gameObject.SetActive(true);
-            value.anchoredPosition=new Vector2(x*180,y*180);value.GetComponent<Image>().color=color;
+            if(npc==null)return NativeRadarKind.Npc;
+            switch(npc.NpcType)
+            {
+                case 2:return NativeRadarKind.Gatekeeper;
+                case 3:return NativeRadarKind.Blacksmith;
+                case 6:return NativeRadarKind.Warehouse;
+                case 1:return NativeRadarKind.Merchant;
+                default:return NativeRadarKind.Npc;
+            }
         }
         private void BuildUi()
         {
@@ -208,8 +219,14 @@ namespace Dreynox.Mmorpg.UI
             var scaler=go.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution=new Vector2(1024,768);scaler.matchWidthOrHeight=0.5f;
             canvasRoot=go.GetComponent<RectTransform>();
-            Artwork("Original player frame",canvasRoot,playerFrame,new Rect(0,0,218,64),new Vector2(0,1),new Vector2(228,67),new Vector2(122,-42));
-            Artwork("Class",canvasRoot,classIcon,new Rect(0,0,64,64),new Vector2(0,1),new Vector2(44,44),new Vector2(40,-42));
+            var labelGo=new GameObject("World names layer",typeof(RectTransform),typeof(Canvas));
+            worldLabelRoot=labelGo.GetComponent<RectTransform>();worldLabelRoot.SetParent(canvasRoot,false);
+            worldLabelRoot.anchorMin=Vector2.zero;worldLabelRoot.anchorMax=Vector2.one;
+            worldLabelRoot.offsetMin=worldLabelRoot.offsetMax=Vector2.zero;
+            var nameCanvas=labelGo.GetComponent<Canvas>();nameCanvas.overrideSorting=true;nameCanvas.sortingOrder=-1;
+
+            Artwork("Original player frame",canvasRoot,playerFrame,new Rect(0,0,218,64),new Vector2(0,1),new Vector2(218,64),new Vector2(113,-36));
+            Artwork("Class",canvasRoot,classIcon,new Rect(0,20,41,44),new Vector2(0,1),new Vector2(41,44),new Vector2(34.5f,-36));
             playerText=TextElement("Player",canvasRoot,"Dreynox",12,TextAnchor.MiddleLeft);
             Place(playerText.rectTransform,new Vector2(0,1),new Vector2(158,50),new Vector2(158,-43));
             Artwork("Original quickbar",canvasRoot,actionFrame,new Rect(0,10,448,54),new Vector2(0.5f,1),new Vector2(448,54),new Vector2(0,-32));
@@ -218,20 +235,19 @@ namespace Dreynox.Mmorpg.UI
                 int index=i;
                 ButtonElement(canvasRoot,(i+1).ToString(),new Vector2(0.5f,1),new Vector2(37,37),new Vector2(-178+i*39,-33),()=>combat.TryAttackSelected(new[]{95,130,180,240}[index]),false);
             }
-            var targetPanel=Rect("Target",canvasRoot,new Vector2(0.5f,1),new Vector2(245,54),new Vector2(0,-105));
-            var bg=targetPanel.gameObject.AddComponent<Image>();bg.color=new Color(0.04f,0.05f,0.065f,0.82f);bg.raycastTarget=false;
-            var fillRect=Rect("Target health",targetPanel,new Vector2(0.5f,0),new Vector2(235,8),new Vector2(0,8));
-            targetFill=fillRect.gameObject.AddComponent<Image>();targetFill.color=new Color(0.65f,0.05f,0.05f);targetFill.raycastTarget=false;
-            // Image fill needs a sprite; use the built-in white texture once.
-            var white=Texture2D.whiteTexture;
-            healthSprite=Sprite.Create(white,new Rect(0,0,white.width,white.height),Vector2.one*0.5f);
-            targetFill.sprite=healthSprite;
-            targetFill.type=Image.Type.Filled;targetFill.fillMethod=Image.FillMethod.Horizontal;
-            targetText=TextElement("Target name",targetPanel,"",13,TextAnchor.MiddleCenter);targetText.rectTransform.sizeDelta=new Vector2(235,40);
-            mapRect=Rect("Minimap",canvasRoot,new Vector2(1,1),new Vector2(180,180),new Vector2(-102,-102));
-            mapImage=mapRect.gameObject.AddComponent<RawImage>();mapImage.texture=minimap;mapImage.raycastTarget=false;
-            mapMarker=Rect("Player marker",mapRect,Vector2.zero,new Vector2(7,7),new Vector2(90,90));
-            var mark=mapMarker.gameObject.AddComponent<Image>();mark.color=Color.white;mark.raycastTarget=false;
+            targetPanel=Rect("Target",canvasRoot,new Vector2(0.5f,1),new Vector2(193,38),new Vector2(0,-94));
+            Artwork("Original target frame",targetPanel,targetFrame,new Rect(0,26,193,38),Vector2.one*0.5f,new Vector2(193,38),Vector2.zero);
+            var fillRect=Rect("Target health",targetPanel,new Vector2(0,1),new Vector2(150,8),new Vector2(112,-29));
+            targetFill=fillRect.gameObject.AddComponent<Image>();targetFill.color=Color.white;targetFill.raycastTarget=false;
+            healthSprite=Sprite.Create(targetBar,new Rect(0,0,150,8),Vector2.one*0.5f,100,0,SpriteMeshType.FullRect);
+            targetFill.sprite=healthSprite;targetFill.type=Image.Type.Filled;targetFill.fillMethod=Image.FillMethod.Horizontal;
+            targetText=TextElement("Target name",targetPanel,"",12,TextAnchor.MiddleCenter);
+            Place(targetText.rectTransform,new Vector2(0,1),new Vector2(150,18),new Vector2(112,-11));
+            targetHealthText=TextElement("Actual target health",targetPanel,"",10,TextAnchor.MiddleCenter);
+            Place(targetHealthText.rectTransform,new Vector2(0,1),new Vector2(150,12),new Vector2(112,-29));
+            targetPanel.gameObject.SetActive(false);
+            var radarRoot=Rect("Native radar",canvasRoot,new Vector2(1,1),new Vector2(202,226),new Vector2(-107,-120));
+            radar=radarRoot.gameObject.AddComponent<NativeRadarView>();radar.Build(radarRoot,radarSkin,minimap);
             feedbackText=TextElement("Action feedback",canvasRoot,"WASD · Shift: correr · Clic: objetivo · 1–4: atacar · F: hablar · Esc: cerrar",13,TextAnchor.MiddleLeft);
             Place(feedbackText.rectTransform,new Vector2(0,0),new Vector2(780,38),new Vector2(402,30));
             dialogue=Rect("NPC dialogue",canvasRoot,Vector2.one*0.5f,new Vector2(400,330),new Vector2(-140,-15));

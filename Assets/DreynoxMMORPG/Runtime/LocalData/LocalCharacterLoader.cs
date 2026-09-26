@@ -39,8 +39,13 @@ namespace Dreynox.Mmorpg.LocalData
             try
             {
                 var rig = LegacyCharacterRigCore.ResolveNativeRigIndex(rigIndex);
-                var paths = LegacyCharacterAssetCore.ResolvePreview(rig.Family, rig.Job, rig.Sex, face, hair);
-                CharacterData data = await Task.Run(() => Read(folder, paths, token), token);
+                CharacterData data = await Task.Run(() =>
+                {
+                    var source = new LocalDataFolder(folder);
+                    var paths = LegacyDefaultAppearanceCore.Resolve(rig.Family, rig.Job, rig.Sex, face, hair,
+                        path => source.Read(path, token, LegacyModelListCore.MaximumBytes));
+                    return Read(folder, paths, token);
+                }, token);
                 token.ThrowIfCancellationRequested();
                 if (!alive || ticket != generation) return false;
                 candidate = CreateCharacter(data);
@@ -51,7 +56,7 @@ namespace Dreynox.Mmorpg.LocalData
                 Current.SetActive(true);
                 candidate = null;
                 if (previous != null) { previous.SetActive(false); Destroy(previous); }
-                Status = paths.Rig.Prefix + " · " + data.Animation.Bones.Count + " huesos · 6 piezas reales · DATA solo lectura";
+                Status = data.Name + " · " + data.Animation.Bones.Count + " huesos · 6 piezas reales · DATA solo lectura";
                 return true;
             }
             catch (OperationCanceledException) { if (alive && ticket == generation) Status = "Carga cancelada; se conserva el modelo anterior."; return false; }

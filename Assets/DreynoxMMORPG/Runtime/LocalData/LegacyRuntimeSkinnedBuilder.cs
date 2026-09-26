@@ -62,7 +62,7 @@ namespace Dreynox.Mmorpg.LocalData
                 Legacy3dcVertex vertex = source.Vertices[i];
                 positions[i] = LegacyCoordinateBridge.Position(vertex.Position);
                 normals[i] = LegacyCoordinateBridge.Direction(vertex.Normal).normalized;
-                uvs[i] = vertex.UV;
+                uvs[i] = LegacyTextureCoordinates.ToUnity(vertex.UV);
                 weights[i] = BuildBoneWeight(vertex);
             }
             var triangles = new int[source.Faces.Count * 3];
