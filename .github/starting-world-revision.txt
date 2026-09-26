@@ -1,7 +1,6 @@
-Map1 qualification22: original quest paper, validated visible NPC actions, durable reward notifications and actual skinned pose evidence.
-Retain source-derived initial body/radar, original sword, physical terrain, Spanish mission3400 and native-content Map1.
-Seven standalone journal integrity checks, six Unity interaction/presentation cases and three actual BakeMesh pose cases are added, not presumed passed.
-Player must deform the original body during walking and accepted attacks, deform each of five dying foxes, and complete the quest through the visible buttons.
-Capture body front/back/sides, combat and reward with camera metadata. Local diagnostic damage/relocation remains explicit, not native multiplayer parity.
-The one-file package uses explicit forward-slash ZIP entries and retained child-process exit/error capture. Do not weaken verification to get a distributable.
-Only qualified executable delivery; main and original DATA/game.exe stay unchanged.
+Map1 qualification23: complete local quest acceptance/progress/reward/confirmed-abandonment UI flow.
+Retain exact native default body and radar, original terrain physics/sword, improved rendering and real skinned pose proofs.
+New local abandonment requires confirmation and durable save; cancel/close/reward/stale clicks cannot remove another or completed quest.
+Four additional Unity cases join the actual NPC/mission/attack/death/reward scenario. Previous integrity tests remain required.
+Native request body offsets/opcodes for accept/end/choice/quit are statically recovered from ps0032, but no connected native session is claimed.
+Only a genuinely qualified one-file executable is a user deliverable. Main, original DATA and game.exe stay unchanged.

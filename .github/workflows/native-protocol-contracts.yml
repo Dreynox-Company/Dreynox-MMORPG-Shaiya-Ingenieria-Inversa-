@@ -1,0 +1,25 @@
+name: Native quest request contracts
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths:
+      - 'Assets/DreynoxMMORPG/Runtime/Networking/**'
+      - 'Tools/NativeProtocolHarness/**'
+      - '.github/workflows/native-protocol-contracts.yml'
+  pull_request:
+    paths:
+      - 'Assets/DreynoxMMORPG/Runtime/Networking/**'
+      - 'Tools/NativeProtocolHarness/**'
+      - '.github/workflows/native-protocol-contracts.yml'
+permissions: {contents: read}
+jobs:
+  requests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with: {dotnet-version: '8.0.x'}
+      - run: dotnet run --project Tools/NativeProtocolHarness/NativeProtocolHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/QuestHarness/QuestHarness.csproj --configuration Release
