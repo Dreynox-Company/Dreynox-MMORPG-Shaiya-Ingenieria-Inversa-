@@ -1,7 +1,6 @@
 using System.IO.Compression;
 using System.Text;
 using Dreynox.Delivery;
-
 int count = 0;
 void Check(bool condition, string label)
 {
@@ -11,8 +10,7 @@ void Check(bool condition, string label)
 void Reject(Action action, string label)
 {
     bool failed = false;
-    try { action(); }
-    catch (InvalidDataException) { failed = true; }
+    try { action(); } catch (InvalidDataException) { failed = true; }
     Check(failed, label);
 }
 foreach (string name in new[] { "../outside", "/root", "C:/outside", "a\\b", "a//b", "a/./b", "CON.txt", "com1", "a/aux", "a:stream", "file. ", "NUL.txt", "bad\nname" })
@@ -25,20 +23,21 @@ try
     byte[] valid = Archive(false, false, false, null);
     string destination = Path.Combine(root, "valid"); Directory.CreateDirectory(destination);
     int progress = 0;
-    using (var stream = new MemoryStream(valid))
-        VerifiedPlayerArchive.ExtractAndVerify(stream, destination, p => progress = p);
+    using (var stream = new MemoryStream(valid)) VerifiedPlayerArchive.ExtractAndVerify(stream, destination, p => progress = p);
     Check(progress == 100 && File.Exists(Path.Combine(destination, VerifiedPlayerArchive.GameExecutable)), "complete payload extracted and checked");
     using (var stream = new MemoryStream(valid)) VerifiedPlayerArchive.VerifyInstalled(stream, destination);
     Check(true, "cache verified against embedded original manifest");
+    string unexpected = Path.Combine(destination, "untrusted-plugin.dll");
+    File.WriteAllText(unexpected, "not in the embedded manifest");
+    Reject(() => { using (var stream = new MemoryStream(valid)) VerifiedPlayerArchive.VerifyInstalled(stream, destination); }, "unlisted installed plugin rejected");
+    File.Delete(unexpected);
     File.WriteAllText(Path.Combine(destination, "UnityPlayer.dll"), "changed");
     Reject(() => { using (var stream = new MemoryStream(valid)) VerifiedPlayerArchive.VerifyInstalled(stream, destination); }, "modified cached payload rejected");
     File.WriteAllText(Path.Combine(destination, VerifiedPlayerArchive.ManifestName), "attacker manifest");
     Reject(() => { using (var stream = new MemoryStream(valid)) VerifiedPlayerArchive.VerifyInstalled(stream, destination); }, "cache manifest cannot redefine expected binary hashes");
     foreach (var test in new[] {
-        ("corrupt", Archive(true,false,false,null)),
-        ("duplicate", Archive(false,true,false,null)),
-        ("unsigned-extra", Archive(false,false,false,"extra.dll")),
-        ("missing-unity", Archive(false,false,true,null)),
+        ("corrupt", Archive(true,false,false,null)), ("duplicate", Archive(false,true,false,null)),
+        ("unsigned-extra", Archive(false,false,false,"extra.dll")), ("missing-unity", Archive(false,false,true,null)),
         ("path-escape", Archive(false,false,false,"../outside.txt")) })
     {
         string folder = Path.Combine(root, test.Item1); Directory.CreateDirectory(folder);
@@ -47,8 +46,8 @@ try
     Check(!File.Exists(Path.Combine(root, "outside.txt")), "rejected path never writes outside staging");
 }
 finally { Directory.Delete(root, true); }
+count += DeliveryMetadataCases.Run();
 Console.WriteLine("VERIFIED PLAYER DELIVERY OK: " + count + " checks (synthetic archive fixtures, not game execution)");
-
 static byte[] Archive(bool corrupt, bool duplicate, bool missingUnity, string extra)
 {
     var files = new Dictionary<string, byte[]> {

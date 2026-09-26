@@ -9,7 +9,6 @@ $ErrorActionPreference='Stop'
 if($env:OS -ne 'Windows_NT'){throw 'The portable executable packager requires Windows.'}
 $player=(Resolve-Path -LiteralPath $PlayerDirectory).Path
 $report=Get-Content -LiteralPath $QualificationReport -Raw | ConvertFrom-Json
-# Do not publish a sandbox or a merely compiled/failed game as qualified.
 if(-not $report.passed -or $report.mapId -ne 1 -or $report.kills -ne 5 -or
    -not $report.questAccepted -or -not $report.questDelivered -or -not $report.originalEthanOpened -or
    $report.attackAnimations -lt 1){throw 'Map1 actual Player qualification is incomplete. No distributable generated.'}
@@ -33,10 +32,10 @@ if(-not(Test-Path -LiteralPath $csc)){throw 'Installed .NET Framework C# compile
 $executable=Join-Path $output 'Dreynox-Mmorpg-Map1-Play.exe'
 if(Test-Path -LiteralPath $executable){throw 'Refusing to replace an existing distributable.'}
 $core=Join-Path $PSScriptRoot 'VerifiedPlayerArchive.cs'
+$metadata=Join-Path $PSScriptRoot 'PlayerZipMetadata.cs'
 $launcher=Join-Path $PSScriptRoot 'PortablePlayerLauncher.cs'
-& $csc /nologo /target:winexe /platform:x64 /langversion:5 /optimize+ "/out:$executable" "/resource:$zip,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity $core $launcher
+& $csc /nologo /target:winexe /platform:x64 /langversion:5 /optimize+ "/out:$executable" "/resource:$zip,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity $core $metadata $launcher
 if($LASTEXITCODE -ne 0){throw 'Portable executable compilation failed.'}
-# Exercise extraction and every embedded file hash without launching a second Player.
 $p=Start-Process -FilePath $executable -ArgumentList '--verify-only' -PassThru
 if(-not $p.WaitForExit(300000)){Stop-Process -Id $p.Id -Force;throw 'Portable executable verification timeout.'}
 $p.Refresh()
