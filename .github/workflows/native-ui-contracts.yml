@@ -2,7 +2,7 @@ name: Native UI pixel and input contracts
 on:
   push:
     branches: ['work/unity-client-parity-v0.4.0']
-    paths: ['Assets/DreynoxMMORPG/Runtime/UI/**', 'Assets/DreynoxMMORPG/Runtime/Gameplay/**', 'Assets/DreynoxMMORPG/Runtime/ParityCore/**', 'Tools/NativeUiHarness/**', '.github/workflows/native-ui-contracts.yml']
+    paths: ['Assets/DreynoxMMORPG/Runtime/UI/**', 'Assets/DreynoxMMORPG/Runtime/NativeContent/**', 'Tools/NativeContentHarness/**', 'Assets/DreynoxMMORPG/Runtime/Gameplay/**', 'Assets/DreynoxMMORPG/Runtime/ParityCore/**', 'Tools/NativeUiHarness/**', '.github/workflows/native-ui-contracts.yml']
 permissions: {contents: read, actions: read}
 jobs:
   contracts:
@@ -15,6 +15,7 @@ jobs:
         with: {dotnet-version: '8.0.x'}
       - run: python Tools/validate_project.py
       - run: dotnet run --project Tools/NativeUiHarness/NativeUiHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/NativeContentHarness/NativeContentHarness.csproj --configuration Release
       - run: dotnet run --project Tools/CombatHarness/CombatHarness.csproj --configuration Release
       - run: dotnet run --project Tools/QuestHarness/QuestHarness.csproj --configuration Release
       - name: Verify immutable reference-assembly provenance
