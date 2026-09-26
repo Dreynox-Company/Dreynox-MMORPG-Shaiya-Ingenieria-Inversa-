@@ -1,0 +1,24 @@
+{
+  "run": 36200927531,
+  "commit": "6c26d2b8f91c11c7f0f59ddd4afa7faeded3b18c",
+  "playerArtifact": 10892886719,
+  "playerZipSha256": "01f4efeff79ed1ca6607b9ae3f1dbcb2b0307548c9343e849abcafc0730cd6a6",
+  "serializedSceneSha256": "d1014a744a9647b4a5c197c4840d5a65b172abc3caa26972f4ce73a77b6e5cd0",
+  "sceneBytes": 123544160,
+  "terrainObjects": 1,
+  "terrainColliders": 0,
+  "characterControllers": 1,
+  "meshColliders": 1846,
+  "terrainObject": {
+    "pathId": 615,
+    "name": "Map001_Terrain",
+    "components": [
+      {"classId": 4, "pathId": 18385},
+      {"classId": 218, "pathId": 59691}
+    ]
+  },
+  "physicsModuleMissing": "com.unity.modules.terrainphysics",
+  "sourceGroundFailure": "No walkable support near fox spawn 1000126",
+  "nativeAssetsModified": false,
+  "scope": "Read-only inspection of actual compiled UnityFS/SerializedFile object table, not a new execution"
+}

@@ -23,7 +23,8 @@ namespace Dreynox.Mmorpg.Parity
             public string scope="map1-local-integration-not-native-equivalence", failure="";
             public bool passed, originalEthanOpened, questAccepted, questDelivered, inputIsScripted=true, combatRelocated=true;
             public int mapId=1, questId=3400, npcPositions, monsterInstances, kills, attackAnimations;
-            public bool starterWeaponEquipped;
+            public bool starterWeaponEquipped, terrainCollisionVerified;
+            public int terrainProbes;
             public string starterWeaponResource="";
             public int starterWeaponVertices;
             public long rewardGold, rewardExperience;
@@ -73,6 +74,21 @@ namespace Dreynox.Mmorpg.Parity
             if(actor==null||combat==null||journal==null||!journal.Ready||npcInteraction==null||monsters==null||npcs==null||camera==null)
             {Finish("Required real world/UI/quest components missing or journal initialization failed.");yield break;}
             evidence.entry=actor.transform.position;evidence.npcPositions=npcs.LogicalSpawnCount;evidence.monsterInstances=monsters.LogicalSpawnCount;
+            var terrain=Terrain.activeTerrain;
+            WorldTerrainCollision.Require(terrain);
+            Physics.SyncTransforms();
+            // Test real terrain under field spawns, not the city SMOD floor.
+            foreach(var fox in monsters.Spawns.Where(s=>s.mobId==2011&&s.prefab!=null))
+            {
+                if(!WorldTerrainCollision.TryProbe(terrain,fox.position,out RaycastHit support))
+                {Finish("Original fox field has no terrain collider support at "+fox.targetId+" / "+fox.position);yield break;}
+                float expected=terrain.SampleHeight(fox.position)+terrain.transform.position.y;
+                if(Mathf.Abs(support.point.y-expected)>0.25f)
+                {Finish("Terrain collision/render height mismatch at "+fox.targetId);yield break;}
+                evidence.terrainProbes++;
+            }
+            if(evidence.terrainProbes==0){Finish("No authored fox areas to verify terrain support.");yield break;}
+            evidence.terrainCollisionVerified=true;
             if(Mathf.Abs(evidence.entry.x-580)>1||Mathf.Abs(evidence.entry.z-1760)>1||Mathf.Abs(evidence.entry.y-78)>3||evidence.npcPositions!=307||evidence.monsterInstances!=1186)
             {Finish("The native starting map or authored entry is not the expected Map1.");yield break;}
             if(!actor.GetComponentsInChildren<SkinnedMeshRenderer>().Any(r=>r.sharedMesh!=null))
@@ -110,8 +126,12 @@ namespace Dreynox.Mmorpg.Parity
             var npc=ethan.activeInstance!=null?ethan.activeInstance.GetComponent<LegacyNpcRuntimeDescriptor>():null;
             evidence.originalEthanOpened=npc!=null&&npcInteraction.TryTalk(npc);
             if(!evidence.originalEthanOpened){Finish("Original Ethan cannot be opened through the world interaction adapter.");yield break;}
+            var panel=FindFirstObjectByType<QuestWorldPanel>();
+            if(panel==null||!panel.SelectVisibleQuest(3400))
+            {Finish("Original quest cannot be selected in the displayed NPC panel.");yield break;}
             yield return Capture("03-original-npc-dialogue");
-            evidence.questAccepted=journal.Journal.Accept(3400,npc.ServiceKey,journal.Player,out string reason);
+            evidence.questAccepted=panel.SubmitSelectedQuest();
+            string reason=panel.ActionFailure;
             if(!evidence.questAccepted){Finish("Authored quest rejected: "+reason);yield break;}
             npcInteraction.CloseDialogue();evidence.steps.Add("NPC 7/1081 opened; quest 3400 accepted through real catalog.");
             var targets=monsters.Spawns.Where(s=>s.mobId==2011&&s.prefab!=null&&s.maxHealth>0)
@@ -119,7 +139,7 @@ namespace Dreynox.Mmorpg.Parity
             if(targets.Length!=5){Finish("Fewer than five authored fox spawns exist.");yield break;}
             foreach(var spawn in targets)
             {
-                if(!PlaceNear(spawn.position)){Finish("No walkable support near fox spawn "+spawn.targetId);yield break;}
+                if(!PlaceNear(spawn.position)){Finish("No walkable support near fox spawn "+spawn.targetId+" at "+spawn.position+": "+lastPlacementFailure);yield break;}
                 monsters.EvaluateNow();yield return new WaitForSeconds(.8f);
                 var target=spawn.activeInstance!=null?spawn.activeInstance.GetComponent<ShaiyaCombatTarget>():null;
                 if(target==null||!combat.Select(target)){Finish("Original fox not active/selectable.");yield break;}
@@ -145,7 +165,8 @@ namespace Dreynox.Mmorpg.Parity
             npc=ethan.activeInstance!=null?ethan.activeInstance.GetComponent<LegacyNpcRuntimeDescriptor>():null;
             if(npc==null||!npcInteraction.TryTalk(npc)){Finish("Cannot return to original quest NPC.");yield break;}
             long beforeGold=journal.Journal.Gold,beforeXp=journal.Journal.Experience;
-            evidence.questDelivered=journal.Journal.Deliver(3400,npc.ServiceKey,0,out reason);
+            if(!panel.SelectVisibleQuest(3400)){Finish("Ready quest is not selectable in the original NPC dialog.");yield break;}
+            evidence.questDelivered=panel.SubmitSelectedQuest();reason=panel.ActionFailure;
             evidence.rewardGold=journal.Journal.Gold-beforeGold;evidence.rewardExperience=journal.Journal.Experience-beforeXp;
             yield return Capture("05-quest-reward");
             if(!evidence.questDelivered||evidence.rewardGold!=3000||evidence.rewardExperience!=5)
@@ -154,12 +175,14 @@ namespace Dreynox.Mmorpg.Parity
             {Finish("Quest reward could be duplicated.");yield break;}
             Finish(null);
         }
+        private string lastPlacementFailure="";
         private bool PlaceNear(Vector3 point)
         {
             actor.SetExternalMovement(Vector2.zero,false);
             var body=actor.GetComponent<CharacterController>();
             Vector3[] offsets={Vector3.back,Vector3.right,Vector3.forward,Vector3.left};
-            foreach(var offset in offsets)if(WorldGroundPlacement.TryPlace(actor,point+offset*2.2f,out _,horizontalRadius:0.5f,verticalTolerance:8f))return true;
+            foreach(var offset in offsets)
+                if(WorldGroundPlacement.TryPlace(actor,point+offset*2.2f,out lastPlacementFailure,horizontalRadius:0.5f,verticalTolerance:8f))return true;
             return false;
         }
         private IEnumerator Capture(string name)
