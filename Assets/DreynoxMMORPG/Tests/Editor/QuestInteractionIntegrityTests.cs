@@ -120,5 +120,47 @@ namespace Dreynox.Mmorpg.Tests.Editor
             panel.enabled=false;Call(panel,"OnDisable");
             Assert.IsNull(hud.SelectedNpc);Assert.IsFalse(WorldInputGate.IsBlocked);
         }
+        private void OpenActiveJournal()
+        {
+            Assert.IsTrue(panel.SubmitSelectedQuest(),panel.ActionFailure);
+            Call(panel,"ToggleJournal");Assert.IsTrue(panel.SelectVisibleQuest(3400));
+        }
+        [Test]
+        public void AbandonmentRequiresConfirmationAndNeverGrantsAReward()
+        {
+            OpenActiveJournal();
+            Assert.IsFalse(panel.ConfirmAbandon());Assert.IsTrue(journal.Entries.ContainsKey(3400));
+            Assert.IsTrue(panel.RequestAbandonSelectedQuest());Assert.IsTrue(journal.Entries.ContainsKey(3400));
+            panel.CancelAbandon();Assert.IsFalse(panel.ConfirmAbandon());
+            Assert.IsTrue(panel.RequestAbandonSelectedQuest());Assert.IsTrue(panel.ConfirmAbandon(),panel.ActionFailure);
+            Assert.IsFalse(journal.Entries.ContainsKey(3400));Assert.AreEqual(0,journal.Gold);Assert.AreEqual(0,journal.Experience);
+            Assert.IsFalse(panel.ConfirmAbandon());
+        }
+        [Test]
+        public void FailedAbandonSaveLeavesTheQuestAndAllowsExplicitRetry()
+        {
+            OpenActiveJournal();Assert.IsTrue(panel.RequestAbandonSelectedQuest());
+            journal.Persist=_=>false;
+            Assert.IsFalse(panel.ConfirmAbandon());Assert.IsTrue(journal.Entries.ContainsKey(3400));
+            journal.Persist=_=>true;
+            Assert.IsTrue(panel.ConfirmAbandon(),panel.ActionFailure);Assert.IsFalse(journal.Entries.ContainsKey(3400));
+        }
+        [Test]
+        public void ClosingTheJournalInvalidatesAnOldAbandonConfirmation()
+        {
+            OpenActiveJournal();Assert.IsTrue(panel.RequestAbandonSelectedQuest());
+            Call(panel,"CloseAll");Assert.IsFalse(panel.ConfirmAbandon());Assert.IsTrue(journal.Entries.ContainsKey(3400));
+        }
+        [Test]
+        public void AbandonCannotOperateFromNpcDialogOrOnRewardedQuest()
+        {
+            Assert.IsFalse(panel.RequestAbandonSelectedQuest());
+            OpenActiveJournal();
+            for(int i=0;i<5;i++)journal.CreditMobDeath(i,2011,out _);
+            Assert.IsTrue(panel.RequestAbandonSelectedQuest());
+            Assert.IsTrue(journal.Deliver(3400,npc.ServiceKey,0,out _));
+            Assert.IsFalse(panel.ConfirmAbandon());Assert.AreEqual(3000,journal.Gold);
+            Assert.AreEqual(JournalStage.Rewarded,journal.Entries[3400].stage);
+        }
     }
 }

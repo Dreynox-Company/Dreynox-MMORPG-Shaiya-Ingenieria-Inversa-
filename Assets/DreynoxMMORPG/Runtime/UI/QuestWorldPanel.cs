@@ -19,7 +19,10 @@ namespace Dreynox.Mmorpg.UI
         [SerializeField] private Sprite questBackground;
         private RectTransform canvasRoot, modal, listRoot;
         private Text tracker, modalTitle, narrative, rewardText;
-        private Button action, rewardCycle;
+        private Button action, rewardCycle, abandon;
+        private RectTransform abandonConfirmation;
+        private Text abandonPrompt;
+        private int pendingAbandon=-1;
         private Font font;
         private LegacyNpcRuntimeDescriptor npc;
         private int selectedQuest=-1, rewardIndex;
@@ -59,7 +62,8 @@ namespace Dreynox.Mmorpg.UI
         {
             if(canvasRoot==null)return;
             if(Input.GetKeyDown(KeyCode.L))ToggleJournal();
-            if(Input.GetKeyDown(KeyCode.Escape))CloseAll();
+            if(Input.GetKeyDown(KeyCode.Escape))
+            { if(pendingAbandon>=0)CancelAbandon();else CloseAll(); }
         }
         private string Marker(int npcKey)
         {
@@ -67,7 +71,7 @@ namespace Dreynox.Mmorpg.UI
             bool available=false;
             foreach(int id in ids)
             {
-                if(quests.Journal.Entries.TryGetValue(id,out var e)&&e.stage==JournalStage.Ready&&quests.Journal.TryGet(id,out var q)&&q.EndNpcKey==npcKey)return " ?";
+                if(quests.Journal.Entries.TryGetValue(id,out var e)&&e.stage==JournalStage.Ready&&quests.Journal.TryGet(e.id,out var q)&&q.EndNpcKey==npcKey)return " ?";
                 if(quests.Journal.Eligibility(id,npcKey,quests.Player).Length==0)available=true;
             }
             return available?" !":"";
@@ -85,7 +89,6 @@ namespace Dreynox.Mmorpg.UI
             listRoot=Scroll(modal,new Vector2(14,-60),new Vector2(280,465));
             var page=Panel("Original quest parchment",modal,new Vector2(0,1),new Vector2(308,-56),new Vector2(256,512));
             var image=page.GetComponent<Image>();image.sprite=questBackground;image.color=Color.white;
-            // Source interior alpha218 composites against the opaque modal, not world labels.
             var story=Scroll(page,new Vector2(28,-40),new Vector2(200,278));
             narrative=Label(story,"",14);ConfigurePaperText(narrative);
             var rewards=Scroll(page,new Vector2(28,-352),new Vector2(200,84));
@@ -95,6 +98,18 @@ namespace Dreynox.Mmorpg.UI
             rewardCycle=Button(modal,"Elegir recompensa →",CycleReward);
             Box(rewardCycle.GetComponent<RectTransform>(),new Vector2(0,0),new Vector2(20,52),new Vector2(266,34));
             rewardCycle.gameObject.SetActive(false);
+            abandon=Button(modal,"Abandonar misión",()=>{RequestAbandonSelectedQuest();});
+            Box(abandon.GetComponent<RectTransform>(),new Vector2(0,0),new Vector2(20,52),new Vector2(266,34));
+            abandon.gameObject.SetActive(false);
+            abandonConfirmation=Panel("Confirmar abandono",modal,new Vector2(0,1),Vector2.zero,new Vector2(580,592));
+            abandonConfirmation.GetComponent<Image>().color=new Color(.04f,.035f,.025f,.99f);
+            abandonPrompt=Label(abandonConfirmation,"",18);abandonPrompt.alignment=TextAnchor.MiddleCenter;
+            Box(abandonPrompt.rectTransform,new Vector2(0,1),new Vector2(36,-135),new Vector2(508,170));
+            var keep=Button(abandonConfirmation,"Conservar misión",CancelAbandon);
+            Box(keep.GetComponent<RectTransform>(),new Vector2(0,1),new Vector2(34,-332),new Vector2(244,42));
+            var confirm=Button(abandonConfirmation,"Confirmar abandono",()=>{ConfirmAbandon();});
+            Box(confirm.GetComponent<RectTransform>(),new Vector2(0,1),new Vector2(302,-332),new Vector2(244,42));
+            abandonConfirmation.gameObject.SetActive(false);
             modal.gameObject.SetActive(false);
         }
         private static void ConfigurePaperText(Text value)
@@ -105,6 +120,7 @@ namespace Dreynox.Mmorpg.UI
         }
         private void NpcOpened(LegacyNpcRuntimeDescriptor value)
         {
+            CancelAbandon();abandon.gameObject.SetActive(false);
             npc=value;journalView=false;selectedQuest=-1;modal.gameObject.SetActive(true);modalTitle.text=value.DisplayName;
             RefreshOptions();narrative.text=Format(value.WelcomeMessage);action.interactable=false;rewardText.text="";
             action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);
@@ -112,6 +128,7 @@ namespace Dreynox.Mmorpg.UI
         private void ToggleJournal()
         {
             if(journalView&&modal.gameObject.activeSelf){CloseAll();return;}
+            CancelAbandon();abandon.gameObject.SetActive(false);
             hud.CloseDialogue();npc=null;journalView=true;selectedQuest=-1;WorldInputGate.Set(this,true);
             modal.gameObject.SetActive(true);modalTitle.text="Diario de misiones";RefreshOptions();
             narrative.text="Selecciona una misión activa.\nLas condiciones no integradas se muestran, pero no se completan artificialmente.";
@@ -160,9 +177,11 @@ namespace Dreynox.Mmorpg.UI
         private void SelectQuest(int id)
         {
             if(!quests.Ready||!quests.Journal.TryGet(id,out var q))return;
+            if(selectedQuest!=id)CancelAbandon();
             selectedQuest=id;rewardIndex=Mathf.Clamp(rewardIndex,0,Mathf.Max(0,Choices(q)-1));
             quests.Journal.Entries.TryGetValue(id,out var entry);
             if(entry!=null&&entry.stage==JournalStage.Rewarded){ShowCompletion(q,rewardIndex);return;}
+            abandon.gameObject.SetActive(journalView&&entry!=null&&entry.stage!=JournalStage.Rewarded);
             action.gameObject.SetActive(!journalView);
             rewardCycle.gameObject.SetActive(!journalView&&Choices(q)>1);
             narrative.text=Format(entry!=null?q.reminder:q.initial)+"\n\n"+Format(q.window)+"\n"+Progress(q,entry);
@@ -201,10 +220,44 @@ namespace Dreynox.Mmorpg.UI
         }
         private void ShowCompletion(LegacyQuestDefinition quest,int index)
         {
+            CancelAbandon();abandon.gameObject.SetActive(false);
             var reward=quest.rewards[Mathf.Clamp(index,0,quest.rewards.Length-1)];
             narrative.text=Format(reward.completion);
             rewardText.text="Misión completada.\nRecompensa guardada: "+reward.experience+" EXP · "+reward.money+" oro";
             action.interactable=false;action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);
+        }
+        public bool RequestAbandonSelectedQuest()
+        {
+            ActionFailure="Selecciona una misión activa en el diario.";
+            if(!journalView||modal==null||!modal.gameObject.activeInHierarchy||!quests.Ready||
+                !visibleQuestIds.Contains(selectedQuest)||!quests.Journal.Entries.TryGetValue(selectedQuest,out var progress)||
+                progress.stage==JournalStage.Rewarded||!quests.Journal.TryGet(selectedQuest,out var quest))return false;
+            pendingAbandon=selectedQuest;
+            abandonPrompt.text="¿Abandonar «"+quest.title+"»?\n\nSe perderá el progreso de esta misión. No se entregará ninguna recompensa.";
+            abandonConfirmation.gameObject.SetActive(true);abandonConfirmation.SetAsLastSibling();
+            ActionFailure="";return true;
+        }
+        public void CancelAbandon()
+        {
+            pendingAbandon=-1;
+            if(abandonConfirmation!=null)abandonConfirmation.gameObject.SetActive(false);
+        }
+        public bool ConfirmAbandon()
+        {
+            ActionFailure="La confirmación ya no corresponde a una misión activa.";
+            if(pendingAbandon<0||pendingAbandon!=selectedQuest||!journalView||!quests.Ready||
+                abandonConfirmation==null||!abandonConfirmation.gameObject.activeInHierarchy||
+                !quests.Journal.Entries.TryGetValue(pendingAbandon,out var progress)||progress.stage==JournalStage.Rewarded)
+            {CancelAbandon();return false;}
+            int id=pendingAbandon;
+            // Local durability, not a forged native server response.
+            if(!quests.Journal.Abandon(id,out string reason))
+            {ActionFailure=reason;ShowHint(reason);return false;}
+            CancelAbandon();selectedQuest=-1;RefreshOptions();
+            action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);abandon.gameObject.SetActive(false);
+            narrative.text="Misión abandonada. Puedes consultar al NPC para volver a aceptarla cuando cumplas sus requisitos.";
+            rewardText.text="No se entregó ninguna recompensa.";
+            ActionFailure="";ShowHint("Misión abandonada y guardada.");return true;
         }
         private void CycleReward()
         {
@@ -228,7 +281,7 @@ namespace Dreynox.Mmorpg.UI
         }
         private void CloseAll(){if(hud!=null)hud.CloseDialogue();CloseDialog();}
         private void CloseDialog()
-        {if(modal!=null)modal.gameObject.SetActive(false);npc=null;journalView=false;WorldInputGate.Set(this,false);}
+        {CancelAbandon();if(modal!=null)modal.gameObject.SetActive(false);npc=null;journalView=false;WorldInputGate.Set(this,false);}
         private void ShowHint(string message){if(hud!=null)hud.ShowMessage(message);}
         private void OnDisable(){CloseAll();}
         private void OnDestroy()
