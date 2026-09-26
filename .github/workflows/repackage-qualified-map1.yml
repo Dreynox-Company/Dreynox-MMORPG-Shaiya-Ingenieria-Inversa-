@@ -1,0 +1,111 @@
+name: Repackage qualified Map1 Player
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['.github/workflows/repackage-qualified-map1.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  executable:
+    if: github.repository == 'Dreynox-Company/Dreynox-MMORPG-Shaiya-Ingenieria-Inversa-'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run: {shell: powershell}
+    env:
+      PLAYER_RUN: '36210070334'
+      PLAYER_COMMIT: '0ead9ff71b8c535c4934a9aeca3cafb2349fdf50'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Require exact trusted source run and its immutable artifacts
+        id: provenance
+        timeout-minutes: 12
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $headers=@{Authorization=('Bearer '+$env:GH_TOKEN);Accept='application/vnd.github+json';'X-GitHub-Api-Version'='2022-11-28'}
+          $base='https://api.github.com/repos/'+$env:GITHUB_REPOSITORY
+          $run=Invoke-RestMethod -Uri ($base+'/actions/runs/'+$env:PLAYER_RUN) -Headers $headers
+          if($run.id -ne [long]$env:PLAYER_RUN -or $run.head_sha -ne $env:PLAYER_COMMIT -or
+             $run.head_branch -ne 'work/unity-client-parity-v0.4.0' -or $run.event -ne 'push' -or
+             $run.path -ne '.github/workflows/starting-world-playable.yml' -or $run.repository.id -ne 1382667089){
+              throw 'Source workflow provenance does not match the reviewed Player.'
+          }
+          # The original run already passed gameplay, but its older wrapper failed.
+          # Its large Player upload may still be completing; wait a bounded period.
+          $player=@();$evidence=@()
+          for($attempt=0;$attempt -lt 20;$attempt++){
+              $listing=Invoke-RestMethod -Uri ($base+'/actions/runs/'+$env:PLAYER_RUN+'/artifacts?per_page=100') -Headers $headers
+              if($listing.total_count -gt 100){throw 'Unexpected artifact count; no ambiguous selection allowed.'}
+              $player=@($listing.artifacts | Where-Object {$_.name -eq 'Dreynox-Mmorpg-Map1-Windows-x64-21'})
+              $evidence=@($listing.artifacts | Where-Object {$_.id -eq 10896847214 -and $_.name -eq 'Dreynox-StartingWorld-Evidence-21'})
+              if($player.Count -eq 1 -and $evidence.Count -eq 1){break}
+              if($player.Count -gt 1 -or $evidence.Count -gt 1){throw 'Ambiguous artifacts in reviewed run.'}
+              Write-Host 'Waiting for the immutable compiled Player artifact to finish uploading.'
+              Start-Sleep -Seconds 30
+          }
+          if($player.Count -ne 1 -or $evidence.Count -ne 1){throw 'Qualified Player/evidence artifact unavailable; no replacement build selected.'}
+          foreach($artifact in @($player[0],$evidence[0])){
+              if($artifact.expired -or $artifact.workflow_run.id -ne [long]$env:PLAYER_RUN -or
+                 $artifact.workflow_run.head_sha -ne $env:PLAYER_COMMIT -or $artifact.size_in_bytes -le 0){throw 'Artifact provenance mismatch.'}
+          }
+          if($evidence[0].digest -ne 'sha256:0ac0752eacd39079c4318757c33416fa978a5f40dc908c7ebcb13cae1e90620c'){
+              throw 'Reviewed gameplay evidence digest changed.'
+          }
+          "player_id=$($player[0].id)" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "evidence_id=$($evidence[0].id)" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          New-Item -ItemType Directory -Path Deliveries -Force | Out-Null
+          @{
+              playerRun=$env:PLAYER_RUN;playerCommit=$env:PLAYER_COMMIT;
+              playerArtifact=$player[0].id;playerArtifactDigest=$player[0].digest;
+              evidenceArtifact=$evidence[0].id;evidenceArtifactDigest=$evidence[0].digest;
+              packagerCommit=$env:GITHUB_SHA
+          } | ConvertTo-Json | Set-Content -LiteralPath Deliveries/input-provenance.json -Encoding UTF8
+      - name: Download exact compiled Player without rebuilding gameplay
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ steps.provenance.outputs.player_id }}
+          run-id: ${{ env.PLAYER_RUN }}
+          github-token: ${{ github.token }}
+          path: incoming/player
+          merge-multiple: true
+      - name: Download reviewed evidence from the same immutable run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ steps.provenance.outputs.evidence_id }}
+          run-id: ${{ env.PLAYER_RUN }}
+          github-token: ${{ github.token }}
+          path: incoming/evidence
+          merge-multiple: true
+      - name: Verify scene source gameplay evidence and package one executable
+        timeout-minutes: 12
+        run: |
+          $ErrorActionPreference='Stop'
+          ./Tools/Delivery/Repackage-QualifiedPlayer.ps1 -PlayerDirectory 'incoming/player' -EvidenceDirectory 'incoming/evidence' -PlayerCommit $env:PLAYER_COMMIT -QualificationRunId $env:PLAYER_RUN -OutputDirectory 'Deliveries/Map1'
+          Copy-Item -LiteralPath Deliveries/input-provenance.json -Destination Deliveries/Map1/input-provenance.json
+      - name: Publish actual ready-to-run local Map1 executable
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-Map1-ReadyToRun-Qualified21
+          path: |
+            Deliveries/Map1/Dreynox-Mmorpg-Map1-Play.exe
+            Deliveries/Map1/portable-manifest.json
+            Deliveries/Map1/input-provenance.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Record precise delivery scope
+        if: always()
+        run: |
+          @(
+            '## Immutable qualified Map1 repackaging'
+            "Player source: $env:PLAYER_COMMIT"
+            "Gameplay qualification: $env:PLAYER_RUN"
+            "Packager source: $env:GITHUB_SHA"
+            'Gameplay binaries/content are not edited or recompiled by this workflow.'
+            'This Player includes original default body, native radar and the local five-fox mission loop.'
+            'Later quest-paper, abandonment and baked-pose checks are NOT in this Player.'
+            'This is not full native multiplayer, all-map, guild or trade parity.'
+          ) | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Append -Encoding UTF8
