@@ -1,0 +1,27 @@
+name: Local DATA regression
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['Assets/**', 'Tools/**', '.github/workflows/local-data-tests.yml']
+  pull_request:
+    paths: ['Assets/**', 'Tools/**', '.github/workflows/local-data-tests.yml']
+permissions:
+  contents: read
+jobs:
+  data-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: '8.0.x'
+      - name: Validate source layout
+        run: python Tools/validate_project.py
+      - name: DDS and read-only corpus IO
+        run: dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
+      - name: Denied-path discovery regression
+        shell: pwsh
+        run: ./Tools/CI/Test-CharacterParityDiscovery.ps1

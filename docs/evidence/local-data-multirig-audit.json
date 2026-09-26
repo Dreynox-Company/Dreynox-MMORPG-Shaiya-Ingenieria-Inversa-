@@ -1,0 +1,106 @@
+{
+  "baseline": "ps0032",
+  "gameExeSha256": "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d",
+  "sourceCommit": "e1c8b5178ddb42a69bb7949124f4765acffa80bf",
+  "assetPathsVerified": 400,
+  "meshesInspected": 224,
+  "meshesWithInactiveTailMatrices": [
+    {
+      "path": "DATA_Español/character/human/3dc/co_humf_upper003.3dc",
+      "rig": "humf",
+      "meshBones": 40,
+      "aniBones": 36,
+      "vertices": 856,
+      "activeBoneMax": 32,
+      "compatible": true,
+      "sha256": "effe288293c26377d7e9c0a349480145b713890bad077ad57229fea8d94abaac"
+    },
+    {
+      "path": "DATA_Español/character/human/3dc/co_humf_lower003.3dc",
+      "rig": "humf",
+      "meshBones": 72,
+      "aniBones": 36,
+      "vertices": 388,
+      "activeBoneMax": 34,
+      "compatible": true,
+      "sha256": "5cb6d175140c7af2890b70d70a5bfe841a9ab8489a105e4d75798ebb662835f7"
+    },
+    {
+      "path": "DATA_Español/character/human/3dc/co_humf_hand003.3dc",
+      "rig": "humf",
+      "meshBones": 72,
+      "aniBones": 36,
+      "vertices": 270,
+      "activeBoneMax": 25,
+      "compatible": true,
+      "sha256": "010b2da8c4c1582c2205e0a2a66f327f1f97fb63f798fa88115256962169a652"
+    },
+    {
+      "path": "DATA_Español/character/human/3dc/co_humf_foot003.3dc",
+      "rig": "humf",
+      "meshBones": 72,
+      "aniBones": 36,
+      "vertices": 280,
+      "activeBoneMax": 35,
+      "compatible": true,
+      "sha256": "33d103aeaa748fb92b8fce1a2c49b0724247f9cfbb0b6cbd948695eb00d72d9b"
+    },
+    {
+      "path": "DATA_Español/character/human/3dc/humf_hair001.3dc",
+      "rig": "humf",
+      "meshBones": 72,
+      "aniBones": 36,
+      "vertices": 731,
+      "activeBoneMax": 6,
+      "compatible": true,
+      "sha256": "5ec11e3eb64f0f846580e2b5e4140c122c6835b9159667a5c70ee3e5c3076f3c"
+    },
+    {
+      "path": "DATA_Español/character/human/3dc/humf_hair002.3dc",
+      "rig": "humf",
+      "meshBones": 72,
+      "aniBones": 36,
+      "vertices": 709,
+      "activeBoneMax": 6,
+      "compatible": true,
+      "sha256": "73e6ea93ed66e0ed0e6d0ff4e3540d5cf95263ccb482b8faaba6406ca47ebe37"
+    },
+    {
+      "path": "DATA_Español/character/human/3dc/humf_hair003.3dc",
+      "rig": "humf",
+      "meshBones": 72,
+      "aniBones": 36,
+      "vertices": 460,
+      "activeBoneMax": 6,
+      "compatible": true,
+      "sha256": "2dd405b0bd69a29d67d7163884efbf6be4bba60238fe59d442a790a2c978d210"
+    },
+    {
+      "path": "DATA_Español/character/human/3dc/humf_hair004.3dc",
+      "rig": "humf",
+      "meshBones": 72,
+      "aniBones": 36,
+      "vertices": 263,
+      "activeBoneMax": 6,
+      "compatible": true,
+      "sha256": "30fccd1ab3ccb9c82e97c857ed1a22fb0eb2c803cbee3be77caf2caddf2826e5"
+    },
+    {
+      "path": "DATA_Español/character/human/3dc/humf_hair005.3dc",
+      "rig": "humf",
+      "meshBones": 72,
+      "aniBones": 36,
+      "vertices": 591,
+      "activeBoneMax": 6,
+      "compatible": true,
+      "sha256": "9182e28459a8d2c133554be56f9d176f94de2193d847c220fc962bf003f67e57"
+    }
+  ],
+  "weightedIndicesOutsideAni": 0,
+  "ddsFormats": {
+    "DXT1": 24,
+    "DXT3": 140,
+    "DXT5": 60
+  },
+  "validation": "Headers and weighted indices inspected from supplied bytes; visual equivalence not yet measured."
+}

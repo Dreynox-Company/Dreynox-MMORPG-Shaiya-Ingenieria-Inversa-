@@ -1,6 +1,7 @@
 from pathlib import Path
 import hashlib
 import json
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +16,16 @@ required = [
     'Assets/DreynoxMMORPG/Runtime/Gameplay/Client/ShaiyaClientActor.cs',
     'Assets/DreynoxMMORPG/Runtime/Gameplay/Animation/SemanticAnimationPlayer.cs',
     'Assets/DreynoxMMORPG/Editor/Parity/VisualParityComparatorWindow.cs',
+    'Assets/DreynoxMMORPG/Runtime/LocalData/Legacy3dcParser.cs',
+    'Assets/DreynoxMMORPG/Runtime/LocalData/LegacyAniParser.cs',
+    'Assets/DreynoxMMORPG/Editor/LegacyFormats/LegacyCharacterImporter.cs',
+    'Assets/DreynoxMMORPG/Editor/LegacyFormats/LegacyWldTerrainParser.cs',
+    'Assets/DreynoxMMORPG/Editor/LegacyFormats/LegacyWorldTerrainImporter.cs',
+    'Assets/DreynoxMMORPG/Editor/LegacyFormats/LegacySmodParser.cs',
+    'Assets/DreynoxMMORPG/Editor/LegacyFormats/LegacySmodPrefabImporter.cs',
+    'Assets/DreynoxMMORPG/Tests/Editor/LegacySmodParserTests.cs',
+    'Assets/DreynoxMMORPG/Runtime/ParityCore/LegacyTerrainHeightCore.cs',
+    'Assets/DreynoxMMORPG/Tests/Editor/LegacyFormatParserTests.cs',
     'Packages/manifest.json',
     'ProjectSettings/ProjectVersion.txt',
     'README.md',
@@ -68,8 +79,30 @@ for source in ROOT.rglob('*.cs'):
     if 'IMPLEMENT HERE' in upper or '// TODO:' in upper:
         errors.append('placeholder marker: ' + str(source.relative_to(ROOT)))
 
+    # A previous folder migration accidentally committed literal "\\n"
+    # tokens between C# statements. They are not line breaks and make the
+    # compilation fail. Catch that specific outside-string shape early.
+    if re.search(r'[;)}]\\n\s+[A-Za-z_]', text):
+        errors.append(
+            'literal escaped newline between C# statements: ' +
+            str(source.relative_to(ROOT))
+        )
+
+    # A lone backslash inside a C# character literal is invalid. Construct
+    # the token explicitly to avoid escaping ambiguity in this validator.
+    invalid_backslash_char = "'" + chr(92) + "'"
+    if invalid_backslash_char in text:
+        errors.append(
+            'invalid C# backslash character literal: ' +
+            str(source.relative_to(ROOT))
+        )
+
+for source in (ROOT / 'Assets/DreynoxMMORPG/Runtime/LocalData').glob('*.cs'):
+    if re.search(r'^\s*using\s+UnityEditor(?:\.|;)', source.read_text(encoding='utf-8'), re.MULTILINE):
+        errors.append('UnityEditor dependency in Player loader: ' + str(source.relative_to(ROOT)))
+
 manifest = []
-for file in sorted(x for x in ROOT.rglob('*') if x.is_file() and '.git' not in x.parts):
+for file in sorted(x for x in ROOT.rglob('*') if x.is_file() and '.git' not in x.parts and x.name != 'SOURCE_SHA256.txt'):
     digest = hashlib.sha256(file.read_bytes()).hexdigest()
     manifest.append(f'{digest}  {file.relative_to(ROOT).as_posix()}')
 

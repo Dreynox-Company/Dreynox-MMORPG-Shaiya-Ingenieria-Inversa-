@@ -1,0 +1,90 @@
+name: Native Map1 playable qualification
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['.github/workflows/native-start-qualification.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with: {dotnet-version: '8.0.x'}
+      - run: python Tools/validate_project.py
+      - run: dotnet run --project Tools/ParityHarness/ParityHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/CombatHarness/CombatHarness.csproj --configuration Release
+  windows:
+    needs: source
+    if: github.event_name == 'push' && github.repository == 'Dreynox-Company/Dreynox-MMORPG-Shaiya-Ingenieria-Inversa-'
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 100
+    concurrency:
+      group: unity-native-start-${{ github.repository }}-${{ github.ref }}
+      cancel-in-progress: false
+    defaults:
+      run: {shell: powershell}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {lfs: true, clean: false, persist-credentials: false}
+      - name: Clean CI workspace only; leave user DATA untouched
+        run: |
+          git reset --hard HEAD
+          git clean -ffdx -e Library/
+          if($LASTEXITCODE -ne 0){throw 'CI workspace cleanup failed.'}
+      - name: Verify authorized DATA anchors
+        id: corpus
+        run: ./Tools/CI/Prepare-ExtractedCorpus.ps1
+      - name: Require real Map1 inputs
+        run: |
+          if(-not $env:DREYNOX_CORPUS_ROOT){throw 'No extracted corpus root.'}
+          if(-not(Test-Path (Join-Path $env:DREYNOX_CORPUS_ROOT 'world\1.wld'))){throw 'Map1 WLD missing.'}
+          if(-not(Test-Path (Join-Path $env:DREYNOX_CORPUS_ROOT 'world\1.svmap'))){throw 'Map1 SVMAP missing.'}
+      - name: Unity Personal preflight
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task preflight
+      - name: Unity EditMode with original corpus
+        id: tests
+        timeout-minutes: 20
+        run: ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task test
+      - name: Test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-NativeStart-Tests
+          path: TestResults/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Build Map1 with original NPCs and live HUD
+        id: build
+        timeout-minutes: 72
+        run: ./Tools/CI/Invoke-NativeStart.ps1 -Task build
+      - name: Actual walking NPC dialogue and animated mob death
+        id: play
+        timeout-minutes: 5
+        run: ./Tools/CI/Invoke-NativeStart.ps1 -Task play
+      - name: Original Player diagnostics and captures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-NativeStart-Evidence
+          path: |
+            BuildLogs/
+            Artifacts/NativeStart/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Upload real Player only after successful build
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-NativeStart-Windows-x64
+          path: Builds/WindowsNativeStart/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Independent gates
+        if: always()
+        run: |
+          @('## Map1 native start integration',"Commit: $env:GITHUB_SHA",'Tests: ${{ steps.tests.outcome }}','Build: ${{ steps.build.outcome }}','Actual Player: ${{ steps.play.outcome }}','Original resources with enhanced graphics. Local integration, not complete native protocol/quests or certified visual equivalence.') | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8

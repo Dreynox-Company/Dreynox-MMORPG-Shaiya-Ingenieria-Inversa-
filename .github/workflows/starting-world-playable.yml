@@ -1,0 +1,178 @@
+# Revision 26: content-signature atlas imports and shared-journal local merchant gameplay.
+name: Starting Map1 playable client
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['.github/workflows/starting-world-playable.yml', '.github/starting-world-revision.txt']
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with: {dotnet-version: '8.0.x'}
+      - run: python Tools/validate_project.py
+      - run: dotnet run --project Tools/ParityHarness/ParityHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/LocalDataHarness/LocalDataHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/CombatHarness/CombatHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/QuestHarness/QuestHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/AppearanceHarness/AppearanceHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/DeliveryTests/DeliveryTests.csproj --configuration Release
+      - run: dotnet run --project Tools/NativeUiHarness/NativeUiHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/NativeContentHarness/NativeContentHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/MerchantHarness/MerchantHarness.csproj --configuration Release
+  windows:
+    needs: source
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 185
+    concurrency:
+      group: starting-world-playable-${{ github.repository }}
+      cancel-in-progress: false
+    defaults:
+      run: {shell: powershell}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {lfs: true, clean: false, persist-credentials: false}
+      - name: Create exact-source short project inside runner temporary storage
+        id: project
+        run: |
+          $ErrorActionPreference='Stop'
+          $temp=[IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\')
+          $root=Join-Path $temp ('dx1-'+$env:GITHUB_RUN_ID+'-'+$env:GITHUB_RUN_ATTEMPT)
+          if($root.Length -gt 72){throw "Runner temporary path is too long for Unity: $root"}
+          if(Test-Path -LiteralPath $root){throw 'Refusing to overwrite an existing temporary project.'}
+          git clone --no-hardlinks --no-checkout -- $env:GITHUB_WORKSPACE $root
+          if($LASTEXITCODE -ne 0){throw 'Local source copy failed.'}
+          git -C $root -c core.longpaths=true checkout --detach $env:GITHUB_SHA
+          if($LASTEXITCODE -ne 0){throw 'Exact revision checkout failed.'}
+          if((git -C $root rev-parse HEAD) -ne $env:GITHUB_SHA){throw 'Source revision mismatch.'}
+          "DREYNOX_BUILD_ROOT=$root" | Out-File -LiteralPath $env:GITHUB_ENV -Append -Encoding UTF8
+          "root=$root" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+          Write-Host "Isolated project root: $root ($($root.Length) characters). Original DATA unchanged."
+      - name: Parse and verify unchanged delivery sources before expensive Unity work
+        run: |
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/Delivery/Test-DeliverySource.ps1
+      - name: Verify user-authorized original DATA
+        run: |
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/CI/Prepare-ExtractedCorpus.ps1
+      - name: Unity Personal entitlement
+        run: |
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/CI/Invoke-UnitySelfHosted.ps1 -Task preflight
+      - name: Qualify actual graphics imports from the short project path
+        timeout-minutes: 15
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=$env:DREYNOX_BUILD_ROOT
+          Set-Location -LiteralPath $root
+          $line=Get-Content ProjectSettings/ProjectVersion.txt | Where-Object {$_ -match '^m_EditorVersion:'} | Select-Object -First 1
+          $version=($line -split ':',2)[1].Trim()
+          $editor=Join-Path $env:ProgramFiles "Unity\Hub\Editor\$version\Editor\Unity.exe"
+          New-Item -ItemType Directory -Force -Path BuildLogs/StartingWorld,Artifacts/StartingWorld | Out-Null
+          $log=Join-Path $root 'BuildLogs/StartingWorld/pipeline-preflight.log'
+          $p=Start-Process -FilePath $editor -WorkingDirectory $root -ArgumentList @('-batchmode','-force-d3d11','-projectPath',('"'+$root+'"'),'-executeMethod','Dreynox.Mmorpg.Editor.Build.PipelineResourcePreflight.Run','-logFile',('"'+$log+'"'),'-quit') -PassThru
+          try {
+            if(-not $p.WaitForExit(840000)){throw 'Package-resource preflight timed out.'}
+            $p.Refresh()
+            if(Test-Path $log){Get-Content $log -Tail 80 | Write-Host}
+            if($p.ExitCode -ne 0){throw "Package preflight exit $($p.ExitCode)"}
+            $report=Get-Content Artifacts/StartingWorld/pipeline-resources.json -Raw | ConvertFrom-Json
+            if(-not $report.passed){throw $report.failure}
+          } finally {if(-not $p.HasExited){Stop-Process -Id $p.Id -Force}}
+      - name: Unity tests including original corpus and local portal regressions
+        id: tests
+        timeout-minutes: 32
+        run: |
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/StartingWorld/Run-StartingWorld.ps1 -Task Test
+      - name: Prepare original Map1 scene and integrated quest content
+        id: prepare
+        timeout-minutes: 80
+        run: |
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/StartingWorld/Run-StartingWorld.ps1 -Task Prepare -PreparationMinutes 75
+      - name: Build actual Map1 executable from verified prepared content
+        id: build
+        timeout-minutes: 42
+        run: |
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/StartingWorld/Run-StartingWorld.ps1 -Task Build -BuildMinutes 40
+      - name: Walk interact accept mission defeat foxes and claim reward
+        id: play
+        timeout-minutes: 8
+        run: |
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/StartingWorld/Run-StartingWorld.ps1 -Task Qualify
+      - name: Create ready-to-run EXE only from the qualified real Player
+        id: package
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference='Stop'
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/Delivery/Test-DeliverySource.ps1
+          $reports=@(Get-ChildItem -LiteralPath 'Artifacts/StartingWorld' -Filter 'starting-world-qualification.json' -File -Recurse)
+          if($reports.Count -ne 1){throw 'Expected exactly one current-run Player qualification report.'}
+          $contentReports=@(Get-ChildItem -LiteralPath 'Artifacts/StartingWorld' -Filter 'native-content-qualification.json' -File -Recurse)
+          if($contentReports.Count -ne 1){throw 'Current Player catalog qualification missing.'}
+          $content=Get-Content -LiteralPath $contentReports[0].FullName -Raw | ConvertFrom-Json
+          if(-not $content.passed -or -not $content.ownershipUnchanged -or -not $content.inputReleased){throw 'Catalog and local ownership UI did not qualify.'}
+          $merchantReports=@(Get-ChildItem -LiteralPath 'Artifacts/StartingWorld' -Filter 'local-merchant-qualification.json' -File -Recurse)
+          if($merchantReports.Count -ne 1){throw 'Current Player merchant qualification missing.'}
+          $merchant=Get-Content -LiteralPath $merchantReports[0].FullName -Raw | ConvertFrom-Json
+          if(-not $merchant.passed -or -not $merchant.duplicateRejected -or -not $merchant.inventoryReflected -or -not $merchant.otherStateUnchanged -or -not $merchant.inputReleased){throw 'Local buy/sell transactions did not qualify.'}
+          # Preserve any existing executable. Each packaging invocation gets a fresh destination.
+          $delivery=Join-Path $env:DREYNOX_BUILD_ROOT ('Deliveries/Map1-'+[Guid]::NewGuid().ToString('N'))
+          if(Test-Path -LiteralPath $delivery){throw 'Unexpected package directory collision.'}
+          ./Tools/Delivery/Build-PortablePlayer.ps1 -PlayerDirectory 'Builds/WindowsStartingWorld' -QualificationReport $reports[0].FullName -OutputDirectory $delivery
+          "directory=$delivery" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+      - name: Record independent results
+        if: always() && steps.project.outcome == 'success'
+        env:
+          TEST_RESULT: ${{ steps.tests.outcome }}
+          PREPARE_RESULT: ${{ steps.prepare.outcome }}
+          BUILD_RESULT: ${{ steps.build.outcome }}
+          PLAY_RESULT: ${{ steps.play.outcome }}
+          PACKAGE_RESULT: ${{ steps.package.outcome }}
+        run: |
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          New-Item -ItemType Directory -Force -Path Artifacts/StartingWorld | Out-Null
+          @{
+            commit=$env:GITHUB_SHA; run=$env:GITHUB_RUN_ID; project=$env:DREYNOX_BUILD_ROOT;
+            tests=$env:TEST_RESULT; prepare=$env:PREPARE_RESULT;
+            build=$env:BUILD_RESULT; play=$env:PLAY_RESULT; package=$env:PACKAGE_RESULT;
+            scope='Local original Map1 quest integration; not full game.exe parity'
+          } | ConvertTo-Json | Set-Content -LiteralPath Artifacts/StartingWorld/ci-result.json -Encoding UTF8
+      - name: Preserve logs and real Player captures
+        if: always() && steps.project.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-StartingWorld-Evidence-${{ github.run_number }}
+          path: |
+            ${{ env.DREYNOX_BUILD_ROOT }}/Artifacts/StartingWorld/
+            ${{ env.DREYNOX_BUILD_ROOT }}/BuildLogs/StartingWorld/
+            ${{ env.DREYNOX_BUILD_ROOT }}/TestResults/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Preserve complete compiled payload for internal diagnosis
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-Mmorpg-Map1-Windows-x64-${{ github.run_number }}
+          path: ${{ env.DREYNOX_BUILD_ROOT }}/Builds/WindowsStartingWorld/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Publish qualified one-file executable
+        if: success() && steps.play.outcome == 'success' && steps.package.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Dreynox-Map1-ReadyToRun-${{ github.run_number }}
+          path: |
+            ${{ steps.package.outputs.directory }}/Dreynox-Mmorpg-Map1-Play.exe
+            ${{ steps.package.outputs.directory }}/portable-manifest.json
+          retention-days: 14
+          if-no-files-found: error

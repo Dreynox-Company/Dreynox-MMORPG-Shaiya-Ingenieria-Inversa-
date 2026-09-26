@@ -1,0 +1,185 @@
+using Dreynox.Mmorpg.Gameplay.AnimationSystem;
+using Dreynox.Mmorpg.Gameplay.Client;
+using Dreynox.Mmorpg.ParityCore;
+using Dreynox.Mmorpg.UI;
+using UnityEngine;
+
+namespace Dreynox.Mmorpg.Parity
+{
+    public sealed class LegacyCharacterSelectParityFixture : MonoBehaviour
+    {
+        [SerializeField] private LegacyCharacterSelectScreenController screen;
+        [SerializeField] private LegacyCharacterPreviewSwitcher previewSwitcher;
+
+        public void Bind(
+            LegacyCharacterSelectScreenController controller,
+            LegacyCharacterPreviewSwitcher switcher)
+        {
+            screen = controller;
+            previewSwitcher = switcher;
+        }
+
+        private void Start()
+        {
+            if (screen == null)
+                return;
+
+            screen.CharacterSelected += OnSelected;
+            screen.EmptySlotRequested += OnEmptySlot;
+            screen.EnterRequested += OnEnter;
+            screen.DeleteRequested += OnDelete;
+
+            screen.SetCharacters(
+                new[]
+                {
+                    new CharacterSummaryCore(
+                        1001,
+                        "DreynoxLocal",
+                        1,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        1,
+                        CharacterDifficultyMode.Basic)
+                });
+
+            screen.SelectSlot(0);
+        }
+
+        private void OnDestroy()
+        {
+            if (screen == null)
+                return;
+
+            screen.CharacterSelected -= OnSelected;
+            screen.EmptySlotRequested -= OnEmptySlot;
+            screen.EnterRequested -= OnEnter;
+            screen.DeleteRequested -= OnDelete;
+        }
+
+        private void OnSelected(
+            CharacterSummaryCore character)
+        {
+            if (previewSwitcher != null)
+            {
+                previewSwitcher.Apply(
+                    character.Family,
+                    character.Job,
+                    character.Sex,
+                    character.Face,
+                    character.Hair);
+            }
+
+            screen.SetStatus(
+                character.Name +
+                " · Lv." +
+                character.Level +
+                " · " +
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    character.Family,
+                    character.Job));
+        }
+
+        private void OnEmptySlot(int slot)
+        {
+            screen.SetStatus(
+                "Create requested for slot " +
+                (slot + 1) +
+                ".");
+        }
+
+        private void OnEnter(long characterId)
+        {
+            screen.SetStatus(
+                "Enter world requested for character " +
+                characterId +
+                ".");
+        }
+
+        private void OnDelete(long characterId)
+        {
+            screen.SetStatus(
+                "Delete requested for character " +
+                characterId +
+                ".");
+        }
+    }
+
+    public sealed class LegacyCharacterMakeParityFixture : MonoBehaviour
+    {
+        [SerializeField] private LegacyCharacterMakeScreenController screen;
+        [SerializeField] private LegacyCharacterPreviewSwitcher previewSwitcher;
+
+        public void Bind(
+            LegacyCharacterMakeScreenController controller,
+            LegacyCharacterPreviewSwitcher switcher)
+        {
+            screen = controller;
+            previewSwitcher = switcher;
+        }
+
+        private void Start()
+        {
+            if (screen == null)
+                return;
+
+            screen.Configure(
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                CharacterDifficultyMode.Basic);
+
+            screen.AppearanceChanged += ApplyAppearance;
+            screen.CreateRequested += OnCreate;
+            screen.CancelRequested += OnCancel;
+
+            ApplyAppearance();
+        }
+
+        private void OnDestroy()
+        {
+            if (screen == null)
+                return;
+
+            screen.AppearanceChanged -= ApplyAppearance;
+            screen.CreateRequested -= OnCreate;
+            screen.CancelRequested -= OnCancel;
+        }
+
+        private void ApplyAppearance()
+        {
+            if (previewSwitcher != null)
+            {
+                previewSwitcher.Apply(
+                    screen.Family,
+                    screen.Job,
+                    screen.Sex,
+                    screen.Face,
+                    screen.Hair);
+            }
+        }
+
+        private void OnCreate(CharacterCreationRequestCore request)
+        {
+            screen.SetStatus(
+                "Create: " + request.Name +
+                " · family=" + request.Family +
+                " · job=" + request.Job +
+                " · sex=" + request.Sex +
+                " · face=" + (request.Face + 1) +
+                " · hair=" + (request.Hair + 1) +
+                " · mode=" + request.Mode + ".");
+        }
+
+        private void OnCancel()
+        {
+            screen.SetStatus("Character creation cancelled.");
+        }
+    }
+}

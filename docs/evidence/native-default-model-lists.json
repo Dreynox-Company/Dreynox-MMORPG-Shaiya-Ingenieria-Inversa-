@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "gameExeSha256": "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d",
+  "method": "static-disassembly-and-read-only-ML2-parse-not-runtime-trace",
+  "tables": [
+    {"path":"data_español/character/human/humf_face.mlt","bytes":418,"sha256":"74ef360cc6264b6bd1c882fa4349f4b691861e63f844cff9126b45bb0f19cb1e","meshes":7,"textures":8,"records":8,"defaultMesh":"data_español/character/human/3dc/humf_face001.3DC","defaultTexture":"data_español/character/human/dds/hum_face001.dds","defaultFlag":0,"exists":true},
+    {"path":"data_español/character/human/humf_foot.mlt","bytes":4670,"sha256":"7d52753ce24818f027ad62229b93707c4156c71b3ba15e15f02717cd9fd7b9f4","meshes":43,"textures":90,"records":105,"defaultMesh":"data_español/character/human/3dc/humf_boots001.3DC","defaultTexture":"data_español/character/human/dds/humf_boots001.dds","defaultFlag":1,"exists":true},
+    {"path":"data_español/character/human/humf_hair.mlt","bytes":643,"sha256":"9e4c2580bb908e7ec03b287eee39d58b08832f39b83721e1df11be60cd7b50ab","meshes":8,"textures":14,"records":14,"defaultMesh":"data_español/character/human/3dc/humf_hair001.3DC","defaultTexture":"data_español/character/human/dds/hum_hair001.dds","defaultFlag":0,"exists":true},
+    {"path":"data_español/character/human/humf_hand.mlt","bytes":4411,"sha256":"3c4aa2ce43b9296a46108fcd9f0de8276611600f919f62f5a40ec5e29d6416d2","meshes":41,"textures":84,"records":105,"defaultMesh":"data_español/character/human/3dc/humf_hand001.3DC","defaultTexture":"data_español/character/human/dds/humf_hand001.dds","defaultFlag":1,"exists":true},
+    {"path":"data_español/character/human/humf_lower.mlt","bytes":3324,"sha256":"ba4f0ba28c51c505e5435eeec0cf8ee36d30ee162aa4c8cf11ca2a23e3a29176","meshes":31,"textures":54,"records":105,"defaultMesh":"data_español/character/human/3dc/humf_lower001.3DC","defaultTexture":"data_español/character/human/dds/humf_lower001.dds","defaultFlag":1,"exists":true},
+    {"path":"data_español/character/human/humf_upper.mlt","bytes":5428,"sha256":"f1079ca03639cde5cd2482ca2e10bc08e8456a05e6e09b4fc5fe8ebd70e96e6d","meshes":50,"textures":105,"records":105,"defaultMesh":"data_español/character/human/3dc/humf_torso001.3DC","defaultTexture":"data_español/character/human/dds/humf_torso001.dds","defaultFlag":1,"exists":true}
+  ],
+  "allRigsSummary": {"tables":96,"uniqueMeshes":224,"textureLookups":224,"combinations":400}
+}

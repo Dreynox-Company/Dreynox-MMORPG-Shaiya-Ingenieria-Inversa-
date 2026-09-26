@@ -1,8 +1,14 @@
 {
   "name": "Dreynox.Mmorpg.Editor",
   "rootNamespace": "Dreynox.Mmorpg.Editor",
-  "references": ["Dreynox.Mmorpg.Runtime"],
-  "includePlatforms": ["Editor"],
+  "references": [
+    "Dreynox.Mmorpg.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,

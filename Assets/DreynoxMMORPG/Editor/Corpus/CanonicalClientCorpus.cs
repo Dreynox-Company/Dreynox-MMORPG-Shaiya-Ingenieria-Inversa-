@@ -10,146 +10,79 @@ namespace Dreynox.Mmorpg.Editor.Corpus
     {
         public const string BaselineId = "ps0032-x86-3.3.2.10";
         public const long GameExeBytes = 5352488;
-        public const string GameExeSha256 =
-            "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d";
-        public const string InnerZipSha256 =
-            "78136f45ee45d3b0c6e03b829412189cab4d32ae5670a8d8b65892154673cfd5";
-
-        private const string EditorPrefsKey =
-            "Dreynox.Mmorpg.CanonicalCorpusRoot";
-
+        public const string GameExeSha256 = "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d";
+        public const string InnerZipSha256 = "78136f45ee45d3b0c6e03b829412189cab4d32ae5670a8d8b65892154673cfd5";
+        public const string CorpusRootEnvironmentVariable = "DREYNOX_CORPUS_ROOT";
+        private const string EditorPrefsKey = "Dreynox.Mmorpg.CanonicalCorpusRoot";
         public string RootPath { get; }
-        public string GameExePath => Path.Combine(RootPath, "game.exe");
-        public string DataRootPath => Path.Combine(RootPath, "DATA_Español");
+        public string DataRootPath { get; }
+        public string GameExePath => Path.Combine(IsSelectedData ? Directory.GetParent(RootPath).FullName : RootPath, "game.exe");
+        private bool IsSelectedData => CanonicalCorpusPaths.IsDataName(new DirectoryInfo(RootPath).Name);
 
         public CanonicalClientCorpus(string rootPath)
         {
-            RootPath = Path.GetFullPath(rootPath ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(rootPath)) throw new ArgumentException("Corpus root is required.");
+            RootPath = Path.GetFullPath(rootPath);
+            DataRootPath = CanonicalCorpusPaths.FindDataRoot(RootPath);
         }
 
         public static string StoredRoot
         {
-            get => EditorPrefs.GetString(EditorPrefsKey, string.Empty);
+            get
+            {
+                string environment = Environment.GetEnvironmentVariable(CorpusRootEnvironmentVariable);
+                return string.IsNullOrWhiteSpace(environment)
+                    ? EditorPrefs.GetString(EditorPrefsKey, string.Empty) : Path.GetFullPath(environment);
+            }
             set
             {
-                if (string.IsNullOrWhiteSpace(value))
-                    EditorPrefs.DeleteKey(EditorPrefsKey);
-                else
-                    EditorPrefs.SetString(
-                        EditorPrefsKey,
-                        Path.GetFullPath(value));
+                if (string.IsNullOrWhiteSpace(value)) EditorPrefs.DeleteKey(EditorPrefsKey);
+                else EditorPrefs.SetString(EditorPrefsKey, Path.GetFullPath(value));
             }
         }
 
         public static CanonicalClientCorpus FromStoredRoot()
         {
             string root = StoredRoot;
-            return string.IsNullOrWhiteSpace(root)
-                ? null
-                : new CanonicalClientCorpus(root);
+            return string.IsNullOrWhiteSpace(root) ? null : new CanonicalClientCorpus(root);
         }
 
         public CorpusValidationResult Validate()
         {
-            var result = new CorpusValidationResult
+            var result = new CorpusValidationResult { baselineId = BaselineId, rootPath = RootPath };
+            // Assets may be imported without copying game.exe beside DATA. Do not equate
+            // matching content anchors with verification of a native executable or the full tree.
+            CheckHash(result, "DATA_Español/excelxml/wingposition.xml", "8a2c376c898bb025550b5fe34b92a40dbbbb9e39063619cfee4756006908cd03");
+            CheckHash(result, "DATA_Español/world/Login.wld", "f5508581e39ab01db155432de44fd5eebba240bd49a3d491f4564fbb45f03365");
+            CheckHash(result, "DATA_Español/character/human/ani6/humf_019_select.ani", "8786f0ecb423c2cd4446d862a8f34433da99b59c29720ddd7ef38681048c50d8");
+            result.contentAnchorsVerified = result.errors.Count == 0 && result.missingFiles.Count == 0;
+            RequireFile(result, "DATA_Español/character/wing/wing.mon");
+            RequireFile(result, "DATA_Español/interface/Login/BG.tga");
+            if (File.Exists(GameExePath))
             {
-                baselineId = BaselineId,
-                rootPath = RootPath
-            };
-
-            if (!Directory.Exists(RootPath))
-            {
-                result.errors.Add("Corpus root does not exist.");
-                return result;
+                result.gameExeBytes = new FileInfo(GameExePath).Length;
+                result.gameExeSha256 = FileFingerprint.Sha256(GameExePath);
+                result.referenceExecutableVerified = result.gameExeBytes == GameExeBytes &&
+                    string.Equals(result.gameExeSha256, GameExeSha256, StringComparison.OrdinalIgnoreCase);
+                if (!result.referenceExecutableVerified) result.errors.Add("Present game.exe is not the pinned ps0032 reference.");
             }
-
-            if (!File.Exists(GameExePath))
-            {
-                result.errors.Add("Missing game.exe at corpus root.");
-            }
-            else
-            {
-                FileInfo info = new FileInfo(GameExePath);
-                result.gameExeBytes = info.Length;
-
-                if (info.Length != GameExeBytes)
-                {
-                    result.errors.Add(
-                        "game.exe size mismatch. Expected " +
-                        GameExeBytes + ", got " + info.Length + ".");
-                }
-
-                result.gameExeSha256 =
-                    FileFingerprint.Sha256(GameExePath);
-
-                if (!string.Equals(
-                        result.gameExeSha256,
-                        GameExeSha256,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    result.errors.Add(
-                        "game.exe SHA-256 does not match canonical ps0032.");
-                }
-            }
-
-            if (!Directory.Exists(DataRootPath))
-                result.errors.Add("Missing DATA_Español directory.");
-
-            ValidateRequiredFile(
-                result,
-                "DATA_Español/excelxml/wingposition.xml");
-            ValidateRequiredFile(
-                result,
-                "DATA_Español/world/Login.wld");
-            ValidateRequiredFile(
-                result,
-                "DATA_Español/character/wing/wing.mon");
-            ValidateRequiredFile(
-                result,
-                "DATA_Español/interface/Login/BG.tga");
-
+            else result.warnings.Add("Assets-only corpus: game.exe is absent. Native executable identity is not verified here.");
             return result;
         }
 
-        public string Resolve(string relativePath)
+        public string Resolve(string relativePath) => CanonicalCorpusPaths.Resolve(RootPath, relativePath);
+
+        private void RequireFile(CorpusValidationResult result, string path)
         {
-            if (string.IsNullOrWhiteSpace(relativePath))
-                throw new ArgumentException(
-                    "Relative corpus path is required.",
-                    nameof(relativePath));
-
-            string normalized = relativePath
-                .Replace('/', Path.DirectorySeparatorChar)
-                .Replace('\\', Path.DirectorySeparatorChar);
-
-            string full = Path.GetFullPath(
-                Path.Combine(RootPath, normalized));
-
-            string root = RootPath.TrimEnd(
-                Path.DirectorySeparatorChar,
-                Path.AltDirectorySeparatorChar)
-                + Path.DirectorySeparatorChar;
-
-            if (!full.StartsWith(
-                    root,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException(
-                    "Resolved path escaped canonical corpus root.");
-            }
-
-            return full;
+            if (File.Exists(Resolve(path))) result.presentFiles.Add(path); else result.missingFiles.Add(path);
         }
-
-        private void ValidateRequiredFile(
-            CorpusValidationResult result,
-            string relativePath)
+        private void CheckHash(CorpusValidationResult result, string path, string expected)
         {
-            string full = Resolve(relativePath);
-            if (File.Exists(full))
-                result.presentFiles.Add(relativePath);
-            else
-                result.missingFiles.Add(relativePath);
+            string resolved = Resolve(path);
+            if (!File.Exists(resolved)) { result.missingFiles.Add(path); return; }
+            string actual = FileFingerprint.Sha256(resolved);
+            if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase)) result.errors.Add("Content anchor mismatch: " + path);
+            else result.presentFiles.Add(path);
         }
     }
 
@@ -160,15 +93,13 @@ namespace Dreynox.Mmorpg.Editor.Corpus
         public string rootPath;
         public long gameExeBytes;
         public string gameExeSha256;
-        public readonly List<string> presentFiles =
-            new List<string>();
-        public readonly List<string> missingFiles =
-            new List<string>();
-        public readonly List<string> errors =
-            new List<string>();
-
-        public bool IsCanonical =>
-            errors.Count == 0 &&
-            missingFiles.Count == 0;
+        public bool contentAnchorsVerified;
+        public bool referenceExecutableVerified;
+        public readonly List<string> presentFiles = new List<string>();
+        public readonly List<string> missingFiles = new List<string>();
+        public readonly List<string> errors = new List<string>();
+        public readonly List<string> warnings = new List<string>();
+        // Compatibility name for existing import gates; this asserts content anchors only.
+        public bool IsCanonical => contentAnchorsVerified && errors.Count == 0 && missingFiles.Count == 0;
     }
 }

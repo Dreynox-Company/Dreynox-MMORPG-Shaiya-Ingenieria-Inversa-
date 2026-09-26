@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "utc": "2026-09-25T14:32:03.280452+00:00",
+  "scope": "Python read-only corpus audit. Not Unity/C# execution, not native gameplay parity.",
+  "sourceBaseline": "a92c222169d07e23ff6b58db998f459f6dd47a36",
+  "checks": [
+    {
+      "name": "SEED checksum and original quest plaintext",
+      "passed": true
+    },
+    {
+      "name": "NPC header count and byte offset",
+      "passed": true
+    },
+    {
+      "name": "all records have verified stride",
+      "passed": true
+    },
+    {
+      "name": "quest IDs unique",
+      "passed": true
+    },
+    {
+      "name": "original first quest and Spanish title",
+      "passed": true
+    },
+    {
+      "name": "original five foxes objective",
+      "passed": true
+    },
+    {
+      "name": "original raw rewards",
+      "passed": true
+    },
+    {
+      "name": "native tutorial is special condition",
+      "passed": true
+    },
+    {
+      "name": "Map1 real population",
+      "passed": true
+    },
+    {
+      "name": "32 original fox instances",
+      "passed": true
+    },
+    {
+      "name": "Ethan and Instructor near native entry",
+      "passed": true
+    },
+    {
+      "name": "Map1 real terrain sample at start",
+      "passed": true
+    },
+    {
+      "name": "Map1 has 8 original layers",
+      "passed": true
+    },
+    {
+      "name": "game.exe canonical hash",
+      "passed": true
+    }
+  ],
+  "passed": 14,
+  "questDefinitionCount": 4085,
+  "questPlaintextBytes": 1799704,
+  "questStride": 287,
+  "translationBytes": 4443121,
+  "canonicalChecksums": {
+    "npcquest.sdata": "720d2241bb7bcd279242e590104bf6996ce2cdeb8660a130424986e7792383db",
+    "npcquesttrans_spain.sdata": "1f4148c4ccefd49c8ef98f4cb22cce6bd1db3fc1349196b20af5046631d21741",
+    "1.wld": "0187b0742484f390b6cb0494cee24e12e6e8089a283aa5c0e8e531c4dc9e82dc",
+    "1.svmap": "15b0899be083c09344a27310a85ded371c3f61b60a07b167d39e467584cf06cc",
+    "game.exe": "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d"
+  },
+  "npcResolution": {
+    "rawDefinitions": 252,
+    "resolvedDefinitions": 248,
+    "resolvedPositions": 307,
+    "models": 54,
+    "knownUnresolved": 4,
+    "note": "Archived offline server log count 247 is not interchangeable with asset-definition/position counts."
+  },
+  "nativeGameplayExecutedInThisEnvironment": false,
+  "newUnityPlayerBuilt": false,
+  "newUnityTestsExecuted": false
+}

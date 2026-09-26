@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "sourceArchive": "Shaiya_Offline_Nativo_0_1_2_Windows.zip",
+  "evidencePath": "Shaiya_Offline_Nativo/pruebas/cliente_nativo_windows/native-created-characters.json",
+  "recordedCharacter": "DreynoxLocal",
+  "recordedMap": 1,
+  "recordedPosition": [580.0, 78.0, 1760.0],
+  "laterSessionEvidencePath": "Shaiya_Offline_Nativo/pruebas/cliente_nativo_windows_0_1_2/native-created-characters.json",
+  "laterSavedPosition": [580.0, 78.68285369873047, 1769.87744140625],
+  "currentUnityQualificationMap": 0,
+  "directWorldImageEquivalenceEligible": false,
+  "reason": "The archived native session records Map 1. The current Player integration test builds Map 0. Do not certify visual parity by comparing different maps or unregistered camera poses.",
+  "historicalCaptureScope": "Original client diagnostic audio variant. Archived scope explicitly states fullGameplayVerified=false. Not a new execution.",
+  "requiredComparisonRegistration": ["same map", "same position", "same camera and projection", "same client viewport", "same animation time and scene state"]
+}

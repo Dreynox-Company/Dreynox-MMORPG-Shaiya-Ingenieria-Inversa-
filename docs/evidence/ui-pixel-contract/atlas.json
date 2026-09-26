@@ -1,0 +1,25 @@
+{
+  "nativeExeSha256": "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d",
+  "scope": "Read-only source texture measurements; not Unity render or native screenshot equality",
+  "textures": [
+    {"path":"DATA_Español/interface/slot/main_1.tga","bytes":33785,"sha256":"fbe52c1c5cb33dd222d5a2b2d17ae3dcc8888ae9edadc6df297f479c1442b706","width":512,"height":64,"alphaBoundsTopLeft":[0,0,448,54]},
+    {"path":"DATA_Español/interface/slot/main_slot_1.tga","bytes":11343,"sha256":"b90a681f4906a63ffd1d5c66cf20802fbada8f6e0e38ddea60f857f550274d78","width":512,"height":64,"alphaBoundsTopLeft":[0,0,441,46]},
+    {"path":"DATA_Español/interface/slot/main_slot_2.tga","bytes":23853,"sha256":"f1e8e02a9d299f989e0b25ba5e849743b1073a379cf0ad0624353f98444c94d3","width":64,"height":512,"alphaBoundsTopLeft":[0,0,46,441]},
+    {"path":"DATA_Español/interface/icon/icon_sub.tga","bytes":65580,"sha256":"5fadb47a9abfee66286e8e3291f46b9bf29433cafa09ae382ec68572f3d62dd5","width":128,"height":128,"alphaBoundsTopLeft":[0,0,128,128]},
+    {"path":"DATA_Español/interface/statusminibar/player_bar_bg.tga","bytes":9150,"sha256":"5a1f0ec2ff1994f6592f35db30f3dc1296b4da2b1a3daa91671c03d8b66b18a7","width":256,"height":64,"alphaBoundsTopLeft":[0,0,218,64]},
+    {"path":"DATA_Español/interface/statusminibar/player_bar.tga","bytes":724,"sha256":"623dc223024ac761ceb9fc775a0a0a5ef9bae549580c3e2d5a72b65792b4eb02","width":256,"height":32,"alphaBoundsTopLeft":[0,0,150,24]},
+    {"path":"DATA_Español/interface/statusminibar/class_attack_fighter.tga","bytes":6647,"sha256":"d577cb9b37c89c47fdfbf6d46e7b8312ecc4509910cd5027914b7ca666a1aefb","width":64,"height":64,"alphaBoundsTopLeft":[0,0,41,44]},
+    {"path":"DATA_Español/interface/button/design0.tga","bytes":3335,"sha256":"03e2fa1fb712f8cd73d81333a7cc3e7529e79d3792bc2bbc5becacfd13233134","width":128,"height":32,"alphaBoundsTopLeft":[0,0,128,32]},
+    {"path":"DATA_Español/interface/quest/take.tga","bytes":507584,"sha256":"6d407abd03f6d7d753945c8301381da55637107bececb7dde97fe8b42cbfb1d7","width":256,"height":512,"alphaBoundsTopLeft":[1,1,252,511]},
+    {"path":"DATA_Español/interface/npctalk/talk1_bg.tga","bytes":49121,"sha256":"4845cc7bbb1cd4d695147a70340dd03b68f01ad158bed1adc8412382f5cc4e5f","width":512,"height":512,"alphaBoundsTopLeft":[1,1,343,230]},
+    {"path":"DATA_Español/interface/common/scrollbar.tga","bytes":6440,"sha256":"5bb49667c1c567b4435f5ff419b35c4f22c59e01f84b2542dd7305578d03ca79","width":128,"height":64,"alphaBoundsTopLeft":[0,0,75,51]},
+    {"path":"DATA_Español/interface/slot/button/main_slot_btn_advice.tga","bytes":2781,"sha256":"cf13fcfeb29ed9ffe55eb8acfe0011c374335220c59c3998730c466c64c0e6c4","width":64,"height":16,"alphaBoundsTopLeft":[0,0,64,16]},
+    {"path":"DATA_Español/interface/slot/button/main_slot_btn_down.tga","bytes":756,"sha256":"fa6df91e10bea25a106d7fc9d078229e2eb99d93c80ef4d6ffe4e014e2ff3bd7","width":64,"height":8,"alphaBoundsTopLeft":[0,0,60,7]},
+    {"path":"DATA_Español/interface/slot/button/main_slot_btn_left.tga","bytes":1130,"sha256":"e2d7cba10f601dc398859a0875319c10ce570106d43cf4abc1f8a3fb1e2e4419","width":32,"height":16,"alphaBoundsTopLeft":[0,0,31,12]},
+    {"path":"DATA_Español/interface/slot/button/main_slot_btn_minus.tga","bytes":1863,"sha256":"294281439ca83b555d3d30a77c74fa4a595a7df65ab093b5bcc6839c967c25dd","width":64,"height":16,"alphaBoundsTopLeft":[0,0,64,16]},
+    {"path":"DATA_Español/interface/slot/button/main_slot_btn_plus.tga","bytes":2495,"sha256":"ca2c4a6ef41caa8ae1d902e480a8516da23e74efa3d5296c48a104102bd0bf1d","width":64,"height":16,"alphaBoundsTopLeft":[0,0,64,16]},
+    {"path":"DATA_Español/interface/slot/button/main_slot_btn_right.tga","bytes":1092,"sha256":"42de1a9ac2ea6756617162d7dc7eecf7687e99c1b50d840d5fae1d899a284559","width":32,"height":16,"alphaBoundsTopLeft":[0,0,31,12]},
+    {"path":"DATA_Español/interface/slot/button/main_slot_btn_rotation.tga","bytes":3039,"sha256":"052473c9c2a07c2c31d5d56b37d67f7efb28a72fc06514070040b6ef5ef9f893","width":64,"height":16,"alphaBoundsTopLeft":[0,0,64,16]},
+    {"path":"DATA_Español/interface/slot/button/main_slot_btn_up.tga","bytes":756,"sha256":"ab655cca25182112678fefbb9cef9e5c6f39c0b097ed5cff760f502e2b7f9155","width":64,"height":8,"alphaBoundsTopLeft":[0,0,60,7]}
+  ]
+}

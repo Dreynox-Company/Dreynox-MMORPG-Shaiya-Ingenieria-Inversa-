@@ -208,6 +208,36 @@ namespace Dreynox.Mmorpg.ParityHarness
             npc.Register(90, NpcServiceKind.Shop | NpcServiceKind.Blacksmith);
             Check(npc.Open(90) && npc.Supports(NpcServiceKind.Shop) && !npc.Supports(NpcServiceKind.Warehouse), "NPC exposes only registered services");
 
+            Check(NpcServiceResolverCore.Resolve(1, false) == NpcServiceKind.Shop,
+                "NpcQuest Merchant group maps to shop service");
+            Check(NpcServiceResolverCore.Resolve(2, false) == NpcServiceKind.Gatekeeper,
+                "NpcQuest GateKeeper group maps to gatekeeper service");
+            Check(NpcServiceResolverCore.Resolve(3, true) ==
+                  (NpcServiceKind.Blacksmith | NpcServiceKind.Quest),
+                "blacksmith keeps quest service when quest links exist");
+            Check(NpcServiceResolverCore.Resolve(6, true) ==
+                  (NpcServiceKind.Warehouse | NpcServiceKind.Quest),
+                "warehouse keeps quest service when quest links exist");
+
+            var lightPortal = new PortalTravelCore(
+                0, 1, 20, 30, 18, 100, 10, 200);
+            Check(lightPortal.IsOpenByDefault &&
+                  lightPortal.CanEnter(20, 1, false) &&
+                  lightPortal.CanEnter(30, 1, false) &&
+                  !lightPortal.CanEnter(19, 1, false) &&
+                  !lightPortal.CanEnter(31, 1, false) &&
+                  !lightPortal.CanEnter(25, 2, false),
+                "light portal enforces inclusive level and faction rules");
+
+            var bossPortal = new PortalTravelCore(
+                0, 7, 1, 80, 42, 500, 20, 500);
+            Check(bossPortal.IsBossActivatedPortal &&
+                  !bossPortal.IsOpenByDefault &&
+                  !bossPortal.CanEnter(50, 1, false) &&
+                  bossPortal.CanEnter(50, 1, true) &&
+                  bossPortal.CanEnter(50, 2, true),
+                "boss portal stays closed until activated and then permits both factions");
+
             var weather = new WeatherCore();
             weather.TransitionTo(WeatherKindCore.Rain, 2.0);
             weather.Tick(1.0);
@@ -357,6 +387,308 @@ namespace Dreynox.Mmorpg.ParityHarness
                   offlineMap0.Mobs == 1330 &&
                   offlineMap0.Obelisks == 1,
                 "offline map 0 population matches both captured sessions");
+
+            Check(Math.Abs(LegacyTerrainHeightCore.Decode(11268) - 25.36) < 0.000001,
+                "WLD raw height 11268 resolves to observed map0 world Y 25.36");
+            Check(Math.Abs(LegacyTerrainHeightCore.Decode(10689) - 13.78) < 0.000001,
+                "WLD raw height 10689 resolves to observed map0 world Y 13.78");
+            Check(Math.Abs(LegacyTerrainHeightCore.Decode(11197) - 23.94) < 0.000001,
+                "WLD raw height 11197 resolves to observed map0 world Y 23.94");
+            Check(LegacyTerrainHeightCore.ResolutionForMapSize(2048) == 1025,
+                "map 2048 uses canonical 1025x1025 terrain samples");
+            Check(LegacyTerrainHeightCore.WorldToSampleIndex(184.4588165283203, 2048) == 92,
+                "world X maps to the same terrain sample used by canonical NPC evidence");
+
+            var characterFlow = new ClientFlowCore();
+            characterFlow.ReadyForLogin();
+            characterFlow.BeginConnect();
+            characterFlow.LoginAccepted();
+            characterFlow.SelectServer(1);
+            characterFlow.SetCharacterList(
+                new[]
+                {
+                    new CharacterSummaryCore(
+                        900,
+                        "Existing",
+                        40,
+                        0,
+                        0,
+                        1,
+                        1,
+                        2,
+                        3,
+                        0,
+                        CharacterDifficultyMode.Basic)
+                });
+
+            Check(characterFlow.BeginCharacterCreate(1) &&
+                  characterFlow.State == ClientFlowState.CharacterCreate &&
+                  characterFlow.CharacterCreateSlot == 1,
+                "character select opens an empty creation slot");
+
+            var createRequest = new CharacterCreationRequestCore(
+                "NewHero",
+                1,
+                3,
+                5,
+                0,
+                2,
+                1,
+                CharacterDifficultyMode.Ultimate);
+
+            var createdCharacter = new CharacterSummaryCore(
+                901,
+                createRequest.Name,
+                1,
+                createRequest.Slot,
+                createRequest.Family,
+                createRequest.Job,
+                createRequest.Sex,
+                createRequest.Face,
+                createRequest.Hair,
+                0,
+                createRequest.Mode);
+
+            Check(characterFlow.CharacterCreated(createdCharacter) &&
+                  characterFlow.State == ClientFlowState.CharacterSelect &&
+                  characterFlow.Characters.Count == 2,
+                "character creation returns to select with preserved appearance");
+
+            Check(characterFlow.CharacterDeleted(900) &&
+                  characterFlow.Characters.Count == 1 &&
+                  characterFlow.Characters[0].CharacterId == 901,
+                "character deletion updates deterministic character slots");
+
+            Check(
+                NativeVisualReferenceCore.All.Count == 8,
+                "native visual reference suite contains eight verified scenarios");
+
+            NativeVisualReference nativeCharacterEditor =
+                NativeVisualReferenceCore.Get(
+                    "character-editor");
+
+            Check(
+                nativeCharacterEditor.Width == 1024 &&
+                nativeCharacterEditor.Height == 768 &&
+                nativeCharacterEditor.Sha256 ==
+                    "2fd2807d305f5ae589f30232ac31c52a12f9caef66ed1b674ca6405a607f5549",
+                "native character editor visual reference is pinned");
+
+            Check(
+                nativeCharacterEditor.NativeCropX == 3 &&
+                nativeCharacterEditor.NativeCropY == 26 &&
+                nativeCharacterEditor.NativeCropWidth == 1021 &&
+                nativeCharacterEditor.NativeCropHeight == 739,
+                "native Windows client crop calibration is pinned");
+
+            NativeVisualReference nativeWorldLoaded =
+                NativeVisualReferenceCore.Get(
+                    "world-loaded");
+
+            Check(
+                nativeWorldLoaded.Width == 1024 &&
+                nativeWorldLoaded.Height == 768 &&
+                nativeWorldLoaded.Sha256 ==
+                    "c19cb5f06154bf6eacb029b08be7f6762bd9a002c044ff170363a9dfeadee6a0",
+                "native world-loaded visual reference is pinned");
+
+            Check(
+                NativeVisualReferenceCore.OriginalClientSha256 ==
+                    "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d" &&
+                NativeVisualReferenceCore.DiagnosticCaptureClientSha256 ==
+                    "32232a8e3e176c32ac75ad357d1f70ccf8ccadc7f223384866afdd2c9e6282df",
+                "native visual suite records original and diagnostic client identities");
+
+            Check(
+                Math.Abs(
+                    LegacyVaniAnimationCore.FrameDurationSeconds(66) -
+                    0.066) <
+                0.0000001,
+                "VANI 66 timing field resolves to 66 ms per frame");
+
+            Check(
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.065,
+                    16,
+                    66) == 0 &&
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.066,
+                    16,
+                    66) == 1 &&
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.056,
+                    16,
+                    66) == 0,
+                "VANI frame selection is deterministic across cycle boundaries");
+
+            Check(
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.999,
+                    61,
+                    33) == 30 &&
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.0,
+                    21,
+                    100) == 10,
+                "VANI observed 33/100 ms intervals map to expected frames");
+
+            string[] recoveredRigPrefixes =
+            {
+                LegacyCharacterRigCore.Resolve(0, 0, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(0, 5, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(0, 0, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(0, 5, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(1, 2, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(1, 4, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(1, 2, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(1, 4, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(2, 0, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(2, 3, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(2, 0, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(2, 3, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(3, 2, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(3, 4, 0).Prefix,
+                LegacyCharacterRigCore.Resolve(3, 2, 1).Prefix,
+                LegacyCharacterRigCore.Resolve(3, 4, 1).Prefix
+            };
+
+            Check(
+                string.Join(",", recoveredRigPrefixes) ==
+                    "humf,humm,huwf,huwm,elmr,elmm,elwr,elwm,demf,demr,dewf,dewr,vimr,vimm,viwr,viwm",
+                "ps0032 x86 rig selector resolves all sixteen canonical prefixes");
+
+            Check(
+                LegacyCharacterRigCore.Resolve(0, 0, 0).NativeRigIndex == 0 &&
+                LegacyCharacterRigCore.Resolve(0, 5, 0).NativeRigIndex == 1 &&
+                LegacyCharacterRigCore.Resolve(3, 2, 1).NativeRigIndex == 14 &&
+                LegacyCharacterRigCore.Resolve(3, 4, 1).NativeRigIndex == 15,
+                "ps0032 rig index follows archetype + 2*sex + 4*family");
+
+            Check(
+                LegacyCharacterRigCore.ResolveFamilyForJob(0, 2) == 1 &&
+                LegacyCharacterRigCore.ResolveFamilyForJob(2, 5) == 3 &&
+                LegacyCharacterRigCore.ResolveGlobalJobName(2) == "Ranger" &&
+                LegacyCharacterRigCore.ResolveGlobalJobName(5) == "Priest",
+                "character make maps class choice to native race and canonical SData job order");
+
+            bool nativePreviewRoutesValid = true;
+            for (int nativeRigIndex = 0;
+                 nativeRigIndex < 16;
+                 nativeRigIndex++)
+            {
+                LegacyCharacterRigSelection rig =
+                    LegacyCharacterRigCore.ResolveNativeRigIndex(
+                        nativeRigIndex);
+
+                LegacyCharacterPreviewAssetPaths paths =
+                    LegacyCharacterAssetCore.ResolvePreview(
+                        rig.Family,
+                        rig.Job,
+                        rig.Sex);
+
+                if (rig.NativeRigIndex != nativeRigIndex ||
+                    paths.Rig.Prefix != rig.Prefix ||
+                    !paths.UpperMesh.EndsWith(
+                        "/3dc/co_" + rig.Prefix + "_upper003.3dc",
+                        StringComparison.Ordinal) ||
+                    !paths.SelectAnimation.EndsWith(
+                        "/ani6/" + rig.Prefix + "_019_select.ani",
+                        StringComparison.Ordinal))
+                {
+                    nativePreviewRoutesValid = false;
+                    break;
+                }
+            }
+
+            Check(
+                nativePreviewRoutesValid,
+                "all sixteen native rigs resolve deterministic preview mesh and select ANI paths");
+
+            Check(
+                LegacyCharacterAssetCore.ResolvePreview(0, 0, 0).Rig.Prefix == "humf" &&
+                LegacyCharacterAssetCore.ResolvePreview(3, 5, 1).Rig.Prefix == "viwm",
+                "preview asset resolver uses recovered Fighter and female Oracle rig prefixes");
+
+            Check(
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(0) == 0 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(1) == 1 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(2) == 5 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(3) == 2 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(4) == 3 &&
+                LegacyCharacterMakeLayoutCore.JobForVisualSlot(5) == 4,
+                "native CharacterMake visual order stays Fighter Defender Priest / Ranger Archer Mage");
+
+            LegacyCharacterClassVisualProfile fighterVisual =
+                LegacyCharacterClassVisualCore.Resolve(0, 0);
+
+            Check(
+                fighterVisual.Weapons.Count == 7 &&
+                fighterVisual.Weapons[0] ==
+                    LegacyCharacterWeaponKind.OneHandSword &&
+                fighterVisual.Weapons[6] ==
+                    LegacyCharacterWeaponKind.Shield,
+                "Light Fighter visual profile matches native seven-weapon layout");
+
+            LegacyCharacterClassVisualProfile warriorVisual =
+                LegacyCharacterClassVisualCore.Resolve(2, 0);
+
+            Check(
+                warriorVisual.Weapons.Count == 7 &&
+                warriorVisual.Weapons[0] ==
+                    LegacyCharacterWeaponKind.OneHandAxe &&
+                warriorVisual.Weapons[2] ==
+                    LegacyCharacterWeaponKind.DualAxe,
+                "Fury Warrior visual profile swaps swords for native axe family");
+
+            Check(
+                LegacyCharacterClassVisualCore.Resolve(1, 3).Weapons[1] ==
+                    LegacyCharacterWeaponKind.Crossbow &&
+                LegacyCharacterClassVisualCore.Resolve(2, 3).Weapons[1] ==
+                    LegacyCharacterWeaponKind.ThrowingWeapon,
+                "Archer and Hunter preserve faction-specific ranged weapons");
+
+            Check(
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(0, 0) == "hum" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(0, 1) == "huf" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(1, 0) == "elm" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(1, 1) == "elf" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(2, 0) == "dem" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(2, 1) == "def" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(3, 0) == "vim" &&
+                LegacyCharacterAppearanceUiCore.ResolveGroupKey(3, 1) == "vif",
+                "CharacterMake appearance UI maps all eight native sex/family groups");
+
+            Check(
+                LegacyCharacterAppearanceUiCore.ResolveThumbnailFileName(
+                    0,
+                    0,
+                    true,
+                    0) ==
+                    "create_appearance_hum_face01.tga" &&
+                LegacyCharacterAppearanceUiCore.ResolveThumbnailFileName(
+                    3,
+                    1,
+                    false,
+                    4) ==
+                    "create_appearance_vif_hair05.tga",
+                "CharacterMake native appearance thumbnail names are deterministic");
+
+            foreach (int yaw in new[] { 0, 90, 180, 270 })
+            {
+                ClientCoordinateCore.ResolveUnityCameraRelative(0, 1, yaw, out double wx, out double wz);
+                double angle = yaw * Math.PI / 180;
+                Check(Math.Abs(wx-Math.Sin(angle)) < 1e-6 && Math.Abs(wz-Math.Cos(angle)) < 1e-6,
+                    "Unity camera W alignment at " + yaw + " degrees");
+            }
+            var blockedCombat = new CombatCore(); blockedCombat.RegisterTarget(4,100); blockedCombat.SelectTarget(4);
+            bool reachable = true; blockedCombat.ImpactValidator = _ => reachable;
+            Check(blockedCombat.RequestAttack(30), "in-range attack starts"); reachable = false;
+            blockedCombat.Tick(0.2);
+            Check(blockedCombat.Targets[4].Health == 100 && blockedCombat.HitSerial == 0, "invalidated impact causes no damage");
+            blockedCombat.UnregisterTarget(4);
+            Check(blockedCombat.Phase == AttackPhase.Idle && !blockedCombat.SelectedTargetId.HasValue, "unregister cancels stale target");
+            blockedCombat.SynchronizeTarget(4,100,60);
+            Check(blockedCombat.Targets[4].Health == 60, "reselected damaged target retains health");
 
             Console.WriteLine("PARITY HARNESS OK: " + _count + " checks");
         }

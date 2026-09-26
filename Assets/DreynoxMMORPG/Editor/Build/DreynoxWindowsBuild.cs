@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
+using Dreynox.Mmorpg.Editor.Corpus;
+using Dreynox.Mmorpg.Editor.LegacyFormats;
 using Dreynox.Mmorpg.Editor.ProjectTools;
 using Dreynox.Mmorpg.Editor.ReverseEngineering.Binary;
 using UnityEditor;
@@ -14,6 +16,11 @@ namespace Dreynox.Mmorpg.Editor.Build
     {
         private const string ParityOutput = "Builds/WindowsParity/DreynoxMmorpg-Parity.exe";
         private const string ReleaseOutput = "Builds/Windows/DreynoxMmorpg.exe";
+        private const string CanonicalParityOutput =
+            "Builds/WindowsCanonicalParity/DreynoxMmorpg-CanonicalParity.exe";
+
+        private const string CharacterParityOutput =
+            "Builds/WindowsCharacterParity/DreynoxMmorpg-CharacterParity.exe";
 
         private static readonly string[] ReleaseScenes =
         {
@@ -27,6 +34,28 @@ namespace Dreynox.Mmorpg.Editor.Build
         {
             BuildParityLab(ParityOutput);
             EditorUtility.RevealInFinder(Path.GetFullPath("Builds/WindowsParity"));
+        }
+
+        [MenuItem("Dreynox MMORPG/Build/Windows x64/Character Parity")]
+        public static void BuildCharacterParityMenu()
+        {
+            BuildCharacterParityLab(
+                CharacterParityOutput);
+
+            EditorUtility.RevealInFinder(
+                Path.GetFullPath(
+                    "Builds/WindowsCharacterParity"));
+        }
+
+        [MenuItem("Dreynox MMORPG/Build/Windows x64/Canonical Parity")]
+        public static void BuildCanonicalParityMenu()
+        {
+            BuildCanonicalParityLab(
+                CanonicalParityOutput);
+
+            EditorUtility.RevealInFinder(
+                Path.GetFullPath(
+                    "Builds/WindowsCanonicalParity"));
         }
 
         [MenuItem("Dreynox MMORPG/Build/Windows x64/Client Release")]
@@ -45,11 +74,34 @@ namespace Dreynox.Mmorpg.Editor.Build
         public static void BuildParityBatch()
         {
             BuildParityLab(ParityOutput);
+            BuildLocalDataLab();
+        }
+
+        [MenuItem("Dreynox MMORPG/Build/Windows x64/Developer tools/Local DATA (external folder)")]
+        public static void BuildLocalDataLab()
+        {
+            LocalDataSceneBuilder.Build();
+            ConfigureIdentity();
+            PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+            Build(new[] { LocalDataSceneBuilder.ScenePath },
+                "Builds/WindowsParity/LocalData/DreynoxMmorpg-LocalData.exe", "local-data-character-qualification", developerDataTools: true);
         }
 
         public static void BuildReleaseBatch()
         {
             BuildClientRelease(ReleaseOutput);
+        }
+
+        public static void BuildCharacterParityBatch()
+        {
+            BuildCharacterParityLab(
+                CharacterParityOutput);
+        }
+
+        public static void BuildCanonicalParityBatch()
+        {
+            BuildCanonicalParityLab(
+                CanonicalParityOutput);
         }
 
         public static void BuildParityLab(string outputPath)
@@ -61,6 +113,94 @@ namespace Dreynox.Mmorpg.Editor.Build
                 new[] { ClientParitySceneBuilder.ScenePath },
                 outputPath,
                 "parity-lab");
+        }
+
+        public static void BuildCharacterParityLab(
+            string outputPath)
+        {
+            CanonicalClientCorpus corpus =
+                RequireCanonicalCorpus(
+                    "Character parity");
+
+            LegacyCharacterFlowSceneBuilder.BuildCharacterSelect();
+            LegacyCharacterFlowSceneBuilder.BuildCharacterMake();
+
+            ConfigureIdentity();
+
+            PlayerSettings.SetScriptingBackend(
+                NamedBuildTarget.Standalone,
+                ScriptingImplementation.Mono2x);
+
+            Build(
+                new[]
+                {
+                    LegacyCharacterFlowSceneBuilder.CharacterSelectScenePath,
+                    LegacyCharacterFlowSceneBuilder.CharacterMakeScenePath
+                },
+                outputPath,
+                "character-parity");
+        }
+
+        public static void BuildCanonicalParityLab(
+            string outputPath)
+        {
+            CanonicalClientCorpus corpus =
+                RequireCanonicalCorpus(
+                    "Canonical parity");
+
+            LegacyLoginSceneBuilder.Build();
+            LegacyCharacterFlowSceneBuilder.BuildCharacterSelect();
+            LegacyCharacterFlowSceneBuilder.BuildCharacterMake();
+            LegacyWorldTerrainImporter.BuildCanonicalMap0();
+
+            ConfigureIdentity();
+
+            PlayerSettings.SetScriptingBackend(
+                NamedBuildTarget.Standalone,
+                ScriptingImplementation.Mono2x);
+
+            Build(
+                new[]
+                {
+                    LegacyLoginSceneBuilder.ScenePath,
+                    LegacyCharacterFlowSceneBuilder.CharacterSelectScenePath,
+                    LegacyCharacterFlowSceneBuilder.CharacterMakeScenePath,
+                    LegacyWorldTerrainImporter.ScenePath
+                },
+                outputPath,
+                "canonical-parity");
+        }
+
+        private static CanonicalClientCorpus RequireCanonicalCorpus(
+            string buildLabel)
+        {
+            CanonicalClientCorpus corpus =
+                CanonicalClientCorpus.FromStoredRoot();
+
+            if (corpus == null)
+            {
+                throw new BuildFailedException(
+                    buildLabel +
+                    " build requires " +
+                    CanonicalClientCorpus.CorpusRootEnvironmentVariable +
+                    " or a local canonical corpus selection.");
+            }
+
+            CorpusValidationResult validation =
+                corpus.Validate();
+
+            if (!validation.IsCanonical)
+            {
+                throw new BuildFailedException(
+                    buildLabel +
+                    " ps0032 corpus validation failed: " +
+                    string.Join(
+                        " | ",
+                        validation.errors.Concat(
+                            validation.missingFiles)));
+            }
+
+            return corpus;
         }
 
         public static void BuildClientRelease(string outputPath)
@@ -87,7 +227,7 @@ namespace Dreynox.Mmorpg.Editor.Build
             PlayerSettings.runInBackground = true;
         }
 
-        private static void Build(string[] scenes, string outputPath, string buildKind)
+        private static void Build(string[] scenes, string outputPath, string buildKind, bool developerDataTools = false)
         {
             if (string.IsNullOrWhiteSpace(outputPath))
                 throw new ArgumentException("Ruta de build vacía.", nameof(outputPath));
@@ -99,12 +239,20 @@ namespace Dreynox.Mmorpg.Editor.Build
 
             Directory.CreateDirectory(directory);
 
+            BuildOptions flags = BuildOptions.CompressWithLz4HC;
+            if (developerDataTools) flags |= BuildOptions.Development;
+            LocalDataBuildGuard.ValidateRequest(scenes, flags, developerDataTools, buildKind);
+
             BuildPlayerOptions options = new BuildPlayerOptions
             {
                 scenes = scenes,
                 locationPathName = full,
                 target = BuildTarget.StandaloneWindows64,
-                options = BuildOptions.CompressWithLz4HC
+                options = flags,
+                // Per-build only: never persist the development opt-in in PlayerSettings.
+                extraScriptingDefines = developerDataTools
+                    ? new[] { LocalDataBuildGuard.DeveloperDefine }
+                    : Array.Empty<string>()
             };
 
             BuildReport report = BuildPipeline.BuildPlayer(options);
@@ -121,6 +269,9 @@ namespace Dreynox.Mmorpg.Editor.Build
                 manifest,
                 "product=Dreynox Mmorpg\n" +
                 "kind=" + buildKind + "\n" +
+                "developmentBuild=" + ((flags & BuildOptions.Development) != 0 ? "true" : "false") + "\n" +
+                "localDataDeveloperTools=" + (developerDataTools ? "true" : "false") + "\n" +
+                "contentMode=" + (developerDataTools ? "external-data-character-diagnostics" : "preconverted-unity-assets") + "\n" +
                 "target=StandaloneWindows64\n" +
                 "unity=" + Application.unityVersion + "\n" +
                 "backend=" + PlayerSettings.GetScriptingBackend(NamedBuildTarget.Standalone) + "\n" +

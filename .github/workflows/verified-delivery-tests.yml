@@ -1,0 +1,58 @@
+# Revision22: exercise the exact fixed ZIP writer and retained-process verifier.
+name: Verified executable delivery tests
+on:
+  push:
+    branches: ['work/unity-client-parity-v0.4.0']
+    paths: ['Tools/Delivery/**', 'Tools/DeliveryTests/**', '.github/workflows/verified-delivery-tests.yml']
+  pull_request:
+    paths: ['Tools/Delivery/**', 'Tools/DeliveryTests/**', '.github/workflows/verified-delivery-tests.yml']
+permissions: {contents: read}
+jobs:
+  archive-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with: {dotnet-version: '8.0.x'}
+      - run: dotnet run --project Tools/DeliveryTests/DeliveryTests.csproj --configuration Release
+  windows-compatibility:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Compile and exercise the same Framework packaging path
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=Join-Path $env:RUNNER_TEMP ('delivery-'+[Guid]::NewGuid().ToString('N'))
+          $payloadRoot=Join-Path $root 'payload'
+          New-Item -ItemType Directory -Path (Join-Path $payloadRoot 'DreynoxMmorpg-Map1_Data') -Force | Out-Null
+          # Labelled fixtures, never launched as a game or uploaded.
+          'DELIVERY FIXTURE, NOT A GAME EXECUTABLE' | Set-Content (Join-Path $payloadRoot 'DreynoxMmorpg-Map1.exe')
+          'DELIVERY FIXTURE, NOT A NATIVE DLL' | Set-Content (Join-Path $payloadRoot 'UnityPlayer.dll')
+          'DELIVERY FIXTURE, NOT GAME DATA' | Set-Content (Join-Path $payloadRoot 'DreynoxMmorpg-Map1_Data/globalgamemanagers')
+          $rows=@(Get-ChildItem $payloadRoot -Recurse -File | ForEach-Object {
+            (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$_.FullName.Substring($payloadRoot.Length+1).Replace('\','/')
+          })
+          $rows | Set-Content (Join-Path $payloadRoot 'SHA256SUMS.txt') -Encoding UTF8
+          $payload=Join-Path $root 'payload.zip'
+          ./Tools/Delivery/New-PlayerPayload.ps1 -SourceDirectory $payloadRoot -Destination $payload
+          $hash=(Get-FileHash $payload -Algorithm SHA256).Hash.ToLowerInvariant()
+          $identity=Join-Path $root 'PayloadIdentity.cs'
+          "namespace Dreynox.Delivery { internal static class PayloadIdentity { public const string Sha256 = `"$hash`"; } }" | Set-Content $identity
+          $exe=Join-Path $root 'DeliveryTest.exe'
+          $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+          $core=(Resolve-Path -LiteralPath 'Tools/Delivery/VerifiedPlayerArchive.cs').Path
+          $metadata=(Resolve-Path -LiteralPath 'Tools/Delivery/PlayerZipMetadata.cs').Path
+          $launcher=(Resolve-Path -LiteralPath 'Tools/Delivery/PortablePlayerLauncher.cs').Path
+          & $compiler /nologo /target:winexe /platform:x64 /langversion:5 "/out:$exe" "/resource:$payload,Dreynox.PlayerPayload" /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll $identity $core $metadata $launcher
+          if($LASTEXITCODE -ne 0){throw 'Windows Framework delivery wrapper compilation failed.'}
+          ./Tools/Delivery/Invoke-VerifiedPlayerCheck.ps1 -Executable $exe -ExpectedExitCode 0 -TimeoutSeconds 30
+          ./Tools/Delivery/Invoke-VerifiedPlayerCheck.ps1 -Executable $exe -ExpectedExitCode 0 -TimeoutSeconds 30
+          $cache=Join-Path $env:LOCALAPPDATA ("Dreynox/PlayableClient/"+$hash)
+          'not in the embedded manifest' | Set-Content (Join-Path $cache 'unlisted.dll')
+          ./Tools/Delivery/Invoke-VerifiedPlayerCheck.ps1 -Executable $exe -ExpectedExitCode 1 -TimeoutSeconds 30
+          Write-Host 'DELIVERY_FRAMEWORK_EXTRACTION_CACHE_TAMPER_OK. No game executed and no fixture published.'

@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("preflight", "test", "build")]
+    [ValidateSet("preflight", "test", "build", "character-build", "canonical-build", "visual-compare")]
     [string]$Task
 )
 
@@ -69,27 +69,22 @@ function Invoke-Checked {
 
     Write-Host "::group::$Description"
 
-    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = $Executable
-    $startInfo.UseShellExecute = $false
-
-    foreach ($argument in $Arguments) {
-        [void]$startInfo.ArgumentList.Add($argument)
-    }
-
-    $process = [System.Diagnostics.Process]::new()
-    $process.StartInfo = $startInfo
+    $process = $null
 
     try {
-        if (-not $process.Start()) {
+        $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
+
+        if ($null -eq $process) {
             throw "No se pudo iniciar $Executable."
         }
 
-        $process.WaitForExit()
         $exitCode = $process.ExitCode
     }
     finally {
-        $process.Dispose()
+        if ($null -ne $process) {
+            $process.Dispose()
+        }
+
         Write-Host "::endgroup::"
     }
 
@@ -146,8 +141,110 @@ Después abre una nueva terminal y verifica:
         }
 
         Invoke-Checked -Executable $UnityCli.Source -Arguments @("--version") -Description "Unity CLI version"
-        Invoke-Checked -Executable $UnityCli.Source -Arguments @("license", "status") -Description "Unity license status"
-        Invoke-Checked -Executable $UnityCli.Source -Arguments @("doctor", "--ci") -Description "Unity CI doctor"
+
+        $licenseStatusSucceeded = $false
+        $licenseStatusOutput = @()
+        $licenseStatusExitCode = 0
+
+        for ($licenseAttempt = 1;
+             $licenseAttempt -le 3;
+             $licenseAttempt++)
+        {
+            Write-Host "::group::Unity license status (attempt $licenseAttempt/3)"
+
+            try {
+                $licenseStatusOutput =
+                    @(
+                        & $UnityCli.Source license status 2>&1
+                    )
+
+                $licenseStatusExitCode =
+                    $LASTEXITCODE
+
+                $licenseStatusOutput |
+                    ForEach-Object {
+                        Write-Host $_
+                    }
+            }
+            finally {
+                Write-Host "::endgroup::"
+            }
+
+            if ($licenseStatusExitCode -eq 0) {
+                $licenseStatusSucceeded = $true
+                break
+            }
+
+            if ($licenseAttempt -lt 3) {
+                Write-Warning "Unity CLI license status devolvió $licenseStatusExitCode; reintentando. El entitlement local ya fue validado en disco."
+                Start-Sleep -Seconds (2 * $licenseAttempt)
+            }
+        }
+
+        if (-not $licenseStatusSucceeded) {
+            Write-Warning "Unity CLI license status siguió fallando con código $licenseStatusExitCode, pero existe un UnityEntitlementLicense.xml local válido para este usuario. Se continúa hasta unity doctor y, finalmente, Editor tests/build como gates definitivos."
+        }
+
+        # unity doctor --ci also checks cloud reachability. A transient failure of
+        # services.api.unity.com must not invalidate a cached named-user
+        # entitlement that was already confirmed above. Retry first; then allow
+        # exactly one degraded condition: NETWORK_UNREACHABLE and no other failed
+        # doctor checks. Any other doctor failure remains fatal.
+        $doctorSucceeded = $false
+        $doctorOutput = @()
+        $doctorExitCode = 0
+
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            Write-Host "::group::Unity CI doctor (attempt $attempt/3)"
+            try {
+                $doctorOutput = @(& $UnityCli.Source doctor --ci 2>&1)
+                $doctorExitCode = $LASTEXITCODE
+                $doctorOutput | ForEach-Object { Write-Host $_ }
+            }
+            finally {
+                Write-Host "::endgroup::"
+            }
+
+            if ($doctorExitCode -eq 0) {
+                $doctorSucceeded = $true
+                break
+            }
+
+            if ($attempt -lt 3) {
+                Write-Warning "Unity CI doctor devolvió $doctorExitCode; reintentando por posible fallo transitorio de red."
+                Start-Sleep -Seconds (3 * $attempt)
+            }
+        }
+
+        if (-not $doctorSucceeded) {
+            $failedChecks = @(
+                $doctorOutput |
+                    Where-Object { [string]$_ -match "check\.[^\s]+\s+fail\s+" }
+            )
+
+            $nonNetworkFailures = @(
+                $failedChecks |
+                    Where-Object {
+                        [string]$_ -notmatch "check\.network\s+fail\s+NETWORK_UNREACHABLE"
+                    }
+            )
+
+            $licensePassed = [bool](
+                $doctorOutput |
+                    Where-Object { [string]$_ -match "check\.license\s+pass\s+LICENSE_OK" } |
+                    Select-Object -First 1
+            )
+
+            if ($failedChecks.Count -gt 0 -and
+                $nonNetworkFailures.Count -eq 0 -and
+                $licensePassed) {
+                Write-Warning "Unity doctor no pudo alcanzar services.api.unity.com, pero el entitlement local está válido. Se continúa en modo offline/degradado; Unity tests/build decidirán si falta algún recurso de red."
+            }
+            else {
+                throw "Unity CI doctor falló con código $doctorExitCode y contiene fallos distintos de NETWORK_UNREACHABLE."
+            }
+        }
+
         break
     }
 
@@ -161,7 +258,7 @@ Después abre una nueva terminal y verifica:
 
         # Self-hosted Windows runners can retain a transient Package Manager lock
         # after a cancelled Unity process. Rebuild PackageCache from a clean state.
-        Remove-DirectoryWithRetry -Path $PackageCache
+        # Keep a healthy cache; delete it only on an observed Package Manager rename lock.
 
         for ($attempt = 1; $attempt -le 2; $attempt++) {
             Remove-Item -LiteralPath $TestResult -Force -ErrorAction SilentlyContinue
@@ -179,6 +276,13 @@ Después abre una nueva terminal y verifica:
                 ) -Description "Unity EditMode tests"
             }
             catch {
+                if (Test-Path -LiteralPath $TestResult) {
+                    [xml]$failureReport = Get-Content -LiteralPath $TestResult -Raw
+                    foreach ($case in $failureReport.SelectNodes("//test-case[@result='Failed']")) {
+                        Write-Host "FAILED_TEST: $($case.GetAttribute('fullname'))"
+                        if ($null -ne $case.failure) { Write-Host $case.failure.InnerText }
+                    }
+                }
                 $packageRenameLock = $false
                 if (Test-Path $TestLog) {
                     $packageRenameLock = [bool](Select-String -Path $TestLog -Pattern "EPERM: operation not permitted, rename" -SimpleMatch -Quiet)
@@ -202,6 +306,115 @@ Después abre una nueva terminal y verifica:
         }
 
         Write-Host "Unity EditMode tests: OK"
+        break
+    }
+
+    "visual-compare" {
+        $BuildLogDir = Join-Path $RepoRoot "BuildLogs"
+        New-Item -ItemType Directory -Force -Path $BuildLogDir | Out-Null
+        $CompareLog = Join-Path $BuildLogDir "visual-parity-editor.log"
+
+        if ([string]::IsNullOrWhiteSpace($env:DREYNOX_NATIVE_REFERENCE_ROOT)) {
+            throw "DREYNOX_NATIVE_REFERENCE_ROOT no está configurado."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($env:DREYNOX_UNITY_CAPTURE_ROOT)) {
+            throw "DREYNOX_UNITY_CAPTURE_ROOT no está configurado."
+        }
+
+        Invoke-Checked -Executable $UnityEditor -Arguments @(
+            "-batchmode",
+            "-nographics",
+            "-projectPath", $RepoRoot,
+            "-executeMethod", "Dreynox.Mmorpg.Editor.Parity.NativeVisualParityBatch.RunFromEnvironment",
+            "-logFile", $CompareLog,
+            "-quit"
+        ) -Description "Unity native-vs-canonical visual parity compare"
+
+        $ReportPath = Join-Path $RepoRoot "Artifacts\Parity\Reports\native-vs-unity.json"
+
+        if (-not (Test-Path $ReportPath)) {
+            throw "Visual parity compare terminó sin generar $ReportPath."
+        }
+
+        Write-Host "Visual parity report: OK"
+        Get-Content $ReportPath | ForEach-Object { Write-Host $_ }
+        break
+    }
+
+    "character-build" {
+        $BuildLogDir = Join-Path $RepoRoot "BuildLogs"
+        New-Item -ItemType Directory -Force -Path $BuildLogDir | Out-Null
+        $BuildLog = Join-Path $BuildLogDir "windows-character-parity-editor.log"
+
+        if ([string]::IsNullOrWhiteSpace($env:DREYNOX_CORPUS_ROOT)) {
+            throw "DREYNOX_CORPUS_ROOT no está configurado en el runner."
+        }
+
+        if (-not (Test-Path $env:DREYNOX_CORPUS_ROOT)) {
+            throw "DREYNOX_CORPUS_ROOT no existe: $env:DREYNOX_CORPUS_ROOT"
+        }
+
+        Invoke-Checked -Executable $UnityEditor -Arguments @(
+            "-batchmode",
+            "-nographics",
+            "-projectPath", $RepoRoot,
+            "-executeMethod", "Dreynox.Mmorpg.Editor.Build.DreynoxWindowsBuild.BuildCharacterParityBatch",
+            "-logFile", $BuildLog,
+            "-quit"
+        ) -Description "Unity Windows x64 Character parity build"
+
+        $ExePath = Join-Path $RepoRoot "Builds\WindowsCharacterParity\DreynoxMmorpg-CharacterParity.exe"
+        $ManifestPath = Join-Path $RepoRoot "Builds\WindowsCharacterParity\dreynox-build-manifest.txt"
+
+        if (-not (Test-Path $ExePath)) {
+            throw "El Character parity build terminó sin generar $ExePath."
+        }
+
+        if (-not (Test-Path $ManifestPath)) {
+            throw "El Character parity build terminó sin generar $ManifestPath."
+        }
+
+        Write-Host "Character parity Windows x64: OK"
+        Get-Content $ManifestPath | ForEach-Object { Write-Host $_ }
+        break
+    }
+
+    "canonical-build" {
+        $BuildLogDir = Join-Path $RepoRoot "BuildLogs"
+        New-Item -ItemType Directory -Force -Path $BuildLogDir | Out-Null
+        $BuildLog = Join-Path $BuildLogDir "windows-canonical-parity-editor.log"
+
+        if ([string]::IsNullOrWhiteSpace($env:DREYNOX_CORPUS_ROOT)) {
+            throw "DREYNOX_CORPUS_ROOT no está configurado en el runner."
+        }
+
+        if (-not (Test-Path $env:DREYNOX_CORPUS_ROOT)) {
+            throw "DREYNOX_CORPUS_ROOT no existe: $env:DREYNOX_CORPUS_ROOT"
+        }
+
+        Invoke-Checked -Executable $UnityEditor -Arguments @(
+            "-batchmode",
+            "-nographics",
+            "-projectPath", $RepoRoot,
+            "-executeMethod", "Dreynox.Mmorpg.Editor.Build.DreynoxWindowsBuild.BuildCanonicalParityBatch",
+            "-logFile", $BuildLog,
+            "-quit"
+        ) -Description "Unity Windows x64 canonical parity build"
+
+        $ExePath = Join-Path $RepoRoot "Builds\WindowsCanonicalParity\DreynoxMmorpg-CanonicalParity.exe"
+        $ManifestPath = Join-Path $RepoRoot "Builds\WindowsCanonicalParity\dreynox-build-manifest.txt"
+
+        if (-not (Test-Path $ExePath)) {
+            throw "El canonical build terminó sin generar $ExePath."
+        }
+
+        if (-not (Test-Path $ManifestPath)) {
+            throw "El canonical build terminó sin generar $ManifestPath."
+        }
+
+        Write-Host "Canonical parity Windows x64: OK"
+        Get-Content $ManifestPath | ForEach-Object { Write-Host $_ }
         break
     }
 

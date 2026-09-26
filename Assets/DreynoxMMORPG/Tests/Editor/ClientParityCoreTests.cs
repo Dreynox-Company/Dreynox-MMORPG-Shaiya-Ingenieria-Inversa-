@@ -1,3 +1,4 @@
+using System;
 using Dreynox.Mmorpg.ParityCore;
 using NUnit.Framework;
 
@@ -453,6 +454,705 @@ namespace Dreynox.Mmorpg.Tests
             Assert.AreEqual(194, map2.Npcs);
             Assert.AreEqual(800, map2.MobAreas);
             Assert.AreEqual(868, map2.Mobs);
+        }
+
+        [Test]
+        public void CharacterFlowSupportsCreateDeleteAndAppearance()
+        {
+            var flow = new ClientFlowCore();
+
+            Assert.IsTrue(flow.ReadyForLogin());
+            Assert.IsTrue(flow.BeginConnect());
+            Assert.IsTrue(flow.LoginAccepted());
+            Assert.IsTrue(flow.SelectServer(1));
+
+            Assert.IsTrue(flow.SetCharacterList(
+                new[]
+                {
+                    new CharacterSummaryCore(
+                        100,
+                        "Existing",
+                        33,
+                        0,
+                        1,
+                        2,
+                        1,
+                        3,
+                        4,
+                        0,
+                        CharacterDifficultyMode.Basic)
+                }));
+
+            Assert.IsTrue(flow.BeginCharacterCreate(1));
+            Assert.AreEqual(ClientFlowState.CharacterCreate, flow.State);
+            Assert.AreEqual(1, flow.CharacterCreateSlot.Value);
+
+            var request = new CharacterCreationRequestCore(
+                "NewHero",
+                1,
+                3,
+                5,
+                0,
+                2,
+                1,
+                CharacterDifficultyMode.Ultimate);
+
+            Assert.AreEqual("NewHero", request.Name);
+            Assert.AreEqual(3, request.Family);
+            Assert.AreEqual(5, request.Job);
+            Assert.AreEqual(0, request.Sex);
+            Assert.AreEqual(2, request.Face);
+            Assert.AreEqual(1, request.Hair);
+            Assert.AreEqual(CharacterDifficultyMode.Ultimate, request.Mode);
+
+            var created = new CharacterSummaryCore(
+                101,
+                request.Name,
+                1,
+                request.Slot,
+                request.Family,
+                request.Job,
+                request.Sex,
+                request.Face,
+                request.Hair,
+                0,
+                request.Mode);
+
+            Assert.IsTrue(flow.CharacterCreated(created));
+            Assert.AreEqual(ClientFlowState.CharacterSelect, flow.State);
+            Assert.AreEqual(2, flow.Characters.Count);
+            Assert.AreEqual(101, flow.Characters[1].CharacterId);
+
+            Assert.IsTrue(flow.CharacterDeleted(100));
+            Assert.AreEqual(1, flow.Characters.Count);
+            Assert.AreEqual(101, flow.Characters[0].CharacterId);
+        }
+
+        [Test]
+        public void CharacterCreateRejectsOccupiedAndOutOfRangeSlots()
+        {
+            var flow = new ClientFlowCore();
+            flow.ReadyForLogin();
+            flow.BeginConnect();
+            flow.LoginAccepted();
+            flow.SelectServer(1);
+            flow.SetCharacterList(
+                new[]
+                {
+                    new CharacterSummaryCore(1, "Hero", 1, 0)
+                });
+
+            Assert.IsFalse(flow.BeginCharacterCreate(0));
+            Assert.IsFalse(flow.BeginCharacterCreate(-1));
+            Assert.IsFalse(flow.BeginCharacterCreate(5));
+            Assert.IsTrue(flow.BeginCharacterCreate(1));
+            Assert.IsTrue(flow.CancelCharacterCreate());
+            Assert.AreEqual(ClientFlowState.CharacterSelect, flow.State);
+        }
+
+        [Test]
+        public void CanonicalNpcServiceGroupsResolveDeterministically()
+        {
+            Assert.AreEqual(
+                NpcServiceKind.Shop,
+                NpcServiceResolverCore.Resolve(1, false));
+
+            Assert.AreEqual(
+                NpcServiceKind.Gatekeeper,
+                NpcServiceResolverCore.Resolve(2, false));
+
+            Assert.AreEqual(
+                NpcServiceKind.Blacksmith | NpcServiceKind.Quest,
+                NpcServiceResolverCore.Resolve(3, true));
+
+            Assert.AreEqual(
+                NpcServiceKind.Warehouse | NpcServiceKind.Quest,
+                NpcServiceResolverCore.Resolve(6, true));
+
+            Assert.AreEqual(
+                NpcServiceKind.Quest,
+                NpcServiceResolverCore.Resolve(8, true));
+
+            Assert.AreEqual(
+                NpcServiceKind.None,
+                NpcServiceResolverCore.Resolve(8, false));
+        }
+
+        [Test]
+        public void SvmapPortalRulesMatchOfflineServerSemantics()
+        {
+            var neutral =
+                new PortalTravelCore(
+                    0,
+                    0,
+                    1,
+                    80,
+                    1,
+                    10,
+                    20,
+                    30);
+
+            Assert.IsTrue(neutral.IsOpenByDefault);
+            Assert.IsTrue(neutral.CanEnter(40, 1, false));
+            Assert.IsTrue(neutral.CanEnter(40, 2, false));
+
+            var light =
+                new PortalTravelCore(
+                    0,
+                    1,
+                    20,
+                    30,
+                    18,
+                    100,
+                    10,
+                    200);
+
+            Assert.IsTrue(light.CanEnter(20, 1, false));
+            Assert.IsTrue(light.CanEnter(30, 1, false));
+            Assert.IsFalse(light.CanEnter(19, 1, false));
+            Assert.IsFalse(light.CanEnter(31, 1, false));
+            Assert.IsFalse(light.CanEnter(25, 2, false));
+
+            var boss =
+                new PortalTravelCore(
+                    0,
+                    7,
+                    1,
+                    80,
+                    42,
+                    500,
+                    20,
+                    500);
+
+            Assert.IsTrue(boss.IsBossActivatedPortal);
+            Assert.IsFalse(boss.IsOpenByDefault);
+            Assert.IsFalse(boss.CanEnter(50, 1, false));
+            Assert.IsTrue(boss.CanEnter(50, 1, true));
+            Assert.IsTrue(boss.CanEnter(50, 2, true));
+        }
+
+        [Test]
+        public void NativeVisualReferenceSuiteIsCanonicalAndUnique()
+        {
+            Assert.AreEqual(
+                8,
+                NativeVisualReferenceCore.All.Count);
+
+            var ids =
+                new System.Collections.Generic.HashSet<string>(
+                    System.StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0;
+                 i < NativeVisualReferenceCore.All.Count;
+                 i++)
+            {
+                NativeVisualReference reference =
+                    NativeVisualReferenceCore.All[i];
+
+                Assert.AreEqual(
+                    1024,
+                    reference.Width);
+
+                Assert.AreEqual(
+                    768,
+                    reference.Height);
+
+                Assert.AreEqual(
+                    64,
+                    reference.Sha256.Length);
+
+                Assert.AreEqual(
+                    3,
+                    reference.NativeCropX);
+
+                Assert.AreEqual(
+                    26,
+                    reference.NativeCropY);
+
+                Assert.AreEqual(
+                    1021,
+                    reference.NativeCropWidth);
+
+                Assert.AreEqual(
+                    739,
+                    reference.NativeCropHeight);
+
+                Assert.IsTrue(
+                    ids.Add(
+                        reference.ScenarioId));
+            }
+
+            Assert.AreEqual(
+                "2fd2807d305f5ae589f30232ac31c52a12f9caef66ed1b674ca6405a607f5549",
+                NativeVisualReferenceCore
+                    .Get("character-editor")
+                    .Sha256);
+
+            Assert.AreEqual(
+                "c19cb5f06154bf6eacb029b08be7f6762bd9a002c044ff170363a9dfeadee6a0",
+                NativeVisualReferenceCore
+                    .Get("world-loaded")
+                    .Sha256);
+
+            Assert.AreEqual(
+                "509c4a8fbe4d5292961fdfb6d1045795a7bb5970fcf2560fd1070aee18273c2d",
+                NativeVisualReferenceCore
+                    .OriginalClientSha256);
+        }
+
+        [Test]
+        public void VaniFrameTimingUsesObservedMillisecondIntervals()
+        {
+            Assert.AreEqual(
+                0.066,
+                LegacyVaniAnimationCore.FrameDurationSeconds(66),
+                0.0000001);
+
+            Assert.AreEqual(
+                1.056,
+                LegacyVaniAnimationCore.CycleSeconds(16, 66),
+                0.0000001);
+
+            Assert.AreEqual(
+                0,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.065,
+                    16,
+                    66));
+
+            Assert.AreEqual(
+                1,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.066,
+                    16,
+                    66));
+
+            Assert.AreEqual(
+                15,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.055,
+                    16,
+                    66));
+
+            Assert.AreEqual(
+                0,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.056,
+                    16,
+                    66));
+
+            Assert.AreEqual(
+                30,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    0.999,
+                    61,
+                    33));
+
+            Assert.AreEqual(
+                10,
+                LegacyVaniAnimationCore.ResolveFrameIndex(
+                    1.0,
+                    21,
+                    100));
+        }
+
+        [Test]
+        public void Ps0032RigSelectionMatchesRecoveredX86Table()
+        {
+            LegacyCharacterRigSelection[] cases =
+            {
+                LegacyCharacterRigCore.Resolve(0, 0, 0),
+                LegacyCharacterRigCore.Resolve(0, 5, 0),
+                LegacyCharacterRigCore.Resolve(0, 0, 1),
+                LegacyCharacterRigCore.Resolve(0, 5, 1),
+
+                LegacyCharacterRigCore.Resolve(1, 2, 0),
+                LegacyCharacterRigCore.Resolve(1, 4, 0),
+                LegacyCharacterRigCore.Resolve(1, 2, 1),
+                LegacyCharacterRigCore.Resolve(1, 4, 1),
+
+                LegacyCharacterRigCore.Resolve(2, 0, 0),
+                LegacyCharacterRigCore.Resolve(2, 3, 0),
+                LegacyCharacterRigCore.Resolve(2, 0, 1),
+                LegacyCharacterRigCore.Resolve(2, 3, 1),
+
+                LegacyCharacterRigCore.Resolve(3, 2, 0),
+                LegacyCharacterRigCore.Resolve(3, 4, 0),
+                LegacyCharacterRigCore.Resolve(3, 2, 1),
+                LegacyCharacterRigCore.Resolve(3, 4, 1)
+            };
+
+            string[] expected =
+            {
+                "humf", "humm", "huwf", "huwm",
+                "elmr", "elmm", "elwr", "elwm",
+                "demf", "demr", "dewf", "dewr",
+                "vimr", "vimm", "viwr", "viwm"
+            };
+
+            for (int i = 0; i < cases.Length; i++)
+            {
+                Assert.AreEqual(
+                    i,
+                    cases[i].NativeRigIndex);
+
+                Assert.AreEqual(
+                    expected[i],
+                    cases[i].Prefix);
+            }
+
+            Assert.AreEqual(
+                0,
+                LegacyCharacterRigCore.ResolveFamilyForJob(
+                    0,
+                    0));
+
+            Assert.AreEqual(
+                1,
+                LegacyCharacterRigCore.ResolveFamilyForJob(
+                    0,
+                    2));
+
+            Assert.AreEqual(
+                2,
+                LegacyCharacterRigCore.ResolveFamilyForJob(
+                    2,
+                    3));
+
+            Assert.AreEqual(
+                3,
+                LegacyCharacterRigCore.ResolveFamilyForJob(
+                    2,
+                    5));
+
+            Assert.IsFalse(
+                LegacyCharacterRigCore.IsJobAllowed(
+                    0,
+                    2));
+
+            Assert.Throws<ArgumentException>(
+                () => new CharacterSummaryCore(
+                    777,
+                    "Invalid",
+                    1,
+                    0,
+                    0,
+                    2,
+                    0,
+                    0,
+                    0,
+                    0,
+                    CharacterDifficultyMode.Basic));
+        }
+
+        [Test]
+        public void CanonicalJobOrderMatchesPs0032SData()
+        {
+            string[] expected =
+            {
+                "Fighter",
+                "Defender",
+                "Ranger",
+                "Archer",
+                "Mage",
+                "Priest"
+            };
+
+            for (int job = 0;
+                 job < expected.Length;
+                 job++)
+            {
+                Assert.AreEqual(
+                    expected[job],
+                    LegacyCharacterRigCore.ResolveGlobalJobName(
+                        job));
+            }
+
+            Assert.AreEqual(
+                "Warrior",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    2,
+                    0));
+
+            Assert.AreEqual(
+                "Guardian",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    2,
+                    1));
+
+            Assert.AreEqual(
+                "Assassin",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    3,
+                    2));
+
+            Assert.AreEqual(
+                "Hunter",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    2,
+                    3));
+
+            Assert.AreEqual(
+                "Pagan",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    3,
+                    4));
+
+            Assert.AreEqual(
+                "Oracle",
+                LegacyCharacterRigCore.ResolveDisplayJob(
+                    3,
+                    5));
+        }
+
+        [Test]
+        public void CharacterPreviewAssetPathsCoverNativeRigTable()
+        {
+            for (int nativeRigIndex = 0;
+                 nativeRigIndex < 16;
+                 nativeRigIndex++)
+            {
+                LegacyCharacterRigSelection rig =
+                    LegacyCharacterRigCore
+                        .ResolveNativeRigIndex(
+                            nativeRigIndex);
+
+                Assert.AreEqual(
+                    nativeRigIndex,
+                    rig.NativeRigIndex);
+
+                LegacyCharacterPreviewAssetPaths paths =
+                    LegacyCharacterAssetCore
+                        .ResolvePreview(
+                            rig.Family,
+                            rig.Job,
+                            rig.Sex);
+
+                Assert.AreEqual(
+                    rig.Prefix,
+                    paths.Rig.Prefix);
+
+                StringAssert.Contains(
+                    "/3dc/co_" +
+                    rig.Prefix +
+                    "_upper003.3dc",
+                    paths.UpperMesh);
+
+                StringAssert.Contains(
+                    "/ani6/" +
+                    rig.Prefix +
+                    "_019_select.ani",
+                    paths.SelectAnimation);
+            }
+
+            for (int face = 0;
+                 face < 5;
+                 face++)
+            for (int hair = 0;
+                 hair < 5;
+                 hair++)
+            {
+                LegacyCharacterPreviewAssetPaths variant =
+                    LegacyCharacterAssetCore.ResolvePreview(
+                        0,
+                        0,
+                        0,
+                        face,
+                        hair);
+
+                StringAssert.EndsWith(
+                    "_face" +
+                    (face + 1).ToString("D3") +
+                    ".3dc",
+                    variant.FaceMesh);
+
+                StringAssert.EndsWith(
+                    "_hair" +
+                    (hair + 1).ToString("D3") +
+                    ".3dc",
+                    variant.HairMesh);
+            }
+
+            LegacyCharacterPreviewAssetPaths humanFighterMale =
+                LegacyCharacterAssetCore.ResolvePreview(
+                    0,
+                    0,
+                    0);
+
+            Assert.AreEqual(
+                "humf",
+                humanFighterMale.Rig.Prefix);
+
+            Assert.AreEqual(
+                "DATA_Español/character/human/dds/hum_face001.dds",
+                humanFighterMale.FaceTexture);
+
+            LegacyCharacterPreviewAssetPaths vileOracleFemale =
+                LegacyCharacterAssetCore.ResolvePreview(
+                    3,
+                    5,
+                    1);
+
+            Assert.AreEqual(
+                "viwm",
+                vileOracleFemale.Rig.Prefix);
+
+            Assert.AreEqual(
+                "DATA_Español/character/vile/dds/viw_hair001.dds",
+                vileOracleFemale.HairTexture);
+        }
+
+        [Test]
+        public void CharacterMakeNativeVisualSlotsMapToCanonicalJobs()
+        {
+            int[] expected =
+            {
+                0, 1, 5,
+                2, 3, 4
+            };
+
+            Assert.AreEqual(
+                expected.Length,
+                LegacyCharacterMakeLayoutCore.VisualSlotCount);
+
+            for (int slot = 0;
+                 slot < expected.Length;
+                 slot++)
+            {
+                Assert.AreEqual(
+                    expected[slot],
+                    LegacyCharacterMakeLayoutCore.JobForVisualSlot(
+                        slot));
+
+                Assert.AreEqual(
+                    slot,
+                    LegacyCharacterMakeLayoutCore.VisualSlotForJob(
+                        expected[slot]));
+            }
+        }
+
+        [Test]
+        public void CharacterClassVisualProfilesMatchNativeWeaponFamilies()
+        {
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LegacyCharacterWeaponKind.OneHandSword,
+                    LegacyCharacterWeaponKind.TwoHandSword,
+                    LegacyCharacterWeaponKind.DualSword,
+                    LegacyCharacterWeaponKind.Spear,
+                    LegacyCharacterWeaponKind.OneHandBlunt,
+                    LegacyCharacterWeaponKind.TwoHandBlunt,
+                    LegacyCharacterWeaponKind.Shield
+                },
+                LegacyCharacterClassVisualCore.Resolve(0, 0).Weapons);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LegacyCharacterWeaponKind.OneHandAxe,
+                    LegacyCharacterWeaponKind.TwoHandAxe,
+                    LegacyCharacterWeaponKind.DualAxe,
+                    LegacyCharacterWeaponKind.Spear,
+                    LegacyCharacterWeaponKind.OneHandBlunt,
+                    LegacyCharacterWeaponKind.TwoHandBlunt,
+                    LegacyCharacterWeaponKind.Shield
+                },
+                LegacyCharacterClassVisualCore.Resolve(2, 0).Weapons);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LegacyCharacterWeaponKind.Bow,
+                    LegacyCharacterWeaponKind.Crossbow
+                },
+                LegacyCharacterClassVisualCore.Resolve(1, 3).Weapons);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    LegacyCharacterWeaponKind.Bow,
+                    LegacyCharacterWeaponKind.ThrowingWeapon
+                },
+                LegacyCharacterClassVisualCore.Resolve(2, 3).Weapons);
+
+            Assert.AreEqual(
+                "character.make.classInfo.mageBars",
+                LegacyCharacterClassVisualCore.Resolve(1, 4).ClassInfoKey);
+
+            Assert.AreEqual(
+                "Pagan",
+                LegacyCharacterClassVisualCore.Resolve(3, 4).DisplayJob);
+        }
+
+        [Test]
+        public void CharacterAppearanceUiMapsEightNativeGroups()
+        {
+            string[] expected =
+            {
+                "hum",
+                "huf",
+                "elm",
+                "elf",
+                "dem",
+                "def",
+                "vim",
+                "vif"
+            };
+
+            for (int family = 0;
+                 family < 4;
+                 family++)
+            {
+                for (int sex = 0;
+                     sex < 2;
+                     sex++)
+                {
+                    int index =
+                        family * 2 +
+                        sex;
+
+                    Assert.AreEqual(
+                        expected[index],
+                        LegacyCharacterAppearanceUiCore
+                            .ResolveGroupKey(
+                                family,
+                                sex));
+
+                    Assert.AreEqual(
+                        index,
+                        LegacyCharacterAppearanceUiCore
+                            .ResolveGroupIndex(
+                                family,
+                                sex));
+
+                    Assert.AreEqual(
+                        index * 5 + 4,
+                        LegacyCharacterAppearanceUiCore
+                            .ResolveTextureIndex(
+                                family,
+                                sex,
+                                4));
+                }
+            }
+
+            Assert.AreEqual(
+                "create_appearance_hum_face01.tga",
+                LegacyCharacterAppearanceUiCore
+                    .ResolveThumbnailFileName(
+                        0,
+                        0,
+                        true,
+                        0));
+
+            Assert.AreEqual(
+                "create_appearance_vif_hair05.tga",
+                LegacyCharacterAppearanceUiCore
+                    .ResolveThumbnailFileName(
+                        3,
+                        1,
+                        false,
+                        4));
         }
 
     }
