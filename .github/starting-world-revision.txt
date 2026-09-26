@@ -1,6 +1,8 @@
-Map1 qualification19: restore original terrain physics and validate real visible quest actions.
-Actual run17 Player contained one Terrain but zero TerrainColliders; add builtin terrainphysics module, require matching physical heightfield at build and in the running Player.
-Seven terrain factory/collision/hole tests and two quest-modal tests added. Physical probes cover original fox areas before combat. Never replace collision with SampleHeight or an invisible plane.
-Actual dialogue now selects and accepts/delivers the visible mission through the same action as its button, above pooled name labels.
-Retain original starter sword and all previous source/resource checks. Do not cancel the immutable run18.
-Only publish one ready-to-run executable after original Map1 walking, NPC interaction, five fox deaths, quest progress and reward pass. No main or DATA writes.
+Map1 qualification 20: native default body via ML2, corrected D3D-to-Unity texture V, and original colored radar sprites.
+Static game.exe code paths: model-list loader 0x51F210 / row reader 0x51F740; radar initializer 0x599490 / monster draw 0x59B974.
+Body, face and hair resolve independent original mesh/texture table rows rather than costume003 or guessed suffixes.
+Preserve terrainphysics, native starter sword, collision guards and visible NPC/quest button flow.
+35 standalone model-list contracts and 12 new Unity cases cover default resources, UV sampling and native marker alpha/clipping.
+Require source provenance and original radar artwork in the actual Player before existing movement/NPC/five-fox/reward gates.
+No claim of full UI, guild/trade/network or every-map parity. No old or unqualified executable delivery.
+Main and original DATA are unchanged.
