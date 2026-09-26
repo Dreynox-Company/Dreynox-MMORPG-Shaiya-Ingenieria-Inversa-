@@ -144,9 +144,16 @@ namespace Dreynox.Mmorpg.Tests.Editor
         }
         [Test] public void SamePooledNpcObjectCannotReuseTheOldConversationAfterRespawn()
         {
-            OpenFromButton();WorldInputGate.Set(hud,true);merchant.SelectStock(0);uint before=npc.LifetimeGeneration;
-            npc.gameObject.SetActive(false);npc.gameObject.SetActive(true);Assert.AreNotEqual(before,npc.LifetimeGeneration);
-            Assert.IsFalse(merchant.ConfirmPending());Assert.AreEqual(1000,wallet.Gold);Assert.IsEmpty(wallet.Inventory);Assert.IsFalse(WorldInputGate.IsBlocked);
+            using(var pool=new NpcPoolTestLease(root.transform,actor.transform,npc))
+            {
+                npc=pool.Current;Set(hud,"selectedNpc",npc);Call(quests,"NpcOpened",npc);
+                OpenFromButton();WorldInputGate.Set(hud,true);merchant.SelectStock(0);
+                uint before=npc.LifetimeGeneration;
+                Assert.AreSame(npc,pool.Recycle(),"The production pool must reuse the same object.");
+                Assert.AreNotEqual(before,npc.LifetimeGeneration);
+                Assert.IsFalse(merchant.ConfirmPending());Assert.AreEqual(1000,wallet.Gold);
+                Assert.IsEmpty(wallet.Inventory);Assert.IsFalse(WorldInputGate.IsBlocked);
+            }
         }
         [Test] public void ANewWallBlocksPreviouslyOpenedMerchantActions()
         {

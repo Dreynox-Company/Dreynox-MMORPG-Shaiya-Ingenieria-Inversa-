@@ -1,6 +1,6 @@
-Map1 qualification28: merchant UI callbacks preserve the actual durable transaction result when a view closes during persistence or notification.
-Retain the existing Shop capability; reject disabled/ambiguous providers and report service-open failure accurately.
-Invalid quantities clear old payable quotes; selecting across buy/sell/page contexts displays the corresponding original art; confirmation stays centered after resizing.
-Seventeen additional actual-component EditMode cases cover lifecycle, reentrancy, stale amounts, routing and input ownership without suppressing any prior assertions.
-The original corpus/catalog/mission/combat/merchant Player sequence remains required. Code tests alone are not a qualified Player or native MMO equivalence.
-Do not cancel an already running immutable source build. Main, original DATA/game.exe, Flutter and Studio remain unchanged.
+Map1 qualification29: close the three independently confirmed failures from actual run28.
+That run passed359/362tests. Two stale-NPC tests assumed runtime OnEnable during EditMode; exercise production Spawn/Despawn/Rent/Configure instead, requiring same-object reuse and changed lifetime.
+Cold complete original catalog conversion took197.121seconds. Give only that test300seconds; retain every source/icon assertion and log elapsed import time.
+Keep the seventeen merchant lifecycle cases, original corpus coverage, native request codecs, full Player inventory/catalog/mission/combat/buy/sell sequence and executable verification.
+No production ExecuteAlways workaround, assertion suppression, substitute assets or changed gameplay to make tests pass.
+Main, original DATA/game.exe, Flutter and Studio stay unchanged.

@@ -188,8 +188,14 @@ namespace Dreynox.Mmorpg.Tests.Editor
         [Test]
         public void ReusedNpcInstanceCannotAcceptUsingItsOldConversationLifetime()
         {
-            npc.gameObject.SetActive(false);npc.gameObject.SetActive(true);
-            Assert.IsFalse(panel.SubmitSelectedQuest());Assert.IsEmpty(journal.Entries);
+            using(var pool=new NpcPoolTestLease(root.transform,actor.transform,npc))
+            {
+                npc=pool.Current;Set(hud,"selectedNpc",npc);Call(panel,"NpcOpened",npc);
+                Assert.IsTrue(panel.SelectVisibleQuest(3400));uint before=npc.LifetimeGeneration;
+                Assert.AreSame(npc,pool.Recycle(),"Exercise the production same-object pool checkout.");
+                Assert.AreNotEqual(before,npc.LifetimeGeneration);
+                Assert.IsFalse(panel.SubmitSelectedQuest());Assert.IsEmpty(journal.Entries);
+            }
         }
     }
 }

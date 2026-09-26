@@ -41,10 +41,14 @@ namespace Dreynox.Mmorpg.Tests.Editor
             }
             finally {AssetDatabase.DeleteAsset(target);}
         }
-        [Test] public void WholeCanonicalCatalogConversionActuallyImportsBeforeExpensiveWorldPreparation()
+        // Runs 27/28 completed cold import in 183/197 seconds, beyond the
+        // inherited 180-second limit. Keep all assertions with a bounded budget.
+        [Test, Timeout(300000)] public void WholeCanonicalCatalogConversionActuallyImportsBeforeExpensiveWorldPreparation()
         {
             var corpus=CanonicalClientCorpus.FromStoredRoot();if(corpus==null)Assert.Ignore("Requires original DATA.");
+            var watch=System.Diagnostics.Stopwatch.StartNew();
             var assets=NativeCatalogImporter.Import(corpus);
+            TestContext.WriteLine("Whole original catalog import ms="+watch.ElapsedMilliseconds);
             Assert.AreEqual(28142,assets[0].Count);Assert.AreEqual(12060,assets[1].Count);
             assets[0].Validate();assets[1].Validate();
             Assert.IsTrue(assets[0].TryGet(11,1,out var item));Assert.IsTrue(assets[0].TryIcon(item,out var texture,out _));
