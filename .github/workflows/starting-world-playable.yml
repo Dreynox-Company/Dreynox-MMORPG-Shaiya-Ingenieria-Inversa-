@@ -1,4 +1,4 @@
-# Revision 24: source-derived pixel UI, actual quickbar callbacks and preserved gameplay qualification.
+# Revision 25: complete original item/skill definitions, inventory binding and sequential Player UI proof.
 name: Starting Map1 playable client
 on:
   push:
@@ -22,6 +22,7 @@ jobs:
       - run: dotnet run --project Tools/AppearanceHarness/AppearanceHarness.csproj --configuration Release
       - run: dotnet run --project Tools/DeliveryTests/DeliveryTests.csproj --configuration Release
       - run: dotnet run --project Tools/NativeUiHarness/NativeUiHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/NativeContentHarness/NativeContentHarness.csproj --configuration Release
   windows:
     needs: source
     runs-on: [self-hosted, Windows, X64]
@@ -39,7 +40,7 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           $temp=[IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\')
-          $root=Join-Path $temp ('dx1-'+$env:GITHUB_RUN_ID)
+          $root=Join-Path $temp ('dx1-'+$env:GITHUB_RUN_ID+'-'+$env:GITHUB_RUN_ATTEMPT)
           if($root.Length -gt 72){throw "Runner temporary path is too long for Unity: $root"}
           if(Test-Path -LiteralPath $root){throw 'Refusing to overwrite an existing temporary project.'}
           git clone --no-hardlinks --no-checkout -- $env:GITHUB_WORKSPACE $root
@@ -115,7 +116,15 @@ jobs:
           ./Tools/Delivery/Test-DeliverySource.ps1
           $reports=@(Get-ChildItem -LiteralPath 'Artifacts/StartingWorld' -Filter 'starting-world-qualification.json' -File -Recurse)
           if($reports.Count -ne 1){throw 'Expected exactly one current-run Player qualification report.'}
-          ./Tools/Delivery/Build-PortablePlayer.ps1 -PlayerDirectory 'Builds/WindowsStartingWorld' -QualificationReport $reports[0].FullName -OutputDirectory 'Deliveries/Map1'
+          $contentReports=@(Get-ChildItem -LiteralPath 'Artifacts/StartingWorld' -Filter 'native-content-qualification.json' -File -Recurse)
+          if($contentReports.Count -ne 1){throw 'Current Player catalog qualification missing.'}
+          $content=Get-Content -LiteralPath $contentReports[0].FullName -Raw | ConvertFrom-Json
+          if(-not $content.passed -or -not $content.ownershipUnchanged -or -not $content.inputReleased){throw 'Catalog and local ownership UI did not qualify.'}
+          # Preserve any existing executable. Each packaging invocation gets a fresh destination.
+          $delivery=Join-Path $env:DREYNOX_BUILD_ROOT ('Deliveries/Map1-'+[Guid]::NewGuid().ToString('N'))
+          if(Test-Path -LiteralPath $delivery){throw 'Unexpected package directory collision.'}
+          ./Tools/Delivery/Build-PortablePlayer.ps1 -PlayerDirectory 'Builds/WindowsStartingWorld' -QualificationReport $reports[0].FullName -OutputDirectory $delivery
+          "directory=$delivery" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding UTF8
       - name: Record independent results
         if: always() && steps.project.outcome == 'success'
         env:
@@ -158,7 +167,7 @@ jobs:
         with:
           name: Dreynox-Map1-ReadyToRun-${{ github.run_number }}
           path: |
-            ${{ env.DREYNOX_BUILD_ROOT }}/Deliveries/Map1/Dreynox-Mmorpg-Map1-Play.exe
-            ${{ env.DREYNOX_BUILD_ROOT }}/Deliveries/Map1/portable-manifest.json
+            ${{ steps.package.outputs.directory }}/Dreynox-Mmorpg-Map1-Play.exe
+            ${{ steps.package.outputs.directory }}/portable-manifest.json
           retention-days: 14
           if-no-files-found: error

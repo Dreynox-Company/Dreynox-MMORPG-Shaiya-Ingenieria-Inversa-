@@ -1,3 +1,4 @@
+# Original-catalog integration25: validate current source, not a previous Player's gameplay assembly.
 name: Native UI pixel and input contracts
 on:
   push:

@@ -1,8 +1,8 @@
-Map1 qualification24: source-derived native pixel UI, not a claim of full native visual equivalence.
-Use original Slot/main_slot_1.tga/main_slot_2.tga, 446x53 or 53x446 frames, ten32-pixel cells with40-pixel stride, fivepages, threeconfigurablebars.
-Keep source texture padding/alpha, original button state sprites, Arial from installed OS, and constant1:1UIpixel units.
-Exercise actual page/rotation/additional-bar callbacks in the Player before the original movement/NPC/quest/fox/reward loop.
-Capture instantiated UI rectangles and atlasUVs in .ui.json beside each actual PNG. Source tests are not screenshots.
-No fabricated full player vitals, learned skills or server results; only the existing local basic attack is initially bound.
-Parse and verify unchanged delivery scripts before Unity work and again before packaging.
-Original DATA/game.exe/main and the previously qualified EXE are not modified.
+Map1 qualification25: all original item/skill definition rows converted in Editor and bound into the actual Unity client.
+Require pinned original and plaintext hashes for DBItemData/DBItemText_SPN/DBSkillData/DBSkillText_SPN, with lossless roundtrips and native-key joins.
+Expected28142item rows/70fields and12060skill-rank rows/101fields; catalog membership never grants ownership or learns an ability.
+Original inventory artwork and24cell local ownership projection are bound to the existing durable journal. Original skill-frame development browser exposes names/descriptions/numeric fields read-only.
+The actual Player must open inventory, search/inspect Espada Larga, browse all skill ranks, inspect Musculatura, reject stale empty results and preserve journal state before the existing original quest/fox/reward loop.
+Preserve exact native quickbar geometry, original character/terrain/radar, original animation-deformation proofs and improved URP rendering.
+Package into a fresh generated directory without deleting or replacing any older executable. New attempts have isolated short Unity project directories.
+Only qualified one-file executable delivery. Main, DATA/game.exe, Flutter and Studio remain unchanged.
