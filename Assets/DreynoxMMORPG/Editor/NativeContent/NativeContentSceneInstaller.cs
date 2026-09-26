@@ -20,6 +20,11 @@ namespace Dreynox.Mmorpg.Editor.NativeContent
             var skills=ImportArtwork(corpus,"skill/skill.tga","skills.tga");
             journal.SetItemCatalog(catalogs[0]);
             session.AddComponent<NativeContentPanel>().Configure(hud,journal,catalogs[0],catalogs[1],inventory,skills);
+            var market=ImportArtwork(corpus,"basicshop/market.tga","merchant-market.tga");
+            var marketSell=ImportArtwork(corpus,"basicshop/market_sell.tga","merchant-sell.tga");
+            var questPanel=session.GetComponent<QuestWorldPanel>();
+            if(questPanel==null)throw new InvalidOperationException("Quest/NPC service dispatcher is absent.");
+            session.AddComponent<Dreynox.Mmorpg.Commerce.LocalMerchantPanel>().Configure(hud,questPanel,journal,catalogs[0],market,marketSell);
             Debug.Log("DREYNOX_NATIVE_CATALOGS_INSTALLED itemRows="+catalogs[0].Count+" skillRanks="+catalogs[1].Count+
                 "; Editor-converted definitions, no runtime SData decryption or ownership grants.");
         }

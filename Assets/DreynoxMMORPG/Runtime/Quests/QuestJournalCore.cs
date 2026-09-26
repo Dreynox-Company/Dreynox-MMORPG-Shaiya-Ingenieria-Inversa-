@@ -42,6 +42,7 @@ namespace Dreynox.Mmorpg.Quests
         private readonly HashSet<long> pendingCredits = new HashSet<long>();
         public long Experience {get;private set;}
         public long Gold {get;private set;}
+        public int Revision => revision;
         public event Action Changed;
         public event Action<Exception> ObserverFailed;
         public int ObserverFailureCount { get; private set; }
@@ -175,6 +176,38 @@ namespace Dreynox.Mmorpg.Quests
             var copy=CloneEntries();foreach(var e in copy.Values)
                 if(e.stage!=JournalStage.Rewarded)e.stage=Ready(catalog[e.id],e,inv)?JournalStage.Ready:JournalStage.Active;
             return Commit(copy,inv,Experience,Gold,out reason);
+        }
+        /// <summary>
+        /// Atomic exchange for the local client only. Prices/authorization belong
+        /// to the merchant adapter; all gold, items and quest readiness persist
+        /// in the SAME journal snapshot. It is not a native server response.
+        /// A quote is tied to a revision so a repeated/stale confirmation fails.
+        /// </summary>
+        public bool ExchangeLocalItem(int expectedRevision,int itemKey,int itemDelta,long goldDelta,out string reason)
+        {
+            reason="";
+            if(committing){reason="Ya hay una transacción de diario en curso.";return false;}
+            if(expectedRevision!=revision){reason="El inventario cambió. Revisa de nuevo la operación.";return false;}
+            if(itemKey<257||itemKey>65535||(itemKey&255)==0||itemDelta==0||
+                (itemDelta>0?goldDelta>=0:goldDelta<=0))
+            {reason="Intercambio local no válido.";return false;}
+            var inv=new Dictionary<int,int>(inventory);
+            long nextGold;
+            try
+            {
+                nextGold=checked(Gold+goldDelta);
+                if(nextGold<0){reason="No tienes oro suficiente.";return false;}
+                inv.TryGetValue(itemKey,out int current);
+                int next=checked(current+itemDelta);
+                if(next<0){reason="No tienes esa cantidad de objetos.";return false;}
+                if(next==0)inv.Remove(itemKey);else inv[itemKey]=next;
+            }
+            catch(OverflowException){reason="El intercambio excede los límites permitidos.";return false;}
+            var copy=CloneEntries();
+            foreach(var entry in copy.Values)
+                if(entry.stage!=JournalStage.Rewarded)
+                    entry.stage=Ready(catalog[entry.id],entry,inv)?JournalStage.Ready:JournalStage.Active;
+            return Commit(copy,inv,Experience,nextGold,out reason);
         }
         public QuestJournalSave Snapshot()=>Snapshot(entries,inventory,Experience,Gold,revision);
         public void Restore(QuestJournalSave data)

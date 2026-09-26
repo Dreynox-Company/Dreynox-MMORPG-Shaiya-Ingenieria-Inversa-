@@ -30,6 +30,7 @@ namespace Dreynox.Mmorpg.Editor.NativeContent
             public bool passed;
             public int itemRows,skillRanks,itemColumns,skillColumns,itemIcons,skillIcons,zeroItemIcons,missingItemIcons,missingSkillIcons;
             public List<string> exceptions=new List<string>();
+            public List<string> atlasEncodings=new List<string>();
             public string[] sources=(string[])SourceHashes.Clone(),plaintext=(string[])PlainHashes.Clone();
         }
         public static NativeDataTable[] ReadVerifiedTables(CanonicalClientCorpus corpus)
@@ -89,10 +90,17 @@ namespace Dreynox.Mmorpg.Editor.NativeContent
                     {
                         if(!cache.TryGetValue(icon.File,out Texture2D texture))
                         {
-                            string asset=Root+"/Atlases/"+Path.ChangeExtension(icon.File,".png");
-                            // Decode DDS losslessly once in Editor; TGA copies retain original RGBA.
-                            if(Path.GetExtension(path).Equals(".dds",StringComparison.OrdinalIgnoreCase))File.WriteAllBytes(asset,LegacyColorTextureImporter.DecodeDdsToPng(File.ReadAllBytes(path)));
-                            else{asset=Root+"/Atlases/"+icon.File;File.Copy(path,asset,true);}
+                            byte[] original=File.ReadAllBytes(path);
+                            string encoding=LegacyImageSignature.DetectExtension(original);
+                            if(encoding==".tga")LegacyImageSignature.ValidateTgaPayload(original);
+                            string asset=Root+"/Atlases/"+Path.ChangeExtension(icon.File,encoding==".dds"?".png":encoding);
+                            try
+                            {
+                                if(encoding==".dds")File.WriteAllBytes(asset,LegacyColorTextureImporter.DecodeDdsToPng(original));
+                                else File.WriteAllBytes(asset,original); // Renamed COPY, never original DATA.
+                            }
+                            catch(Exception ex){throw new InvalidDataException("Native atlas decode failed: "+icon.File+" ("+encoding+")",ex);}
+                            audit.atlasEncodings.Add(icon.File+" -> "+encoding+" sha256="+Digest(original));
                             AssetDatabase.ImportAsset(asset,ImportAssetOptions.ForceSynchronousImport);
                             var importer=(TextureImporter)AssetImporter.GetAtPath(asset);
                             importer.textureType=TextureImporterType.Default;importer.sRGBTexture=true;importer.mipmapEnabled=false;

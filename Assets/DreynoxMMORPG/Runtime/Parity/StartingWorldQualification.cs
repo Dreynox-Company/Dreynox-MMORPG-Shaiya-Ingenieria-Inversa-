@@ -234,6 +234,8 @@ namespace Dreynox.Mmorpg.Parity
             {Finish("Original quest reward transaction did not match source: "+reason);yield break;}
             if(journal.Journal.Deliver(3400,npc.ServiceKey,0,out _))
             {Finish("Quest reward could be duplicated.");yield break;}
+            npcInteraction.CloseDialogue();
+            yield return Dreynox.Mmorpg.Commerce.LocalMerchantQualification.Run(npcInteraction,journal,npcs,PlaceNear,output,Capture);
             Finish(null);
         }
         private string lastPlacementFailure="";

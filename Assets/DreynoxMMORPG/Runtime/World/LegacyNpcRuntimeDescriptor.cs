@@ -42,6 +42,10 @@ namespace Dreynox.Mmorpg.World
         [SerializeField] private LegacyNpcGateTargetRuntime[] gateTargets =
             Array.Empty<LegacyNpcGateTargetRuntime>();
 
+        // Local pooled-object lifetime; not the server's NPC runtime ID.
+        public uint LifetimeGeneration { get; private set; }
+        private void OnEnable(){AdvanceLifetime();}
+        private void AdvanceLifetime(){unchecked{LifetimeGeneration++;if(LifetimeGeneration==0)LifetimeGeneration=1;}}
         public int NpcType => npcType;
         public int TypeId => typeId;
         public int ModelIndex => modelIndex;
@@ -82,6 +86,7 @@ namespace Dreynox.Mmorpg.World
             int[] outgoingQuestIds,
             LegacyNpcGateTargetRuntime[] targets)
         {
+            AdvanceLifetime();
             npcType = type;
             typeId = id;
             modelIndex = model;

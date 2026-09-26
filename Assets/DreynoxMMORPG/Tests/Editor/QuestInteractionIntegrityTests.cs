@@ -185,5 +185,11 @@ namespace Dreynox.Mmorpg.Tests.Editor
             Assert.AreEqual(new Vector2(256,512),Get<RectTransform>(panel,"modal").sizeDelta);
             Assert.AreEqual(12,Get<Text>(panel,"narrative").fontSize);
         }
+        [Test]
+        public void ReusedNpcInstanceCannotAcceptUsingItsOldConversationLifetime()
+        {
+            npc.gameObject.SetActive(false);npc.gameObject.SetActive(true);
+            Assert.IsFalse(panel.SubmitSelectedQuest());Assert.IsEmpty(journal.Entries);
+        }
     }
 }

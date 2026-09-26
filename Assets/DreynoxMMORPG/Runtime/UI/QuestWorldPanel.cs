@@ -27,6 +27,10 @@ namespace Dreynox.Mmorpg.UI
         private int pendingAbandon=-1;
         private Font font;
         private LegacyNpcRuntimeDescriptor npc;
+        private uint npcLifetime;
+        public bool HasMerchantPanel { get; set; }
+        public event Action<LegacyNpcRuntimeDescriptor> MerchantRequested;
+
         private int selectedQuest=-1, rewardIndex;
         private bool journalView;
         private QuestJournalCore subscribed;
@@ -149,7 +153,7 @@ namespace Dreynox.Mmorpg.UI
         private void NpcOpened(LegacyNpcRuntimeDescriptor value)
         {
             CancelAbandon();abandon.gameObject.SetActive(false);
-            npc=value;journalView=false;selectedQuest=-1;ShowPresentation(false);modal.gameObject.SetActive(true);modalTitle.text=value.DisplayName;
+            npc=value;npcLifetime=value.LifetimeGeneration;journalView=false;selectedQuest=-1;ShowPresentation(false);modal.gameObject.SetActive(true);modalTitle.text=value.DisplayName;
             RefreshOptions();narrative.text=Format(value.WelcomeMessage);action.interactable=false;rewardText.text="";
             action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);
         }
@@ -181,6 +185,12 @@ namespace Dreynox.Mmorpg.UI
             {
                 var greeting=Label(listRoot,Format(npc.WelcomeMessage),12);optionObjects.Add(greeting.gameObject);
             }
+            if(npc!=null&&HasMerchantPanel&&(npc.Services&NpcServiceKind.Merchant)!=0)
+            {
+                var trade=Button(listRoot,"Comprar / vender",()=>RequestMerchant());
+                trade.name="Original merchant service action";
+                trade.gameObject.AddComponent<LayoutElement>().preferredHeight=29;optionObjects.Add(trade.gameObject);
+            }
             var ids=new HashSet<int>();
             if(npc!=null){foreach(int id in npc.InQuestIds)ids.Add(id);foreach(int id in npc.OutQuestIds)ids.Add(id);}
             else foreach(var e in quests.Journal.Entries.Values)if(e.stage!=JournalStage.Rewarded)ids.Add(e.id);
@@ -200,11 +210,26 @@ namespace Dreynox.Mmorpg.UI
                 var empty=Label(listRoot,npc==null?"No tienes misiones activas.":"No hay misiones disponibles para este personaje.",12);
                 optionObjects.Add(empty.gameObject);
             }
-            if(npc!=null&&(npc.Services & ~NpcServiceKind.Quest)!=NpcServiceKind.None)
+            if(npc!=null&&(npc.Services & ~(NpcServiceKind.Quest|(HasMerchantPanel?NpcServiceKind.Merchant:NpcServiceKind.None)))!=NpcServiceKind.None)
             {
                 var label=Label(listRoot,"Otros servicios de este NPC todavía requieren integración. Las misiones disponibles se muestran arriba.",12);
                 label.gameObject.AddComponent<LayoutElement>().preferredHeight=80;optionObjects.Add(label.gameObject);
             }
+        }
+        public bool RequestMerchant()
+        {
+            string reason="La conversación ya no está activa.";
+            if(npc==null||modal==null||!modal.gameObject.activeInHierarchy||!HasMerchantPanel||MerchantRequested==null||
+                npc.LifetimeGeneration!=npcLifetime||(npc.Services&NpcServiceKind.Merchant)==0||
+                !LocalNpcInteractionGuard.Validate(quests.Actor,npc,hud.SelectedNpc,hud.Ready,out reason))
+            {ActionFailure=reason;ShowHint(reason);return false;}
+            MerchantRequested(npc);return true;
+        }
+        public void SuspendForService()
+        {
+            // Keep NativeWorldHud's original conversation context alive.
+            CancelAbandon();if(modal!=null)modal.gameObject.SetActive(false);
+            selectedQuest=-1;WorldInputGate.Set(this,false);
         }
         public bool SelectVisibleQuest(int id)
         {
@@ -228,7 +253,7 @@ namespace Dreynox.Mmorpg.UI
             else reason=entry.stage!=JournalStage.Ready?"Completa los objetivos.":npc==null||q.EndNpcKey!=npc.ServiceKey?"Vuelve al NPC de entrega.":"";
             var reward=q.rewards[rewardIndex];
             var text=new StringBuilder("Recompensa ").Append(rewardIndex+1).Append('/').Append(Choices(q)).Append(": ").Append(reward.experience).Append(" EXP · ").Append(reward.money).Append(" oro");
-            foreach(var item in reward.items)if(item.count>0)text.Append("\nObjeto ").Append(item.type).Append('/').Append(item.typeId).Append(" ×").Append(item.count);
+            foreach(var item in reward.items)if(item.count>0)text.Append("\n").Append(quests.ItemName(item.Key)).Append(" ×").Append(item.count);
             if(reason.Length>0)text.Append('\n').Append(reason);
             rewardText.text=text.ToString();action.interactable=reason.Length==0;
             action.GetComponentInChildren<Text>().text=entry==null?"Aceptar":"Entregar";
@@ -240,7 +265,7 @@ namespace Dreynox.Mmorpg.UI
             if(npc==null||modal==null||!modal.gameObject.activeInHierarchy||selectedQuest<0||!quests.Ready||
                 !visibleQuestIds.Contains(selectedQuest)||!action.interactable)return false;
             string conversationFailure="La conversación ya no está activa.";
-            if(hud==null||!LocalNpcInteractionGuard.Validate(quests.Actor,npc,hud.SelectedNpc,hud.Ready,out conversationFailure))
+            if(hud==null||npc.LifetimeGeneration!=npcLifetime||!LocalNpcInteractionGuard.Validate(quests.Actor,npc,hud.SelectedNpc,hud.Ready,out conversationFailure))
             {
                 ActionFailure=conversationFailure??"La conversación ya no está activa.";
                 CloseAll();ShowHint(ActionFailure);return false;
@@ -309,7 +334,7 @@ namespace Dreynox.Mmorpg.UI
             var s=new StringBuilder();
             if(q.mobCount1>0)s.Append(quests.MobName(q.mob1)).Append(": ").Append(e!=null?e.kills1:0).Append('/').Append(q.mobCount1);
             if(q.mobCount2>0)s.Append("\n").Append(quests.MobName(q.mob2)).Append(": ").Append(e!=null?e.kills2:0).Append('/').Append(q.mobCount2);
-            foreach(var item in q.farmItems)if(item.count>0)s.Append("\nObjeto ").Append(item.type).Append('/').Append(item.typeId).Append(" ×").Append(item.count);
+            foreach(var item in q.farmItems)if(item.count>0)s.Append("\n").Append(quests.ItemName(item.Key)).Append(": ").Append(quests.Journal.Inventory.TryGetValue(item.Key,out int owned)?owned:0).Append('/').Append(item.count);
             return s.ToString();
         }
         private static string Format(string text)

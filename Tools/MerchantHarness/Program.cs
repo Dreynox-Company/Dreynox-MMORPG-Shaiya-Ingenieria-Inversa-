@@ -1,0 +1,71 @@
+using Dreynox.Mmorpg.Commerce;
+using Dreynox.Mmorpg.Quests;
+int checks=0;
+void Check(bool test,string name){if(!test)throw new Exception("FAIL "+name);checks++;Console.WriteLine("PASS "+name);}
+QuestJournalCore Journal(long gold=1000)
+{
+    var journal=new QuestJournalCore(new LegacyQuestCatalogData{sourceSha256="merchant-fixture",quests=Array.Empty<LegacyQuestDefinition>()});
+    var snapshot=journal.Snapshot();snapshot.gold=gold;journal.Restore(snapshot);return journal;
+}
+var apple=new LocalMerchantOffer(25*256+1,"Manzana (fixture)",100,25);
+var unknown=new LocalMerchantOffer(257,"No negociable",0,0);
+LocalMerchantSession Session(QuestJournalCore journal,Func<bool> context=null)=>new(journal,new[]{apple,null,unknown},key=>key==apple.ItemKey?apple:key==257?unknown:null,context??(()=>true));
+var wallet=Journal();var shop=Session(wallet);int initial=wallet.Revision;
+Check(shop.QuoteBuy(0,2,out var q,out _)&&q.Total==200&&wallet.Gold==1000&&wallet.Inventory.Count==0&&wallet.Revision==initial,"quote is non-mutating");
+Check(!shop.Confirm(null,out _)&&shop.Pending==q,"missing confirmation cannot spend");
+Check(shop.Confirm(q,out _)&&wallet.Gold==800&&wallet.Inventory[apple.ItemKey]==2&&wallet.Revision==initial+1,"gold and bought items commit in one revision");
+Check(!shop.Confirm(q,out _)&&wallet.Gold==800,"double purchase confirmation rejected");
+Check(shop.QuoteSell(apple.ItemKey,1,out q,out _)&&shop.Confirm(q,out _)&&wallet.Gold==825&&wallet.Inventory[apple.ItemKey]==1,"owned item sale credits source price once");
+Check(!shop.Confirm(q,out _)&&wallet.Gold==825,"duplicate sale cannot pay twice");
+Check(!shop.QuoteSell(apple.ItemKey,2,out _,out _),"cannot sell more than owned");
+Check(!shop.QuoteSell(258,1,out _,out _),"unknown object cannot be sold");
+Check(!shop.QuoteBuy(1,1,out _,out _),"unresolved stock position does not select another entry");
+Check(!shop.QuoteBuy(-1,1,out _,out _)&&!shop.QuoteBuy(3,1,out _,out _),"stock bounds enforced");
+Check(!shop.QuoteBuy(0,0,out _,out _)&&!shop.QuoteBuy(0,256,out _,out _),"quantity byte domain enforced");
+Check(!shop.QuoteBuy(0,255,out _,out _)&&wallet.Gold==825,"insufficient funds do not partially buy");
+Check(!shop.QuoteBuy(2,1,out _,out _),"zero original price is not invented");
+Check(shop.QuoteBuy(0,1,out q,out _),"new purchase quote");
+wallet.ApplyInventoryTransaction(new Dictionary<int,int>{{257,1}},out _);
+Check(!shop.Confirm(q,out _)&&wallet.Gold==825&&wallet.Inventory[apple.ItemKey]==1,"inventory change invalidates previously quoted revision");
+Check(shop.QuoteBuy(0,1,out q,out _),"fresh purchase quote after change");
+wallet.Persist=_=>false;int beforeRevision=wallet.Revision;
+Check(!shop.Confirm(q,out _)&&wallet.Gold==825&&wallet.Inventory[apple.ItemKey]==1&&wallet.Revision==beforeRevision,"disk rejection leaves both balances unchanged");
+QuestJournalSave durable=null;wallet.Persist=s=>{durable=s;return true;};
+Check(shop.Confirm(q,out _)&&durable.gold==725&&durable.items.Single(i=>i.key==apple.ItemKey).count==2,"same quote explicitly retries a failed save");
+Check(durable.revision==wallet.Revision,"durable revision and in-memory revision agree");
+wallet.Persist=_=>throw new IOException("full disk");
+shop.QuoteSell(apple.ItemKey,1,out q,out _);Check(!shop.Confirm(q,out _)&&wallet.Gold==725&&wallet.Inventory[apple.ItemKey]==2,"save exception preserves sell items and gold");
+wallet.Persist=null;shop.CancelQuote();Check(!shop.Confirm(q,out _),"cancel invalidates a quoted transaction");
+var other=Session(wallet);other.QuoteBuy(0,1,out var foreign,out _);Check(!shop.Confirm(foreign,out _)&&wallet.Gold==725,"quote is bound to the issuing merchant session");
+other.Dispose();Check(!other.Confirm(foreign,out _),"closed merchant rejects prior quotes");
+bool accessible=true;var guarded=Session(wallet,()=>accessible);guarded.QuoteBuy(0,1,out q,out _);accessible=false;
+Check(!guarded.Confirm(q,out _)&&!guarded.IsOpen&&wallet.Gold==725,"lost NPC context fails closed without mutation");
+var reentrantWallet=Journal();var reentrant=Session(reentrantWallet);reentrant.QuoteBuy(0,2,out q,out _);bool nested=true;
+reentrantWallet.Changed+=()=>nested=reentrant.Confirm(q,out _);
+Check(reentrant.Confirm(q,out _)&&!nested&&reentrantWallet.Gold==800&&reentrantWallet.Inventory[apple.ItemKey]==2,"observer reentrancy cannot execute a trade twice");
+reentrantWallet.Changed+=()=>throw new Exception("UI failure");reentrant.QuoteSell(apple.ItemKey,1,out q,out _);
+Check(reentrant.Confirm(q,out _)&&reentrantWallet.Gold==825&&reentrantWallet.ObserverFailureCount==1,"broken UI observer cannot undo a durable trade");
+var max=Journal(long.MaxValue-10);max.ApplyInventoryTransaction(new Dictionary<int,int>{{apple.ItemKey,1}},out _);
+Check(!Session(max).QuoteSell(apple.ItemKey,1,out _,out _)&&max.Inventory[apple.ItemKey]==1,"overflow is rejected before removing an owned item");
+var full=Journal();full.ApplyInventoryTransaction(new Dictionary<int,int>{{apple.ItemKey,int.MaxValue}},out _);
+Check(!Session(full).QuoteBuy(0,1,out _,out _),"item count overflow rejected before payment");
+var blockedOffer=new LocalMerchantOffer(258,"Otra moneda",100,25,"Moneda no integrada");
+var restricted=new LocalMerchantSession(wallet,new[]{blockedOffer},_=>blockedOffer,()=>true);
+Check(!restricted.QuoteBuy(0,1,out _,out var reason)&&reason=="Moneda no integrada","unsupported currency stays blocked with source reason");
+Check(!wallet.ExchangeLocalItem(wallet.Revision,257,1,1,out _)&&!wallet.ExchangeLocalItem(wallet.Revision,257,-1,-1,out _),"exchange cannot simultaneously grant items and money");
+Check(!wallet.ExchangeLocalItem(wallet.Revision,256,1,-1,out _)&&!wallet.ExchangeLocalItem(wallet.Revision,0,1,-1,out _),"zero native type/id cannot enter local inventory");
+var fixture=new LegacyQuestDefinition{id=10,minLevel=1,maxLevel=10,faction=2,mode=0,male=1,female=1,jobs=new byte[]{1,1,1,1,1,1},
+    startType=1,startNpcType=7,startNpcId=1,endType=2,endNpcType=7,endNpcId=1,resultType=1,
+    farmItems=new[]{new LegacyQuestItem{type=25,typeId=1,count=2}},rewards=new[]{new LegacyQuestReward{money=10,experience=3}}};
+var questWallet=new QuestJournalCore(new LegacyQuestCatalogData{sourceSha256="quest-fixture",quests=new[]{fixture}});
+var seed=questWallet.Snapshot();seed.gold=1000;questWallet.Restore(seed);
+questWallet.Accept(10,fixture.StartNpcKey,new QuestPlayerContext(1,0,0,0,2),out _);
+var collectionShop=Session(questWallet);collectionShop.QuoteBuy(0,2,out q,out _);collectionShop.Confirm(q,out _);
+Check(questWallet.Entries[10].stage==JournalStage.Ready,"purchased quest items update the existing collection objective");
+collectionShop.QuoteSell(apple.ItemKey,1,out q,out _);collectionShop.Confirm(q,out _);
+Check(questWallet.Entries[10].stage==JournalStage.Active&&!questWallet.Deliver(10,fixture.EndNpcKey,0,out _),"selling a required quest item removes readiness before turn-in");
+collectionShop.QuoteBuy(0,1,out q,out _);collectionShop.Confirm(q,out _);
+Check(questWallet.Deliver(10,fixture.EndNpcKey,0,out _)&&!questWallet.Inventory.ContainsKey(apple.ItemKey),"bought item uses normal objective consumption not a parallel inventory");
+var restored=new QuestJournalCore(new LegacyQuestCatalogData{sourceSha256="quest-fixture",quests=new[]{fixture}});restored.Restore(questWallet.Snapshot());
+Check(restored.Gold==735&&restored.Experience==3&&restored.Entries[10].stage==JournalStage.Rewarded,"trade and quest state survive snapshot reload with exact totals");
+Console.WriteLine("LOCAL MERCHANT TRANSACTIONS OK: "+checks+" checks. Synthetic fixtures, not native server/economy parity.");
