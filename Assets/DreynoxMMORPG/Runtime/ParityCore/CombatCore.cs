@@ -29,7 +29,7 @@ namespace Dreynox.Mmorpg.ParityCore
     {
         public const double DefaultGuardSeconds = 8.0;
         private readonly Dictionary<int, CombatTargetState> _targets = new Dictionary<int, CombatTargetState>();
-        private double _clock, _guardUntil, _phaseRemaining, _recoverySeconds;
+        private double _clock, _guardUntil, _phaseRemaining, _recoverySeconds, _attackDuration;
         private bool _hitApplied;
         private int _pendingDamage;
         private int? _selectedTargetId, _lockedAttackTargetId;
@@ -37,6 +37,9 @@ namespace Dreynox.Mmorpg.ParityCore
 
         public double Clock => _clock;
         public AttackPhase Phase => _phase;
+        public double AttackRemainingSeconds => _phase == AttackPhase.Idle ? 0 :
+            _phaseRemaining + (_phase == AttackPhase.Windup ? _recoverySeconds : 0);
+        public double AttackRemainingFraction => _attackDuration <= 0 ? 0 : Math.Max(0, Math.Min(1, AttackRemainingSeconds / _attackDuration));
         public int? SelectedTargetId => _selectedTargetId;
         public int? LockedAttackTargetId => _lockedAttackTargetId;
         public bool InCombatGuard => _clock < _guardUntil || _phase != AttackPhase.Idle;
@@ -94,6 +97,7 @@ namespace Dreynox.Mmorpg.ParityCore
             _phase = AttackPhase.Windup;
             _phaseRemaining = Math.Max(0.001, Math.Max(hitSeconds, windupSeconds));
             _recoverySeconds = Math.Max(0.01, recoverySeconds);
+            _attackDuration = _phaseRemaining + _recoverySeconds;
             AttackSerial++;
             TouchGuard();
             return true;

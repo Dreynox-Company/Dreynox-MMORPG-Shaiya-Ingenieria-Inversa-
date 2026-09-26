@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ImplicitUsings>disable</ImplicitUsings><Nullable>disable</Nullable><LangVersion>9.0</LangVersion>
+    <DefineConstants>UNITY_STANDALONE;UNITY_STANDALONE_WIN;UNITY_6000_0;UNITY_6000_0_OR_NEWER</DefineConstants>
+    <NoWarn>0618;0649</NoWarn>
+  </PropertyGroup>
+  <Target Name="RequireActualUnityReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(UnityManagedDirectory)/UnityEngine.CoreModule.dll')" Text="Exact qualified Player's Unity managed reference assemblies are required. No stubs allowed." />
+  </Target>
+  <ItemGroup>
+    <Compile Include="../../Assets/DreynoxMMORPG/Runtime/**/*.cs" />
+    <Reference Include="$(UnityManagedDirectory)/Unity*.dll"><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

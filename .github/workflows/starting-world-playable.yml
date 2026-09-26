@@ -1,4 +1,4 @@
-# Revision 20: source-derived default body, texture coordinates and original radar artwork.
+# Revision 24: source-derived pixel UI, actual quickbar callbacks and preserved gameplay qualification.
 name: Starting Map1 playable client
 on:
   push:
@@ -21,6 +21,7 @@ jobs:
       - run: dotnet run --project Tools/QuestHarness/QuestHarness.csproj --configuration Release
       - run: dotnet run --project Tools/AppearanceHarness/AppearanceHarness.csproj --configuration Release
       - run: dotnet run --project Tools/DeliveryTests/DeliveryTests.csproj --configuration Release
+      - run: dotnet run --project Tools/NativeUiHarness/NativeUiHarness.csproj --configuration Release
   windows:
     needs: source
     runs-on: [self-hosted, Windows, X64]
@@ -49,6 +50,10 @@ jobs:
           "DREYNOX_BUILD_ROOT=$root" | Out-File -LiteralPath $env:GITHUB_ENV -Append -Encoding UTF8
           "root=$root" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding UTF8
           Write-Host "Isolated project root: $root ($($root.Length) characters). Original DATA unchanged."
+      - name: Parse and verify unchanged delivery sources before expensive Unity work
+        run: |
+          Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/Delivery/Test-DeliverySource.ps1
       - name: Verify user-authorized original DATA
         run: |
           Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
@@ -107,6 +112,7 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           Set-Location -LiteralPath $env:DREYNOX_BUILD_ROOT
+          ./Tools/Delivery/Test-DeliverySource.ps1
           $reports=@(Get-ChildItem -LiteralPath 'Artifacts/StartingWorld' -Filter 'starting-world-qualification.json' -File -Recurse)
           if($reports.Count -ne 1){throw 'Expected exactly one current-run Player qualification report.'}
           ./Tools/Delivery/Build-PortablePlayer.ps1 -PlayerDirectory 'Builds/WindowsStartingWorld' -QualificationReport $reports[0].FullName -OutputDirectory 'Deliveries/Map1'

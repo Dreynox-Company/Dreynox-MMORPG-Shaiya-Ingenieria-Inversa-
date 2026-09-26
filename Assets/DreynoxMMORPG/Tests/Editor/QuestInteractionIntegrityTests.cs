@@ -162,5 +162,28 @@ namespace Dreynox.Mmorpg.Tests.Editor
             Assert.IsFalse(panel.ConfirmAbandon());Assert.AreEqual(3000,journal.Gold);
             Assert.AreEqual(JournalStage.Rewarded,journal.Entries[3400].stage);
         }
+        [Test]
+        public void EscapeCancelsOnlyTopConfirmationBeforeClosingJournal()
+        {
+            OpenActiveJournal();Assert.IsTrue(panel.RequestAbandonSelectedQuest());
+            Assert.IsTrue(panel.ProcessEscape());
+            Assert.IsFalse(Get<RectTransform>(panel,"abandonConfirmation").gameObject.activeSelf);
+            Assert.IsTrue(Get<RectTransform>(panel,"modal").gameObject.activeSelf);
+            Assert.IsTrue(journal.Entries.ContainsKey(3400));
+            Assert.IsTrue(panel.ProcessEscape());
+            Assert.IsFalse(Get<RectTransform>(panel,"modal").gameObject.activeSelf);
+            Assert.IsFalse(panel.ProcessEscape());Assert.IsFalse(WorldInputGate.IsBlocked);
+        }
+        [Test]
+        public void NativeDetailAndNpcSelectorUseTheirSeparateAuthoredDimensions()
+        {
+            Assert.AreEqual(new Vector2(256,512),Get<RectTransform>(panel,"modal").sizeDelta);
+            Call(panel,"NpcOpened",npc);
+            Assert.AreEqual(new Vector2(342,229),Get<RectTransform>(panel,"modal").sizeDelta);
+            Assert.IsFalse(Get<RectTransform>(panel,"paperPage").gameObject.activeSelf);
+            Assert.IsTrue(panel.SelectVisibleQuest(3400));
+            Assert.AreEqual(new Vector2(256,512),Get<RectTransform>(panel,"modal").sizeDelta);
+            Assert.AreEqual(12,Get<Text>(panel,"narrative").fontSize);
+        }
     }
 }

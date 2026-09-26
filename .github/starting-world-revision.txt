@@ -1,6 +1,8 @@
-Map1 qualification23: complete local quest acceptance/progress/reward/confirmed-abandonment UI flow.
-Retain exact native default body and radar, original terrain physics/sword, improved rendering and real skinned pose proofs.
-New local abandonment requires confirmation and durable save; cancel/close/reward/stale clicks cannot remove another or completed quest.
-Four additional Unity cases join the actual NPC/mission/attack/death/reward scenario. Previous integrity tests remain required.
-Native request body offsets/opcodes for accept/end/choice/quit are statically recovered from ps0032, but no connected native session is claimed.
-Only a genuinely qualified one-file executable is a user deliverable. Main, original DATA and game.exe stay unchanged.
+Map1 qualification24: source-derived native pixel UI, not a claim of full native visual equivalence.
+Use original Slot/main_slot_1.tga/main_slot_2.tga, 446x53 or 53x446 frames, ten32-pixel cells with40-pixel stride, fivepages, threeconfigurablebars.
+Keep source texture padding/alpha, original button state sprites, Arial from installed OS, and constant1:1UIpixel units.
+Exercise actual page/rotation/additional-bar callbacks in the Player before the original movement/NPC/quest/fox/reward loop.
+Capture instantiated UI rectangles and atlasUVs in .ui.json beside each actual PNG. Source tests are not screenshots.
+No fabricated full player vitals, learned skills or server results; only the existing local basic attack is initially bound.
+Parse and verify unchanged delivery scripts before Unity work and again before packaging.
+Original DATA/game.exe/main and the previously qualified EXE are not modified.

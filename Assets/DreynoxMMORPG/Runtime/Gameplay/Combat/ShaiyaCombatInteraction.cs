@@ -14,7 +14,9 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
         [SerializeField] private LayerMask targetMask = ~0;
         [SerializeField] private float maxSelectionDistance = 100f;
         [SerializeField, Min(0.1f)] private float meleeReach = 3.5f;
-        [SerializeField] private int[] attackDamage = { 95, 130, 180, 240 };
+        [SerializeField, Min(1)] private int basicAttackDamage = 95;
+        public bool NativeQuickbarOwnsInput {get;set;}
+        public bool TryBasicAttack() => TryAttackSelected(basicAttackDamage);
         private readonly Dictionary<int, TargetBinding> targets = new Dictionary<int, TargetBinding>();
         private readonly RaycastHit[] lineHits = new RaycastHit[32];
         private int lastHitSerial;
@@ -41,9 +43,7 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
             bool overUi = Dreynox.Mmorpg.Interaction.WorldInputGate.IsBlocked ||
                 (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject());
             if (!overUi && Input.GetMouseButtonDown(0)) SelectUnderCursor();
-            if (!overUi)
-                for (int i = 0; i < attackDamage.Length && i < 4; i++)
-                    if (Input.GetKeyDown((KeyCode)((int)KeyCode.Alpha1 + i))) TryAttackSelected(attackDamage[i]);
+            if (!overUi && !NativeQuickbarOwnsInput && Input.GetKeyDown(KeyCode.Alpha1)) TryBasicAttack();
             FlushHitToScene();
         }
         public bool Select(ShaiyaCombatTarget target)
@@ -74,6 +74,7 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
             targets.Clear();
             SelectedTarget = null;
             Feedback = string.Empty;
+            TargetSelected?.Invoke(null);
         }
         public bool TryAttackSelected(int damage)
         {
@@ -81,6 +82,7 @@ namespace Dreynox.Mmorpg.Gameplay.Combat
             { Feedback = "Objetivo fuera de alcance, obstruido o no disponible."; return false; }
             bool accepted = actor.RequestAttack(damage);
             if (accepted) Feedback = "Atacando " + SelectedTarget.name;
+            else Feedback = "Espera a que termine el ataque actual.";
             return accepted;
         }
         public bool CanImpact(int targetId)

@@ -46,7 +46,7 @@ namespace Dreynox.Mmorpg.UI
             ZoomButton(parent, "Zoom in", skin.ZoomIn, new Vector2(8, -204), () => Zoom(1));
             ZoomButton(parent, "Zoom out", skin.ZoomOut, new Vector2(25, -204), () => Zoom(-1));
             positionLabel = Element("Radar position", parent, new Vector2(58, -203), new Vector2(135, 20)).gameObject.AddComponent<Text>();
-            positionLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            positionLabel.font = NativeUiPrimitives.Font;
             positionLabel.fontSize = 11; positionLabel.color = Color.white; positionLabel.alignment = TextAnchor.MiddleRight;
             positionLabel.raycastTarget = false; positionLabel.supportRichText = false;
         }

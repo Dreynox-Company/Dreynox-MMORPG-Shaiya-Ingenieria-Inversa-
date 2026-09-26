@@ -17,7 +17,9 @@ namespace Dreynox.Mmorpg.UI
         [SerializeField] private NativeWorldHud hud;
         [SerializeField] private QuestJournalRuntime quests;
         [SerializeField] private Sprite questBackground;
-        private RectTransform canvasRoot, modal, listRoot;
+        private RectTransform canvasRoot, modal, listRoot, paperPage, selectorBackdrop;
+        private Button closeButton;
+        private NativeWindowDrag windowDrag;
         private Text tracker, modalTitle, narrative, rewardText;
         private Button action, rewardCycle, abandon;
         private RectTransform abandonConfirmation;
@@ -40,11 +42,12 @@ namespace Dreynox.Mmorpg.UI
             float until=Time.realtimeSinceStartup+10;
             while((!hud.Ready||!quests.Ready)&&Time.realtimeSinceStartup<until)yield return null;
             if(!hud.Ready||!quests.Ready)throw new InvalidOperationException("Native HUD or journal did not initialize: "+quests.Error);
-            font=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");canvasRoot=hud.CanvasRoot;
-            var panel=Panel("Quest tracker",canvasRoot,new Vector2(1,1),new Vector2(-282,-310),new Vector2(265,215));
-            tracker=Label(panel,"Misiones · L",14);Inset(tracker.rectTransform,10);
+            font=NativeUiPrimitives.Font;canvasRoot=hud.CanvasRoot;
+            var panel=Panel("Quest tracker",canvasRoot,new Vector2(1,1),new Vector2(-250,-242),new Vector2(238,185));
+            tracker=Label(panel,"Misiones · L",12);Inset(tracker.rectTransform,6);
+            panel.GetComponent<Image>().color=new Color(0,0,0,.28f);
             var button=Button(canvasRoot,"L · Misiones",ToggleJournal);
-            Box(button.GetComponent<RectTransform>(),new Vector2(1,0),new Vector2(-145,65),new Vector2(125,35));
+            Box(button.GetComponent<RectTransform>(),new Vector2(1,0),new Vector2(-112,56),new Vector2(104,26));
             BuildDialog();hud.HasQuestPanel=true;
             hud.DialogueOpened+=NpcOpened;hud.DialogueClosed+=CloseDialog;
             subscribed=quests.Journal;subscribed.Changed+=RefreshQuests;
@@ -61,9 +64,14 @@ namespace Dreynox.Mmorpg.UI
         private void Update()
         {
             if(canvasRoot==null)return;
-            if(Input.GetKeyDown(KeyCode.L))ToggleJournal();
-            if(Input.GetKeyDown(KeyCode.Escape))
-            { if(pendingAbandon>=0)CancelAbandon();else CloseAll(); }
+            if(!NativeUiPrimitives.TextEditing&&Input.GetKeyDown(KeyCode.L))ToggleJournal();
+            if(Input.GetKeyDown(KeyCode.Escape))ProcessEscape();
+        }
+        public bool ProcessEscape()
+        {
+            if(modal==null||!modal.gameObject.activeInHierarchy)return false;
+            if(pendingAbandon>=0)CancelAbandon();else CloseAll();
+            return true;
         }
         private string Marker(int npcKey)
         {
@@ -78,39 +86,59 @@ namespace Dreynox.Mmorpg.UI
         }
         private void BuildDialog()
         {
-            // ps0032 0x58F1D2..0x58F1E9 loads quest/take.tga as 256x512.
-            // Preserve the authored ratio; panel margins are Unity presentation choices.
-            modal=Panel("NPC and quest dialog",canvasRoot,new Vector2(.5f,.5f),new Vector2(-290,296),new Vector2(580,592));
-            modal.GetComponent<Image>().color=new Color(.065f,.052f,.037f,1f);
+            // Native take.tga is a 256x512 window, not a page stretched inside a
+            // 580x592 substitute. Selection and details are separate presentations.
+            float x=Mathf.Max(0,canvasRoot.rect.width-474);
+            modal=Panel("NPC and quest dialog",canvasRoot,new Vector2(0,1),new Vector2(x,-118),new Vector2(256,512));
+            modal.GetComponent<Image>().color=new Color(.065f,.052f,.037f,1);
             var overlay=modal.gameObject.AddComponent<Canvas>();overlay.overrideSorting=true;overlay.sortingOrder=100;
             modal.gameObject.AddComponent<GraphicRaycaster>();
-            var close=Button(modal,"×",CloseAll);Box(close.GetComponent<RectTransform>(),new Vector2(1,1),new Vector2(-38,-8),new Vector2(30,30));
-            modalTitle=Label(modal,"",22);Box(modalTitle.rectTransform,new Vector2(0,1),new Vector2(18,-12),new Vector2(518,38));
-            listRoot=Scroll(modal,new Vector2(14,-60),new Vector2(280,465));
-            var page=Panel("Original quest parchment",modal,new Vector2(0,1),new Vector2(308,-56),new Vector2(256,512));
-            var image=page.GetComponent<Image>();image.sprite=questBackground;image.color=Color.white;
-            var story=Scroll(page,new Vector2(28,-40),new Vector2(200,278));
-            narrative=Label(story,"",14);ConfigurePaperText(narrative);
-            var rewards=Scroll(page,new Vector2(28,-352),new Vector2(200,84));
-            rewardText=Label(rewards,"",13);ConfigurePaperText(rewardText);
-            action=Button(page,"Aceptar misión",QuestAction);
-            Box(action.GetComponent<RectTransform>(),new Vector2(0,0),new Vector2(28,45),new Vector2(200,32));
-            rewardCycle=Button(modal,"Elegir recompensa →",CycleReward);
-            Box(rewardCycle.GetComponent<RectTransform>(),new Vector2(0,0),new Vector2(20,52),new Vector2(266,34));
+            selectorBackdrop=Rect("Original NPC selection",modal,new Vector2(0,1),Vector2.zero,new Vector2(342,229));
+            if(hud!=null&&hud.TalkArtwork!=null)
+                NativeUiPrimitives.Art("NPC selection artwork",selectorBackdrop,hud.TalkArtwork,new Rect(1,1,342,229),Vector2.zero);
+            listRoot=Scroll(modal,new Vector2(16,-43),new Vector2(310,145));
+            paperPage=Panel("Original quest parchment",modal,new Vector2(0,1),Vector2.zero,new Vector2(256,512));
+            var image=paperPage.GetComponent<Image>();image.sprite=questBackground;image.color=Color.white;
+            var story=Scroll(paperPage,new Vector2(21,-48),new Vector2(224,272));
+            narrative=Label(story,"",12);ConfigurePaperText(narrative);
+            var rewards=Scroll(paperPage,new Vector2(21,-343),new Vector2(224,94));
+            rewardText=Label(rewards,"",12);ConfigurePaperText(rewardText);
+            action=Button(paperPage,"Aceptar",QuestAction);
+            Box(action.GetComponent<RectTransform>(),new Vector2(0,1),new Vector2(52,-470),new Vector2(68,26));
+            rewardCycle=Button(paperPage,"Elegir recompensa →",CycleReward);
+            Box(rewardCycle.GetComponent<RectTransform>(),new Vector2(0,1),new Vector2(21,-439),new Vector2(215,23));
             rewardCycle.gameObject.SetActive(false);
-            abandon=Button(modal,"Abandonar misión",()=>{RequestAbandonSelectedQuest();});
-            Box(abandon.GetComponent<RectTransform>(),new Vector2(0,0),new Vector2(20,52),new Vector2(266,34));
+            abandon=Button(paperPage,"Abandonar",()=>{RequestAbandonSelectedQuest();});
+            Box(abandon.GetComponent<RectTransform>(),new Vector2(0,1),new Vector2(33,-470),new Vector2(98,26));
             abandon.gameObject.SetActive(false);
-            abandonConfirmation=Panel("Confirmar abandono",modal,new Vector2(0,1),Vector2.zero,new Vector2(580,592));
-            abandonConfirmation.GetComponent<Image>().color=new Color(.04f,.035f,.025f,.99f);
-            abandonPrompt=Label(abandonConfirmation,"",18);abandonPrompt.alignment=TextAnchor.MiddleCenter;
-            Box(abandonPrompt.rectTransform,new Vector2(0,1),new Vector2(36,-135),new Vector2(508,170));
-            var keep=Button(abandonConfirmation,"Conservar misión",CancelAbandon);
-            Box(keep.GetComponent<RectTransform>(),new Vector2(0,1),new Vector2(34,-332),new Vector2(244,42));
-            var confirm=Button(abandonConfirmation,"Confirmar abandono",()=>{ConfirmAbandon();});
-            Box(confirm.GetComponent<RectTransform>(),new Vector2(0,1),new Vector2(302,-332),new Vector2(244,42));
+            modalTitle=Label(modal,"",12);modalTitle.color=Color.yellow;
+            closeButton=Button(modal,"Cancelar",CloseAll);
+            abandonConfirmation=Panel("Confirmar abandono",modal,new Vector2(0,1),Vector2.zero,new Vector2(256,512));
+            abandonConfirmation.GetComponent<Image>().color=new Color(.04f,.035f,.025f,1);
+            abandonPrompt=Label(abandonConfirmation,"",13);abandonPrompt.alignment=TextAnchor.MiddleCenter;
+            Box(abandonPrompt.rectTransform,new Vector2(0,1),new Vector2(18,-126),new Vector2(220,172));
+            var keep=Button(abandonConfirmation,"Conservar",CancelAbandon);
+            Box(keep.GetComponent<RectTransform>(),new Vector2(0,1),new Vector2(17,-335),new Vector2(105,28));
+            var confirm=Button(abandonConfirmation,"Abandonar",()=>{ConfirmAbandon();});
+            Box(confirm.GetComponent<RectTransform>(),new Vector2(0,1),new Vector2(135,-335),new Vector2(105,28));
             abandonConfirmation.gameObject.SetActive(false);
-            modal.gameObject.SetActive(false);
+            // Only the title strip starts a window drag; scrolling and reward
+            // buttons retain their own pointer ownership.
+            var handle=Rect("Window drag handle",modal,new Vector2(0,1),Vector2.zero,new Vector2(232,30));
+            handle.gameObject.AddComponent<Image>().color=Color.clear;
+            windowDrag=handle.gameObject.AddComponent<NativeWindowDrag>();windowDrag.Error=ShowHint;
+            windowDrag.Configure(modal,"quest-window",null);
+            modalTitle.transform.SetAsLastSibling();closeButton.transform.SetAsLastSibling();
+            ShowPresentation(true);modal.gameObject.SetActive(false);
+        }
+        private void ShowPresentation(bool detail)
+        {
+            paperPage.gameObject.SetActive(detail);selectorBackdrop.gameObject.SetActive(!detail);
+            listRoot.parent.parent.gameObject.SetActive(!detail);
+            modal.sizeDelta=detail?new Vector2(256,512):new Vector2(342,229);
+            Box(modalTitle.rectTransform,new Vector2(0,1),detail?new Vector2(36,-12):new Vector2(18,-9),detail?new Vector2(199,27):new Vector2(306,26));
+            Box(closeButton.GetComponent<RectTransform>(),new Vector2(0,1),detail?new Vector2(144,-470):new Vector2(259,-195),new Vector2(76,26));
+            if(windowDrag!=null)windowDrag.Clamp();
         }
         private static void ConfigurePaperText(Text value)
         {
@@ -121,7 +149,7 @@ namespace Dreynox.Mmorpg.UI
         private void NpcOpened(LegacyNpcRuntimeDescriptor value)
         {
             CancelAbandon();abandon.gameObject.SetActive(false);
-            npc=value;journalView=false;selectedQuest=-1;modal.gameObject.SetActive(true);modalTitle.text=value.DisplayName;
+            npc=value;journalView=false;selectedQuest=-1;ShowPresentation(false);modal.gameObject.SetActive(true);modalTitle.text=value.DisplayName;
             RefreshOptions();narrative.text=Format(value.WelcomeMessage);action.interactable=false;rewardText.text="";
             action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);
         }
@@ -130,7 +158,7 @@ namespace Dreynox.Mmorpg.UI
             if(journalView&&modal.gameObject.activeSelf){CloseAll();return;}
             CancelAbandon();abandon.gameObject.SetActive(false);
             hud.CloseDialogue();npc=null;journalView=true;selectedQuest=-1;WorldInputGate.Set(this,true);
-            modal.gameObject.SetActive(true);modalTitle.text="Diario de misiones";RefreshOptions();
+            ShowPresentation(false);modal.gameObject.SetActive(true);modalTitle.text="Diario de misiones";RefreshOptions();
             narrative.text="Selecciona una misión activa.\nLas condiciones no integradas se muestran, pero no se completan artificialmente.";
             rewardText.text="";action.interactable=false;
             action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);
@@ -141,14 +169,18 @@ namespace Dreynox.Mmorpg.UI
             var text=new StringBuilder("MISIONES · L\n");
             foreach(var e in quests.Journal.Entries.Values)
                 if(e.stage!=JournalStage.Rewarded&&quests.Journal.TryGet(e.id,out var q))text.Append('\n').Append(q.title).Append('\n').Append(Progress(q,e));
-            text.Append("\n\nEXP registrada: ").Append(quests.Journal.Experience).Append(" · Oro: ").Append(quests.Journal.Gold);
             tracker.text=text.ToString();
+            tracker.transform.parent.gameObject.SetActive(text.Length>16);
             if(modal.gameObject.activeSelf){RefreshOptions();if(selectedQuest>=0)SelectQuest(selectedQuest);}
         }
         private void RefreshOptions()
         {
             foreach(var obj in optionObjects){obj.SetActive(false);if(Application.isPlaying)Destroy(obj);else DestroyImmediate(obj);}optionObjects.Clear();visibleQuestIds.Clear();
             if(!quests.Ready)return;
+            if(npc!=null&&!String.IsNullOrWhiteSpace(npc.WelcomeMessage))
+            {
+                var greeting=Label(listRoot,Format(npc.WelcomeMessage),12);optionObjects.Add(greeting.gameObject);
+            }
             var ids=new HashSet<int>();
             if(npc!=null){foreach(int id in npc.InQuestIds)ids.Add(id);foreach(int id in npc.OutQuestIds)ids.Add(id);}
             else foreach(var e in quests.Journal.Entries.Values)if(e.stage!=JournalStage.Rewarded)ids.Add(e.id);
@@ -161,12 +193,17 @@ namespace Dreynox.Mmorpg.UI
                 visibleQuestIds.Add(id);
                 int captured=id;string suffix=p!=null?"\n"+Progress(q,p):"\nNivel "+q.minLevel+"–"+q.maxLevel;
                 var button=Button(listRoot,q.title+suffix,()=>SelectQuest(captured));
-                button.gameObject.AddComponent<LayoutElement>().preferredHeight=70;optionObjects.Add(button.gameObject);
+                button.gameObject.AddComponent<LayoutElement>().preferredHeight=42;optionObjects.Add(button.gameObject);
+            }
+            if(visibleQuestIds.Count==0)
+            {
+                var empty=Label(listRoot,npc==null?"No tienes misiones activas.":"No hay misiones disponibles para este personaje.",12);
+                optionObjects.Add(empty.gameObject);
             }
             if(npc!=null&&(npc.Services & ~NpcServiceKind.Quest)!=NpcServiceKind.None)
             {
-                var label=Label(listRoot,"Otros servicios de este NPC todavía requieren integración. Las misiones disponibles se muestran arriba.",14);
-                label.gameObject.AddComponent<LayoutElement>().preferredHeight=95;optionObjects.Add(label.gameObject);
+                var label=Label(listRoot,"Otros servicios de este NPC todavía requieren integración. Las misiones disponibles se muestran arriba.",12);
+                label.gameObject.AddComponent<LayoutElement>().preferredHeight=80;optionObjects.Add(label.gameObject);
             }
         }
         public bool SelectVisibleQuest(int id)
@@ -178,7 +215,8 @@ namespace Dreynox.Mmorpg.UI
         {
             if(!quests.Ready||!quests.Journal.TryGet(id,out var q))return;
             if(selectedQuest!=id)CancelAbandon();
-            selectedQuest=id;rewardIndex=Mathf.Clamp(rewardIndex,0,Mathf.Max(0,Choices(q)-1));
+            selectedQuest=id;ShowPresentation(true);modalTitle.text=q.title;
+            rewardIndex=Mathf.Clamp(rewardIndex,0,Mathf.Max(0,Choices(q)-1));
             quests.Journal.Entries.TryGetValue(id,out var entry);
             if(entry!=null&&entry.stage==JournalStage.Rewarded){ShowCompletion(q,rewardIndex);return;}
             abandon.gameObject.SetActive(journalView&&entry!=null&&entry.stage!=JournalStage.Rewarded);
@@ -193,7 +231,7 @@ namespace Dreynox.Mmorpg.UI
             foreach(var item in reward.items)if(item.count>0)text.Append("\nObjeto ").Append(item.type).Append('/').Append(item.typeId).Append(" ×").Append(item.count);
             if(reason.Length>0)text.Append('\n').Append(reason);
             rewardText.text=text.ToString();action.interactable=reason.Length==0;
-            action.GetComponentInChildren<Text>().text=entry==null?"Aceptar misión":"Entregar misión";
+            action.GetComponentInChildren<Text>().text=entry==null?"Aceptar":"Entregar";
         }
         private void QuestAction(){SubmitSelectedQuest();}
         public bool SubmitSelectedQuest()
@@ -253,7 +291,7 @@ namespace Dreynox.Mmorpg.UI
             // Local durability, not a forged native server response.
             if(!quests.Journal.Abandon(id,out string reason))
             {ActionFailure=reason;ShowHint(reason);return false;}
-            CancelAbandon();selectedQuest=-1;RefreshOptions();
+            CancelAbandon();selectedQuest=-1;RefreshOptions();ShowPresentation(false);modalTitle.text="Diario de misiones";
             action.gameObject.SetActive(false);rewardCycle.gameObject.SetActive(false);abandon.gameObject.SetActive(false);
             narrative.text="Misión abandonada. Puedes consultar al NPC para volver a aceptarla cuando cumplas sus requisitos.";
             rewardText.text="No se entregó ninguna recompensa.";
@@ -316,17 +354,23 @@ namespace Dreynox.Mmorpg.UI
             var rect=Panel("Action "+text,parent,new Vector2(0,1),Vector2.zero,new Vector2(260,42));
             rect.GetComponent<Image>().color=new Color(.16f,.14f,.1f,.95f);
             var button=rect.gameObject.AddComponent<Button>();button.targetGraphic=rect.GetComponent<Image>();button.onClick.AddListener(callback);
-            var label=Label(rect,text,16);label.alignment=TextAnchor.MiddleCenter;Inset(label.rectTransform,5);return button;
+            if(hud!=null&&hud.PresentationSkin!=null)NativeUiPrimitives.Skin(button,hud.PresentationSkin.command,true);
+            var label=Label(rect,text,12);label.alignment=TextAnchor.MiddleCenter;Inset(label.rectTransform,5);return button;
         }
         private RectTransform Scroll(RectTransform parent,Vector2 position,Vector2 size)
         {
-            var root=Rect("Scroll",parent,new Vector2(0,1),position,size);root.gameObject.AddComponent<RectMask2D>();
+            var root=Rect("Scroll",parent,new Vector2(0,1),position,size);
             root.gameObject.AddComponent<Image>().color=Color.clear;
             var scroll=root.gameObject.AddComponent<ScrollRect>();scroll.horizontal=false;scroll.movementType=ScrollRect.MovementType.Clamped;
-            var content=Rect("Content",root,new Vector2(0,1),Vector2.zero,new Vector2(size.x,0));
-            var layout=content.gameObject.AddComponent<VerticalLayoutGroup>();layout.childControlWidth=true;layout.childControlHeight=true;layout.childForceExpandHeight=false;layout.spacing=8;
+            scroll.scrollSensitivity=24;
+            var viewport=Rect("Viewport",root,new Vector2(0,1),Vector2.zero,new Vector2(size.x-18,size.y));
+            viewport.gameObject.AddComponent<RectMask2D>();
+            var content=Rect("Content",viewport,new Vector2(0,1),Vector2.zero,new Vector2(size.x-18,0));
+            var layout=content.gameObject.AddComponent<VerticalLayoutGroup>();layout.childControlWidth=true;layout.childControlHeight=true;layout.childForceExpandHeight=false;layout.spacing=6;
             content.gameObject.AddComponent<ContentSizeFitter>().verticalFit=ContentSizeFitter.FitMode.PreferredSize;
-            scroll.content=content;scroll.viewport=root;return content;
+            scroll.content=content;scroll.viewport=viewport;
+            if(hud!=null&&hud.PresentationSkin!=null)root.gameObject.AddComponent<NativeScrollChrome>().Build(root,scroll,hud.PresentationSkin);
+            return content;
         }
     }
 }

@@ -118,6 +118,22 @@ namespace Dreynox.Mmorpg.Parity
             {Finish("Starter sword visual or original hand binding is missing.");yield break;}
             evidence.steps.Add("Original item1/1 resolved through DBItemData and IT2;169-vertex sword attached to authored HUMF hand.");
             yield return Capture("01-map1-entry-hud");
+            // Exercise actual UI callbacks, not a standalone skin mockup.
+            var nativeBar=npcInteraction.CanvasRoot.Find("Native quickbar 0");
+            var nextPage=nativeBar.Find("Next page").GetComponent<UnityEngine.UI.Button>();
+            for(int page=0;page<4;page++)nextPage.onClick.Invoke();
+            if(npcInteraction.Quickbar.Core.Page(0)!=4)throw new InvalidOperationException("Native page arrows are not connected.");
+            yield return Capture("01-native-bar-page-five");
+            var previousPage=nativeBar.Find("Previous page").GetComponent<UnityEngine.UI.Button>();
+            for(int page=0;page<4;page++)previousPage.onClick.Invoke();
+            nativeBar.Find("Rotate bar").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+            if(!npcInteraction.Quickbar.Core.Vertical(0))throw new InvalidOperationException("Native rotation is not connected.");
+            yield return Capture("01-native-bar-vertical");
+            nativeBar.Find("Rotate bar").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+            nativeBar.Find("Additional bar").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+            yield return Capture("01-native-additional-bar");
+            nativeBar.Find("Additional bar").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+
             foreach(float angle in new[]{0f,90f,180f,270f})
             {
                 camera.ConfigureView(angle,12,3.5f);
@@ -243,6 +259,8 @@ namespace Dreynox.Mmorpg.Parity
             try
             {
                 File.WriteAllBytes(Path.Combine(output,name+".png"),texture.EncodeToPNG());
+                var ui=NativeHudContractEvidence.Capture(npcInteraction);
+                File.WriteAllText(Path.Combine(output,name+".ui.json"),JsonUtility.ToJson(ui,true));
                 var camera=Camera.main;var orbit=camera!=null?camera.GetComponent<ShaiyaThirdPersonCamera>():null;
                 var view=new ViewEvidence{width=texture.width,height=texture.height,actorPosition=actor.transform.position,
                     cameraPosition=camera!=null?camera.transform.position:Vector3.zero,

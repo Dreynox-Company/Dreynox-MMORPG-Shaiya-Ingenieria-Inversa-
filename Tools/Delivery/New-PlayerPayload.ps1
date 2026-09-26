@@ -33,7 +33,7 @@ try{
     foreach($path in $files){
         # Framework ZipFile.CreateFromDirectory inherits host-dependent backslash
         # defaults. Explicit ZIP names stay forward-slash on every host version.
-        $name=$path.Substring($root.Length+1).Replace('\','/')
+        $name=$path.Substring($root.Length+1).Replace([char]92,[char]47)
         $input=New-Object IO.FileStream($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
         try{
             $total+=$input.Length
