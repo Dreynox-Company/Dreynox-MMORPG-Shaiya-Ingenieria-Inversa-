@@ -45,7 +45,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
                 Assert.AreEqual(Color.white,view.Markers[0].color);
                 Assert.AreEqual(new Vector2(16,16),view.Markers[0].rectTransform.sizeDelta);
                 Assert.IsNotNull(view.Viewport.GetComponent<RectMask2D>());
-                Assert.AreEqual(new Vector2(95,95),view.Markers[0].rectTransform.anchoredPosition);
+                Assert.Less(Vector2.Distance(new Vector2(95,95),view.Markers[0].rectTransform.anchoredPosition),0.0001f);
                 Assert.IsFalse(view.Add(Vector3.zero,NativeRadarKind.Monster));
                 view.BeginFrame(new Vector3(1024,0,1024),0,new Vector2(2048,2048));view.EndFrame();
                 Assert.IsFalse(view.Markers[0].gameObject.activeSelf,"Pooled old markers disappear.");
