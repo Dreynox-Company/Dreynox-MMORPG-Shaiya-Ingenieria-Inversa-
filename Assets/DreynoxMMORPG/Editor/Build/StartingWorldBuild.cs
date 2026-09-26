@@ -67,6 +67,7 @@ namespace Dreynox.Mmorpg.Editor.Build
             var hud=NativeWorldHudBuilder.Create(corpus);
             var questUi=game.AddComponent<QuestWorldPanel>();questUi.Configure(hud,journal,
                 AssetDatabase.LoadAssetAtPath<Sprite>(HudPath+"/take.tga"));
+            Stage("native-item-skill-catalogs",()=>Dreynox.Mmorpg.Editor.NativeContent.NativeContentSceneInstaller.Install(corpus,game,hud,journal));
             game.AddComponent<StartingWorldQualification>();
             game.AddComponent<LocalPortalTravel>().Configure(
                 UnityEngine.Object.FindFirstObjectByType<NativeWorldSession>(),actor,combat,journal);
@@ -96,7 +97,7 @@ namespace Dreynox.Mmorpg.Editor.Build
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions {scenes=new[]{prepared.scene},target=BuildTarget.StandaloneWindows64,
                 options=flags,locationPathName=Path.GetFullPath(Output+"/DreynoxMmorpg-Map1.exe")});
             if(report.summary.result!=BuildResult.Succeeded)throw new BuildFailedException("Starting world Player failed: "+report.summary.result);
-            File.WriteAllText(Output+"/LEEME.txt","Map 1 con contenido original preconvertido. No es la replica completa ni un cliente conectado al servidor nativo.\nWASD mover; Shift correr; RMB camara; rueda zoom; clic/F NPC; L diario; clic enemigo + 1 ataque local.\nLa mision 3400 usa sus objetivos y recompensas originales; las reglas especiales no implementadas se bloquean.\nEl dano local no reproduce todavia las formulas nativas; las recompensas no implican subida de nivel.\nDATA no es necesaria al ejecutar el Player. Conserve todos los archivos de esta carpeta.\n");
+            File.WriteAllText(Output+"/LEEME.txt","Map 1 con contenido original preconvertido. No es la replica completa ni un cliente conectado al servidor nativo.\nWASD mover; Shift correr; RMB camara; rueda zoom; clic/F NPC; L diario; clic enemigo + 1 ataque local; I inventario local; F9 catalogo de desarrollo.\nLa mision 3400 usa sus objetivos y recompensas originales; las reglas especiales no implementadas se bloquean.\nEl dano local no reproduce todavia las formulas nativas; las recompensas no implican subida de nivel.\nDATA no es necesaria al ejecutar el Player. Conserve todos los archivos de esta carpeta.\n");
             File.Copy(StampPath,Output+"/source-and-content.json",true);
             var rows=new List<string>();
             using(var hash=SHA256.Create())foreach(string file in Directory.GetFiles(Output,"*",SearchOption.AllDirectories).OrderBy(x=>x,StringComparer.Ordinal))

@@ -15,6 +15,13 @@ namespace Dreynox.Mmorpg.Quests
         [SerializeField] private ShaiyaCombatInteraction combat;
         [SerializeField] private LegacyMonsterSpawnStreamer monsters;
         [SerializeField] private string localCharacterKey="ps0032-map1-human-fighter";
+        [SerializeField] private Dreynox.Mmorpg.NativeContent.NativeCatalogAsset itemCatalog;
+        public void SetItemCatalog(Dreynox.Mmorpg.NativeContent.NativeCatalogAsset value)
+        {
+            if(value==null||value.IsSkills)throw new ArgumentException("An item definition catalog is required.");
+            itemCatalog=value;
+        }
+        public string ItemName(int key)=>itemCatalog!=null?itemCatalog.ItemName(key):"Objeto "+(key>>8)+"/"+(key&255);
         public QuestJournalCore Journal {get;private set;}
         public ShaiyaClientActor Actor => actor;
         public QuestPlayerContext Player => new QuestPlayerContext(1,actor!=null?actor.Family:0,actor!=null?actor.Job:0,actor!=null?actor.Sex:0,2);

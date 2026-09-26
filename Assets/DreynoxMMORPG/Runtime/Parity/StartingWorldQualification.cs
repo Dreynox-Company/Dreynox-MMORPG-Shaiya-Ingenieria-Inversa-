@@ -118,6 +118,7 @@ namespace Dreynox.Mmorpg.Parity
             {Finish("Starter sword visual or original hand binding is missing.");yield break;}
             evidence.steps.Add("Original item1/1 resolved through DBItemData and IT2;169-vertex sword attached to authored HUMF hand.");
             yield return Capture("01-map1-entry-hud");
+            yield return Dreynox.Mmorpg.NativeContent.NativeContentQualification.Run(npcInteraction,journal,output,Capture);
             // Exercise actual UI callbacks, not a standalone skin mockup.
             var nativeBar=npcInteraction.CanvasRoot.Find("Native quickbar 0");
             var nextPage=nativeBar.Find("Next page").GetComponent<UnityEngine.UI.Button>();

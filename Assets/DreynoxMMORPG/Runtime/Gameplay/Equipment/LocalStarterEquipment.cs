@@ -9,6 +9,7 @@ namespace Dreynox.Mmorpg.Gameplay.Equipment
         [SerializeField] private ShaiyaClientActor actor;
         [SerializeField] private AttachmentDefinition definition;
         public bool Equipped { get; private set; }
+        public AttachmentDefinition Definition => definition;
         public void Configure(ShaiyaClientActor player, AttachmentDefinition starter)
         { actor = player; definition = starter; }
         private void Start()
