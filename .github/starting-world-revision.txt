@@ -1,8 +1,7 @@
-Map1 qualification 20: native default body via ML2, corrected D3D-to-Unity texture V, and original colored radar sprites.
-Static game.exe code paths: model-list loader 0x51F210 / row reader 0x51F740; radar initializer 0x599490 / monster draw 0x59B974.
-Body, face and hair resolve independent original mesh/texture table rows rather than costume003 or guessed suffixes.
-Preserve terrainphysics, native starter sword, collision guards and visible NPC/quest button flow.
-35 standalone model-list contracts and 12 new Unity cases cover default resources, UV sampling and native marker alpha/clipping.
-Require source provenance and original radar artwork in the actual Player before existing movement/NPC/five-fox/reward gates.
-No claim of full UI, guild/trade/network or every-map parity. No old or unqualified executable delivery.
-Main and original DATA are unchanged.
+Map1 qualification 21: original default body, corrected texture coordinates and native radar artwork.
+Source 10cd6d48 / 5e21f477 passed all standalone suites including 35 new appearance contracts.
+The twelve new Unity cases remain required; projected center comparison allows 0.0001 pixel for IEEE float arithmetic, not visual displacement.
+Original ML2 table selection and radar draw code were traced in game.exe; no costumes, square substitutes or recolored placeholder icons.
+Preserve terrainphysics, original sword, collision guard, visible NPC quest buttons and enhanced lighting/shadows/camera.
+Require an actual Player with the native default resources and radar before walking, five original fox deaths and quest reward verification.
+Only qualified executable delivery. No full guild/trade/protocol/all-map claim. Main and original DATA remain unchanged.
