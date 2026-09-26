@@ -1,3 +1,4 @@
+# Revision22: exercise the exact fixed ZIP writer and retained-process verifier.
 name: Verified executable delivery tests
 on:
   push:

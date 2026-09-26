@@ -1,7 +1,7 @@
-Map1 qualification 21: original default body, corrected texture coordinates and native radar artwork.
-Source 10cd6d48 / 5e21f477 passed all standalone suites including 35 new appearance contracts.
-The twelve new Unity cases remain required; projected center comparison allows 0.0001 pixel for IEEE float arithmetic, not visual displacement.
-Original ML2 table selection and radar draw code were traced in game.exe; no costumes, square substitutes or recolored placeholder icons.
-Preserve terrainphysics, original sword, collision guard, visible NPC quest buttons and enhanced lighting/shadows/camera.
-Require an actual Player with the native default resources and radar before walking, five original fox deaths and quest reward verification.
-Only qualified executable delivery. No full guild/trade/protocol/all-map claim. Main and original DATA remain unchanged.
+Map1 qualification22: original quest paper, validated visible NPC actions, durable reward notifications and actual skinned pose evidence.
+Retain source-derived initial body/radar, original sword, physical terrain, Spanish mission3400 and native-content Map1.
+Seven standalone journal integrity checks, six Unity interaction/presentation cases and three actual BakeMesh pose cases are added, not presumed passed.
+Player must deform the original body during walking and accepted attacks, deform each of five dying foxes, and complete the quest through the visible buttons.
+Capture body front/back/sides, combat and reward with camera metadata. Local diagnostic damage/relocation remains explicit, not native multiplayer parity.
+The one-file package uses explicit forward-slash ZIP entries and retained child-process exit/error capture. Do not weaken verification to get a distributable.
+Only qualified executable delivery; main and original DATA/game.exe stay unchanged.
