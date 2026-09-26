@@ -80,7 +80,7 @@ namespace Dreynox.Mmorpg.Tests.Editor
             var a=new GameObject("Local actor");a.transform.SetParent(root.transform);a.transform.position=Origin;actor=a.AddComponent<ShaiyaClientActor>();
             var n=new GameObject("Original stock fixture");n.transform.SetParent(root.transform);n.transform.position=Origin+Vector3.forward*2;
             npc=n.AddComponent<LegacyNpcRuntimeDescriptor>();
-            npc.Configure(1,10,0,0,0,0,0,"Comerciante de prueba","Saludo",NpcServiceKind.Merchant,
+            npc.Configure(1,10,0,0,0,0,0,"Comerciante de prueba","Saludo",NpcServiceResolverCore.Resolve(1,false),
                 new[]{new LegacyNpcSaleItemRuntime{type=1,typeId=1},new LegacyNpcSaleItemRuntime{type=25,typeId=1}},null,null,null);
             wallet=new QuestJournalCore(new LegacyQuestCatalogData{sourceSha256="fixture",quests=Array.Empty<LegacyQuestDefinition>()});
             var state=wallet.Snapshot();state.gold=1000;wallet.Restore(state);

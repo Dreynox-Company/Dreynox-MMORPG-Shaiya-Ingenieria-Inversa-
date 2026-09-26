@@ -85,7 +85,7 @@ namespace Dreynox.Mmorpg.Commerce
         public bool Open(LegacyNpcRuntimeDescriptor value)
         {
             Failure="";
-            if(!Ready||!journal.Ready||value==null||value.NpcType!=1||(value.Services&NpcServiceKind.Merchant)==0)
+            if(!Ready||!journal.Ready||value==null||value.NpcType!=1||(value.Services&NpcServiceKind.Shop)==0)
                 return Fail("Este NPC no es un comerciante con una oferta original vinculada.");
             if(!NativeMerchantOfferFactory.SupportsMerchantType(value.MerchantType))
                 return Fail("La categoría especial de este comerciante todavía requiere integración.");

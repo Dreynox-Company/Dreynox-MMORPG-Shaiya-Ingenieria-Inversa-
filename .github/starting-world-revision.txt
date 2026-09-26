@@ -1,8 +1,5 @@
-Map1 qualification26: detect original atlas encoding from bytes, then qualify actual local merchant transactions.
-Nine canonical icon files named DDS contain valid RLE TGA. Validate packets and import unchanged correctly named copies; do not weaken DDS header validation or alter DATA.
-Whole original item/skill catalog import is exercised in Editor tests before costly world preparation.
-Local merchant buys/sells use original NPC stock and template buy/sell fields, explicit base-gold-only support, and the SAME atomic journal inventory/gold/quest readiness.
-Quotes are revision-bound and confirmation-required. No duplicated payment, stale pooled NPC, unsupported currency or partial save.
-After earning the original quest reward, the actual Player must reach a real Map1 merchant, buy two items, sell one, inspect inventory, reject duplicate confirmation and release input.
-Capture original-art merchant stock/quotes/inventory plus exact local money/count/revision evidence. This is not native authoritative pricing, bag instances or full MMORPG parity.
-Only qualified EXE publication; no old executable replacement. Main, DATA/game.exe, Flutter and Studio unchanged.
+Map1 qualification27: repair merchant integration against the EXISTING NpcServiceKind.Shop contract.
+No new service flag, alias or serialized enum value introduced; runtime UI and test fixtures use the same original NPC resolver.
+Retain all content signature, catalog, local buy/sell, durable journal, real Player and visual capture gates from revision26.
+Revision26 stopped at actual CSharp compilation; none of its Editor tests or gameplay checks ran. This new source must pass independently.
+Only a qualified executable is deliverable. Main, original DATA/game.exe, Flutter and Studio remain unchanged.

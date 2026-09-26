@@ -185,7 +185,7 @@ namespace Dreynox.Mmorpg.UI
             {
                 var greeting=Label(listRoot,Format(npc.WelcomeMessage),12);optionObjects.Add(greeting.gameObject);
             }
-            if(npc!=null&&HasMerchantPanel&&(npc.Services&NpcServiceKind.Merchant)!=0)
+            if(npc!=null&&HasMerchantPanel&&(npc.Services&NpcServiceKind.Shop)!=0)
             {
                 var trade=Button(listRoot,"Comprar / vender",()=>RequestMerchant());
                 trade.name="Original merchant service action";
@@ -210,7 +210,7 @@ namespace Dreynox.Mmorpg.UI
                 var empty=Label(listRoot,npc==null?"No tienes misiones activas.":"No hay misiones disponibles para este personaje.",12);
                 optionObjects.Add(empty.gameObject);
             }
-            if(npc!=null&&(npc.Services & ~(NpcServiceKind.Quest|(HasMerchantPanel?NpcServiceKind.Merchant:NpcServiceKind.None)))!=NpcServiceKind.None)
+            if(npc!=null&&(npc.Services & ~(NpcServiceKind.Quest|(HasMerchantPanel?NpcServiceKind.Shop:NpcServiceKind.None)))!=NpcServiceKind.None)
             {
                 var label=Label(listRoot,"Otros servicios de este NPC todavía requieren integración. Las misiones disponibles se muestran arriba.",12);
                 label.gameObject.AddComponent<LayoutElement>().preferredHeight=80;optionObjects.Add(label.gameObject);
@@ -220,7 +220,7 @@ namespace Dreynox.Mmorpg.UI
         {
             string reason="La conversación ya no está activa.";
             if(npc==null||modal==null||!modal.gameObject.activeInHierarchy||!HasMerchantPanel||MerchantRequested==null||
-                npc.LifetimeGeneration!=npcLifetime||(npc.Services&NpcServiceKind.Merchant)==0||
+                npc.LifetimeGeneration!=npcLifetime||(npc.Services&NpcServiceKind.Shop)==0||
                 !LocalNpcInteractionGuard.Validate(quests.Actor,npc,hud.SelectedNpc,hud.Ready,out reason))
             {ActionFailure=reason;ShowHint(reason);return false;}
             MerchantRequested(npc);return true;
