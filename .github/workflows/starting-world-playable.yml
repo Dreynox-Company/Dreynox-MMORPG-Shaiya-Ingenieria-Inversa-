@@ -1,4 +1,4 @@
-# Revision 25: complete original item/skill definitions, inventory binding and sequential Player UI proof.
+# Revision 26: content-signature atlas imports and shared-journal local merchant gameplay.
 name: Starting Map1 playable client
 on:
   push:
@@ -23,6 +23,7 @@ jobs:
       - run: dotnet run --project Tools/DeliveryTests/DeliveryTests.csproj --configuration Release
       - run: dotnet run --project Tools/NativeUiHarness/NativeUiHarness.csproj --configuration Release
       - run: dotnet run --project Tools/NativeContentHarness/NativeContentHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/MerchantHarness/MerchantHarness.csproj --configuration Release
   windows:
     needs: source
     runs-on: [self-hosted, Windows, X64]
@@ -120,6 +121,10 @@ jobs:
           if($contentReports.Count -ne 1){throw 'Current Player catalog qualification missing.'}
           $content=Get-Content -LiteralPath $contentReports[0].FullName -Raw | ConvertFrom-Json
           if(-not $content.passed -or -not $content.ownershipUnchanged -or -not $content.inputReleased){throw 'Catalog and local ownership UI did not qualify.'}
+          $merchantReports=@(Get-ChildItem -LiteralPath 'Artifacts/StartingWorld' -Filter 'local-merchant-qualification.json' -File -Recurse)
+          if($merchantReports.Count -ne 1){throw 'Current Player merchant qualification missing.'}
+          $merchant=Get-Content -LiteralPath $merchantReports[0].FullName -Raw | ConvertFrom-Json
+          if(-not $merchant.passed -or -not $merchant.duplicateRejected -or -not $merchant.inventoryReflected -or -not $merchant.otherStateUnchanged -or -not $merchant.inputReleased){throw 'Local buy/sell transactions did not qualify.'}
           # Preserve any existing executable. Each packaging invocation gets a fresh destination.
           $delivery=Join-Path $env:DREYNOX_BUILD_ROOT ('Deliveries/Map1-'+[Guid]::NewGuid().ToString('N'))
           if(Test-Path -LiteralPath $delivery){throw 'Unexpected package directory collision.'}

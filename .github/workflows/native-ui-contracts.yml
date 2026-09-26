@@ -1,9 +1,9 @@
-# Original-catalog integration25: validate current source, not a previous Player's gameplay assembly.
+# Merchant integration26: real shared-journal transactions and exact current runtime compilation.
 name: Native UI pixel and input contracts
 on:
   push:
     branches: ['work/unity-client-parity-v0.4.0']
-    paths: ['Assets/DreynoxMMORPG/Runtime/UI/**', 'Assets/DreynoxMMORPG/Runtime/NativeContent/**', 'Tools/NativeContentHarness/**', 'Assets/DreynoxMMORPG/Runtime/Gameplay/**', 'Assets/DreynoxMMORPG/Runtime/ParityCore/**', 'Tools/NativeUiHarness/**', '.github/workflows/native-ui-contracts.yml']
+    paths: ['Assets/DreynoxMMORPG/Runtime/Commerce/**', 'Assets/DreynoxMMORPG/Runtime/Quests/**', 'Tools/MerchantHarness/**', 'Assets/DreynoxMMORPG/Runtime/UI/**', 'Assets/DreynoxMMORPG/Runtime/NativeContent/**', 'Tools/NativeContentHarness/**', 'Assets/DreynoxMMORPG/Runtime/Gameplay/**', 'Assets/DreynoxMMORPG/Runtime/ParityCore/**', 'Tools/NativeUiHarness/**', '.github/workflows/native-ui-contracts.yml']
 permissions: {contents: read, actions: read}
 jobs:
   contracts:
@@ -19,6 +19,7 @@ jobs:
       - run: dotnet run --project Tools/NativeContentHarness/NativeContentHarness.csproj --configuration Release
       - run: dotnet run --project Tools/CombatHarness/CombatHarness.csproj --configuration Release
       - run: dotnet run --project Tools/QuestHarness/QuestHarness.csproj --configuration Release
+      - run: dotnet run --project Tools/MerchantHarness/MerchantHarness.csproj --configuration Release
       - name: Verify immutable reference-assembly provenance
         env:
           GH_TOKEN: ${{ github.token }}

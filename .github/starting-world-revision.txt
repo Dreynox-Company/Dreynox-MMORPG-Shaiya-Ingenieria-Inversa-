@@ -1,8 +1,8 @@
-Map1 qualification25: all original item/skill definition rows converted in Editor and bound into the actual Unity client.
-Require pinned original and plaintext hashes for DBItemData/DBItemText_SPN/DBSkillData/DBSkillText_SPN, with lossless roundtrips and native-key joins.
-Expected28142item rows/70fields and12060skill-rank rows/101fields; catalog membership never grants ownership or learns an ability.
-Original inventory artwork and24cell local ownership projection are bound to the existing durable journal. Original skill-frame development browser exposes names/descriptions/numeric fields read-only.
-The actual Player must open inventory, search/inspect Espada Larga, browse all skill ranks, inspect Musculatura, reject stale empty results and preserve journal state before the existing original quest/fox/reward loop.
-Preserve exact native quickbar geometry, original character/terrain/radar, original animation-deformation proofs and improved URP rendering.
-Package into a fresh generated directory without deleting or replacing any older executable. New attempts have isolated short Unity project directories.
-Only qualified one-file executable delivery. Main, DATA/game.exe, Flutter and Studio remain unchanged.
+Map1 qualification26: detect original atlas encoding from bytes, then qualify actual local merchant transactions.
+Nine canonical icon files named DDS contain valid RLE TGA. Validate packets and import unchanged correctly named copies; do not weaken DDS header validation or alter DATA.
+Whole original item/skill catalog import is exercised in Editor tests before costly world preparation.
+Local merchant buys/sells use original NPC stock and template buy/sell fields, explicit base-gold-only support, and the SAME atomic journal inventory/gold/quest readiness.
+Quotes are revision-bound and confirmation-required. No duplicated payment, stale pooled NPC, unsupported currency or partial save.
+After earning the original quest reward, the actual Player must reach a real Map1 merchant, buy two items, sell one, inspect inventory, reject duplicate confirmation and release input.
+Capture original-art merchant stock/quotes/inventory plus exact local money/count/revision evidence. This is not native authoritative pricing, bag instances or full MMORPG parity.
+Only qualified EXE publication; no old executable replacement. Main, DATA/game.exe, Flutter and Studio unchanged.
